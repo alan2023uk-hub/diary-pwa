@@ -4,7 +4,7 @@
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
    目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（備份檔格式和 Scriptable 版相同，兩邊可以互相使用）、卡片照片（加入、顯示、刪除、換日期）。提醒、天氣、整年照片頁還沒開放（會在頁面上提示）。
-   注意：照片存在這部裝置的瀏覽器裏，備份檔只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。 */
+   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -58,16 +58,24 @@
     return [...by.values()]
   }
 
+  // ---------- 預先打開相簿（省掉「加入照片」中間那個對話框）----------
+  // 瀏覽器只准許在「剛按下按鈕」的當下打開選照片的選單；但頁面按下「加入照片」後要先存檔，才把訊息交給宿主，到那時已經過了「剛按下」，所以以前宿主得先顯示一個對話框，請使用者再按一次。
+  // 現在的做法：組頁時，在頁面「加入照片」按鈕的處理函式裏，於存檔之前插入一行，按下的當下就呼叫 HOST_PICK_PHOTOS 打開選單；之後宿主收到訊息，只要等使用者選完。
+  // 如果模板裏找不到這一行（模板改過），就不插，宿主照舊顯示對話框，功能不受影響。
+  const PICK_ANCHOR = "再加入照片');return}await saveEdit(d,ta.value,null,true);"
+  const PICK_PATCH = "再加入照片');return}window.HOST_PICK_PHOTOS&&window.HOST_PICK_PHOTOS();await saveEdit(d,ta.value,null,true);"
+
   // ---------- 組頁：模板 + 日誌資料 + 修改 ----------
   function assemble(tpl, rows, edits, opts) {
     opts = opts || {}
     if (!tpl.includes("__DATA__")) throw new Error("模板裏找不到 __DATA__")
     const esc = o => JSON.stringify(o).replace(/</g, "\\u003c")
+    if (tpl.includes(PICK_ANCHOR)) tpl = tpl.replace(PICK_ANCHOR, () => PICK_PATCH)   // 找不到那一行（模板改過）就不插，照舊顯示對話框
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
     const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};document.addEventListener("DOMContentLoaded",function(){PwaHost.loadCardPhotos()})</script>'
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.loadCardPhotos()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
@@ -177,16 +185,19 @@
     const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false)
     const how = await deliverFile(r.name, JSON.stringify(r.body))
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份 " + year + " 年：" + r.days + " 天" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
-    return how === "shared" || how === "downloaded"
+    const saved = how === "shared" || how === "downloaded"
+    if (saved) await offerPhotoBackup(year)
+    return saved
   }
   async function doRestore(yearStr) {   // 回傳 true＝有改動（呼叫端要把最新的修改推回頁面）
     if (!/^\d{4}$/.test(yearStr || "")) { say("還原失敗：年份不對"); return false }
     const year = +yearStr, s = getStore(), pres = await s.get("pre:" + year) || []
-    const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }]
+    const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片（.jpg）…", value: "photos" }]
     pres.forEach((x, i) => buttons.push({ label: fmtTime(x.created) + " · " + x.body.days.length + " 天（還原前自動備份）", value: { pre: i } }))
     buttons.push({ label: "取消", value: null })
-    const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）。" + (pres.length ? "\n或選一份還原前自動留下的備份：" : ""), buttons)
+    const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
     if (!pick) return false
+    if (pick === "photos") { await doRestorePhotos(); return false }
     let b
     try { b = pick.file ? JSON.parse(await pick.file.text()) : pres[pick.pre].body } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
     const rows = await s.get("rows") || [], edits = await s.get("edits") || [], now = Date.now()
@@ -257,13 +268,34 @@
     inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
     d.body.appendChild(inp); inp.click()
   }
+  let prePick = null   // 按下「加入照片」當下已經打開的相簿選單：{ promise（選完得到檔案；取消得到 null）, at, cancel }
+  function prePickPhotos() {   // 由頁面按鈕的處理函式在按下的當下呼叫（HOST_PICK_PHOTOS）
+    if (prePick) prePick.cancel()
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.hidden = true
+    let finish
+    const promise = new Promise(res => { finish = res })
+    prePick = { promise, at: Date.now(), cancel: () => { inp.remove(); finish(null) } }
+    inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); finish(fs) }
+    inp.addEventListener("cancel", () => { inp.remove(); finish(null) })
+    d.body.appendChild(inp); inp.click()
+  }
   async function doAddPhotos(date) {
     if (!DATERE.test(date || "")) { say("加入照片失敗：日期不對"); return }
+    const pre = prePick; prePick = null
+    if (pre && Date.now() - pre.at < 10000) {   // 按下按鈕時相簿已經打開了：選完再處理；這裏不等，沒選照片也不會卡住後面的動作
+      pre.promise.then(fs => { if (fs && fs.length) queue = queue.then(() => addPhotoFiles(date, fs)).catch(e => say("出錯了：" + (e && e.message || e))) })
+      return
+    }
+    if (pre) pre.cancel()
     const pick = await modal("加入照片到 " + date, "選取一張或好幾張相片，會縮小後存在這部裝置。", [{ label: "選取相片…", kind: "pri", onclick: pickImages }, { label: "取消", value: null }])
     if (!pick) return
+    await addPhotoFiles(date, pick.files)
+  }
+  async function addPhotoFiles(date, files) {
     const s = getStore(); let idx = await photoIndex(), ok = 0, bad = 0, i = 0
-    say("處理 " + pick.files.length + " 張照片…")
-    for (const f of pick.files) {
+    say("處理 " + files.length + " 張照片…")
+    for (const f of files) {
       try {
         const blob = await encodePhoto(f)
         let name = date + "_" + Date.now() + "_" + (i++) + ".jpg"
@@ -297,6 +329,79 @@
     }
     const dates = [...new Set([dateOf(name), dateOf(nn)].filter(Boolean))]
     pushPhotos(await cardMap(dates), "已更新")
+  }
+
+  // ---------- 照片備份與還原：備份檔（.json）不含照片，所以照片另外存成一張張 .jpg（檔名不變），還原時依檔名放回原來的卡片 ----------
+  const PHOTO_BATCH = 40   // 一次分享的張數上限（太多張時分享選單可能開不起來，所以分批）
+  const yearPhotoNames = (idx, year) => idx.filter(x => okName(x.f) && x.f.slice(0, 4) === String(year)).map(x => x.f).sort()
+  async function photoFilesOf(year) {
+    const s = getStore(), out = []
+    for (const f of yearPhotoNames(await photoIndex(), year)) {
+      const blob = await s.get("photo:" + f)
+      if (blob) out.push(new root.File([blob], f, { type: "image/jpeg" }))
+    }
+    return out
+  }
+  function downloadBlob(name, blob) {
+    const d = root.document, a = d.createElement("a"), u = root.URL.createObjectURL(blob)
+    a.href = u; a.download = name; d.body.appendChild(a); a.click(); a.remove(); setTimeout(() => root.URL.revokeObjectURL(u), 10000)
+  }
+  async function backupPhotos(year, files) {   // 一批一批存；每一批都要使用者按一下（分享選單只能在按下的當下打開）。回傳實際存出幾張
+    const nav = root.navigator, batches = []
+    for (let i = 0; i < files.length; i += PHOTO_BATCH) batches.push(files.slice(i, i + PHOTO_BATCH))
+    let saved = 0
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i], title = "備份 " + year + " 年照片" + (batches.length > 1 ? "（第 " + (i + 1) + "／" + batches.length + " 批）" : "")
+      let note = ""
+      for (;;) {
+        const buttons = []
+        if (nav && nav.share) buttons.push({ label: "儲存照片", kind: "pri", onclick: done => nav.share({ files: batch, title: year + " 年照片" }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
+        buttons.push({ label: "改用下載", value: "download" }, { label: "停止", value: "stop" })
+        const r = await modal(title, "這一批 " + batch.length + " 張。按「儲存照片」後，選「儲存到檔案」，並選一個資料夾" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。" + note, buttons)
+        if (r === "shared") { saved += batch.length; break }
+        if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; break }
+        if (r === "stop") return saved
+        note = r === "failed" ? "\n\n剛才分享失敗了，請再按一次，或改用下載。" : ""
+      }
+    }
+    return saved
+  }
+  async function offerPhotoBackup(year) {   // 文字備份完成後呼叫：這一年有照片，就問要不要另外備份
+    const n = yearPhotoNames(await photoIndex(), year).length
+    if (!n) return
+    const go = await modal("要連照片一起備份嗎？", year + " 年有 " + n + " 張照片。日誌文字的備份檔不含照片，要另外把照片存到「檔案」App 嗎？", [{ label: "備份照片", kind: "pri", value: true }, { label: "不用了", value: false }])
+    if (!go) return
+    const files = await photoFilesOf(year), saved = files.length ? await backupPhotos(year, files) : 0
+    say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
+  }
+  function pickPhotoFiles(done) {   // 在按鈕被按下的當下呼叫
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "image/jpeg,.jpg,.jpeg"; inp.multiple = true; inp.hidden = true
+    inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  async function doRestorePhotos() {   // 把備份的 .jpg 放回來（各年份可以一次選）：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮
+    const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_….jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」，從「檔案」App 選取；從「照片」圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
+    if (!pick) return
+    const s = getStore(), dates = new Set()
+    let idx = await photoIndex(), ok = 0, dup = 0, skip = 0
+    say("處理 " + pick.files.length + " 張照片…")
+    for (const f of pick.files) {
+      try {
+        if (!okName(f.name)) { skip++; continue }
+        if (idx.some(x => x.f === f.name)) { dup++; continue }
+        const buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 2))
+        if (head[0] !== 0xFF || head[1] !== 0xD8) { skip++; continue }   // 不是 JPEG
+        const blob = new root.Blob([buf], { type: "image/jpeg" })
+        await s.set("photo:" + f.name, blob)
+        idx = [...idx, { f: f.name, size: blob.size, created: Date.now() }]
+        await s.set("photoIndex", idx); ok++
+        if (dateOf(f.name)) dates.add(dateOf(f.name))
+      } catch (e) { skip++ }
+    }
+    const msg = "已還原 " + ok + " 張照片" + (dup ? "，略過 " + dup + " 張已有的" : "") + (skip ? "，" + skip + " 張不能用（檔名不對或不是 JPEG）" : "")
+    pushPhotos(await cardMap([...dates]), ok ? msg : "")
+    if (!ok) say(msg)
   }
 
   // ---------- 訊息：頁面 hostSend 發來的網址 ----------
@@ -406,7 +511,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, loadCardPhotos, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
