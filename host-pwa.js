@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。提醒、天氣、整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。提醒、整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -74,8 +74,8 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.loadCardPhotos()})</script>'
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.loadCardPhotos();PwaHost.startWeather()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
@@ -420,6 +420,191 @@
     if (!ok) say(msg)
   }
 
+  // ---------- 天氣：每張日誌卡片的標題欄顯示「地名 溫度範圍 有雨／下雪 大風 酷熱」（判斷規則和 Scriptable 版相同）----------
+  // 聯網：預報用 Open-Meteo（免費、不用金鑰）；位置用瀏覽器的定位（第一次要在瀏覽器裏允許「位置」）；地名用 OpenStreetMap 的 Nominatim 反查（Scriptable 版用的是 iOS 的反查，同一個地點的地名寫法可能略有不同，不喜歡的可以用 alias 改寫）。
+  // 日誌只存地名；唯一存的位置是「最後一次所在地」（收窄到約 1 公里，用來判斷有沒有換地方）。全部只存在這部裝置的瀏覽器裏（IndexedDB 的 weather），不上傳到別處。
+  // 沒網路、不給定位、查不到：什麼都不顯示，不影響日誌；之後離線也看得到上次存的天氣。
+  // 和 Scriptable 版的差別：Scriptable 打開時最多等 waitMs 毫秒才組頁；網頁版先用上次存的天氣組頁，查到新的再用頁面的 __wxUpdate 換上去，頁面不用等。
+  const W = {
+    rainHours: 12,      // 一天裏降水的小時數「超過」這個數，才算有雨（12 ＝ 超過一半時間在下雨）
+    rainMinMm: 0,       // 全日降水量至少多少 mm 才算有雨；倫敦常有毛毛雨，覺得太常顯示「有雨」可改成 1
+    rainHeavyMm: 10,    // 全日降水量達這個數（mm）就算有雨，即使下雨的時數不到一半
+    fcDays: 7,          // 預設值：預報往後看幾天（從明天起算，0＝不顯示，最多 16）。日誌頁選單的「天氣」可以直接改，存起來後優先於這裏
+    hotC: 38,           // 預設值：最高氣溫達這個數（°C）就顯示「酷熱」。日誌頁選單的「天氣」可以直接改，優先於這裏
+    snowMinCm: 0.5,     // 全日降雪量達這個數（cm）就顯示「下雪」（有下雪就顯示「下雪」，不顯示「有雨」）
+    stormKmh: 62,       // 一天裏最大風速達這個數（km/h）就顯示「大風」；62 約是蒲福風級 8 級，想更嚴格可改 89（10 級）
+    sameKm: 30,         // 和上次的位置相距不超過這個距離（公里），視為同一個地方：漏掉的日子用上次的地名和這裏的天氣補上；超過就留空白，不猜
+    stickyKm: 1.5,      // 離上次記錄的位置不到這個距離，沿用上次的地名，不重新判斷（避免在區界附近今天 A 區、明天 B 區）
+    fillDays: 14,       // 漏掉的日子最多往回補幾天
+    minGapMin: 20,      // 同一天內，離上次更新不到這麼多分鐘就不再聯網
+    netMs: 8000,        // 定位、查天氣、查地名，每一步最多等多久（毫秒）
+    alias: {},          // 地名改寫，例如 { "Greater London": "倫敦" }
+    bigCities: ["london", "倫敦", "伦敦", "hong kong", "香港", "guangzhou", "廣州", "广州", "shenzhen", "深圳", "macau", "澳門", "澳门"]   // 這些城市（以及所有以「市」結尾的中文城市）改用更細的「區」；其他地方用「城鎮」
+  }
+  const w2 = n => Math.round(n * 100) / 100
+  const ymd = d => d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate())
+  const noon = s => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8), 12)
+  const shiftDay = (s, n) => { const d = noon(s); d.setDate(d.getDate() + n); return ymd(d) }
+  const dayGap = (a, b) => Math.round((noon(b) - noon(a)) / 864e5)
+  function distKm(a, b) {
+    const r = x => x * Math.PI / 180, dLa = r(b.lat - a.lat), dLo = r(b.lon - a.lon)
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLo / 2) ** 2
+    return 2 * 6371 * Math.asin(Math.sqrt(h))
+  }
+  const inZh = (lat, lon) => lat >= 18 && lat <= 54 && lon >= 73 && lon <= 123.5   // 大約是中國、香港、澳門、台灣一帶：這裏用中文地名，其他地方用英文地名
+  async function fetchJson(url) {
+    const ctl = typeof root.AbortController === "function" ? new root.AbortController() : null
+    const timer = ctl ? setTimeout(() => ctl.abort(), W.netMs) : 0
+    try {
+      const r = await root.fetch(url, ctl ? { signal: ctl.signal } : {})
+      if (!r.ok) throw new Error("HTTP " + r.status)
+      return await r.json()
+    } finally { if (timer) clearTimeout(timer) }
+  }
+  function getPosition() {   // 回傳 { latitude, longitude }；使用者不給定位回傳 "denied"；其他失敗（逾時、瀏覽器沒有定位）回傳 null
+    return new Promise(res => {
+      let done = false
+      function fin(v) { if (!done) { done = true; clearTimeout(guard); res(v) } }
+      const guard = setTimeout(() => fin(null), W.netMs + 7000)   // 「允許位置」的詢問框還沒按時，瀏覽器的 timeout 不計時；這裏另設一個上限，免得後面的天氣工作一直卡住
+      const g = root.navigator && root.navigator.geolocation
+      if (!g) return fin(null)
+      try {
+        g.getCurrentPosition(p => fin(p && p.coords ? { latitude: p.coords.latitude, longitude: p.coords.longitude } : null),
+          e => fin(e && e.code === 1 ? "denied" : null), { enableHighAccuracy: false, timeout: W.netMs, maximumAge: 600000 })
+      } catch (e) { fin(null) }
+    })
+  }
+  // 地名：反查地址，取「最細」的一層——大城市（倫敦、香港、廣州…）用「區」（尖沙咀、荔灣區），其他用「城鎮」（New Malden）
+  async function placeName(lat, lon) {
+    const zh = inZh(lat, lon)
+    let a = null
+    try {
+      const j = await fetchJson("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=14&lat=" + lat + "&lon=" + lon + "&accept-language=" + (zh ? "zh-HK,zh" : "en-GB,en"))
+      a = j && j.address
+    } catch (e) {}
+    if (!a) return ""
+    const t = x => String(x || "").trim()
+    const loc = t(a.city || a.town || a.village || a.municipality)
+    const sub = t(a.suburb || a.city_district || a.borough || a.district || a.quarter || a.neighbourhood)
+    const wide = t(a.county || a.state_district || a.state || a.region)
+    const big = !!loc && (/市$/.test(loc) || W.bigCities.includes(loc.replace(/市$/, "").toLowerCase()))
+    const n = (big && sub) ? sub : (loc || sub || wide)
+    return W.alias[n] || n
+  }
+  async function fetchDaily(lat, lon, past) {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=" + w2(lat) + "&longitude=" + w2(lon) +
+      "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_hours,snowfall_sum,wind_speed_10m_max" +
+      "&past_days=" + past + "&forecast_days=" + (W.fcDays + 1) + "&timezone=auto"
+    const j = await fetchJson(url)
+    return j && j.daily && Array.isArray(j.daily.time) ? j.daily : null
+  }
+  function applyWxCfg(c) {   // 套用在日誌頁設定的預報天數和酷熱溫度（不合理的數字不理）
+    if (!c || typeof c !== "object") return false
+    let ok = false
+    const d = Number(c.fcDays), h = Number(c.hotC)
+    if (c.fcDays != null && Number.isInteger(d) && d >= 0 && d <= 16) { W.fcDays = d; ok = true }
+    if (c.hotC != null && isFinite(h) && h >= 25 && h <= 50) { W.hotC = h; ok = true }
+    return ok
+  }
+  function wxRecord(dly, i) {
+    const n = k => (dly[k] && dly[k][i] != null && isFinite(dly[k][i])) ? +dly[k][i] : null
+    const hi = n("temperature_2m_max"), lo = n("temperature_2m_min")
+    if (hi == null || lo == null) return null
+    const hrs = n("precipitation_hours"), mm = n("precipitation_sum"), sn = n("snowfall_sum"), wd = n("wind_speed_10m_max")
+    return {
+      lo: Math.round(lo) + 0, hi: Math.round(hi) + 0,
+      r: ((hrs != null && hrs > W.rainHours && (mm == null || mm >= W.rainMinMm)) || (mm != null && mm >= W.rainHeavyMm)) ? 1 : 0,
+      s: (sn != null && sn >= W.snowMinCm) ? 1 : 0,
+      w: (wd != null && wd >= W.stormKmh) ? 1 : 0,
+      rv: 2
+    }
+  }
+  async function readWeather() {   // 天氣資料：{ v, days（已發生的日子）, fc（未來預報）, last（最後一次所在地）, u（上次更新時間）, cfg（日誌頁設定的預報天數、酷熱溫度） }
+    let st = { v: 1, days: {} }
+    try { const t = await getStore().get("weather"); if (t && typeof t === "object") st = Object.assign(st, t) } catch (e) {}
+    if (!st.days || typeof st.days !== "object") st.days = {}
+    applyWxCfg(st.cfg)   // 日誌頁設定過的數字，優先於上面的預設值
+    return st
+  }
+  const saveWeather = st => getStore().set("weather", st)
+  async function wxDeniedHint() {   // 使用者不給定位：只提示一次，之後安靜
+    const s = getStore()
+    if (await s.get("hint:wxdenied")) return
+    await s.set("hint:wxdenied", 1)
+    say("天氣需要「位置」權限：請在瀏覽器的網站設定裏允許位置，之後打開就會顯示天氣", 7000)
+  }
+  async function weatherUpdate(st) {   // 回傳 true＝有查到新資料並已存好；false＝什麼都沒改（太近才更新過、沒定位、沒網路…）
+    const today = ymd(new Date())
+    if (st.u && Date.now() - st.u < W.minGapMin * 60000 && st.last && st.last.d === today && st.days[today] && st.fc) return false
+    const pos = await getPosition()
+    if (pos === "denied") { await wxDeniedHint(); return false }
+    if (!pos) return false
+    const cur = { lat: w2(pos.latitude), lon: w2(pos.longitude) }
+    const last = st.last, same = !!last && distKm(last, cur) <= W.sameKm
+    let name
+    if (last && last.name && distKm(last, cur) < W.stickyKm) name = last.name
+    else { name = await placeName(pos.latitude, pos.longitude); if (!name && same) name = last.name || "" }
+    // 要一起查的過去日子：還沒定案的、以及中間漏掉沒打開日誌的日子（只在「還在同一個地方」時才補）
+    const need = new Set()
+    if (same) {
+      for (const d of Object.keys(st.days)) if (d < today && !st.days[d].f && dayGap(d, today) <= W.fillDays + 3) need.add(d)
+      for (let d = shiftDay(last.d, 1); d < today; d = shiftDay(d, 1)) if (dayGap(d, today) <= W.fillDays && !st.days[d]) need.add(d)
+    }
+    const past = need.size ? Math.min(92, dayGap([...need].sort()[0], today)) : 0
+    let dly
+    try { dly = await fetchDaily(cur.lat, cur.lon, past) } catch (e) { return false }   // 沒網路：什麼都不改，下次再試
+    if (!dly) return false
+    const now = Date.now(), fc = {}
+    for (let i = 0; i < dly.time.length; i++) {
+      const d = dly.time[i], rec = wxRecord(dly, i)
+      if (!rec) continue
+      if (d === today) st.days[today] = Object.assign({ p: name }, rec, { f: 0, t: now })
+      else if (need.has(d)) { const ex = st.days[d]; st.days[d] = Object.assign({ p: ex ? ex.p : (last.name || "") }, rec, { f: 1, t: now }) }
+      else if (d > today) fc[d] = Object.assign({ p: name }, rec, { t: now })   // 未來的日子：預報另外存，不算「定案」
+    }
+    st.fc = fc
+    for (const d of Object.keys(st.days)) if (d < today && !st.days[d].f && !need.has(d)) st.days[d].f = 1   // 換了地方、或太久以前：不再重查，維持原本的數字
+    st.last = { lat: cur.lat, lon: cur.lon, name, d: today, t: now }
+    st.u = now
+    await saveWeather(st)
+    return true
+  }
+  function weatherForPage(st) {   // 日期 → [地名, 最低, 最高, 雨, 雪, 風, 酷熱, (預報才有) 1]：頁面 window.WEATHER 的格式
+    const o = {}, today = ymd(new Date())
+    const row = (r, fc) => { const a = [r.p || "", r.lo, r.hi, r.r ? 1 : 0, r.s ? 1 : 0, r.w ? 1 : 0, (typeof r.hi === "number" && r.hi >= W.hotC) ? 1 : 0]; if (fc) a.push(1); return a }
+    for (const [d, r] of Object.entries(st.days || {})) o[d] = row(r, false)
+    for (const [d, r] of Object.entries(st.fc || {})) if (d > today && dayGap(today, d) <= W.fcDays && !o[d]) o[d] = row(r, true)   // 預報：第 8 欄＝1，日誌用斜體顯示
+    return o
+  }
+  function pushWeather(st, msg) {   // 把天氣和設定交給頁面（頁面的 __wxUpdate 會重畫；正在編輯卡片時只更新資料，不打斷打字）
+    if (typeof root.__wxUpdate === "function") root.__wxUpdate(weatherForPage(st), { fcDays: W.fcDays, hotC: W.hotC }, msg || "")
+  }
+  // 天氣的工作一個接一個做（背景更新和「天氣設定」不會互相蓋掉）；不放進訊息的處理佇列，免得等定位時卡住備份、照片
+  let wxChain = Promise.resolve()
+  function wxTask(fn) { const p = wxChain.then(fn); wxChain = p.then(() => {}, () => {}); return p }
+  async function wxRefresh() { const st = await readWeather(); if (await weatherUpdate(st)) pushWeather(st) }
+  function startWeather() {   // 頁面載入後呼叫：背景更新天氣。之後每次回到這個頁面（切回來、從背景叫回來）也更新一次，同一天內 minGapMin 分鐘內不重複聯網
+    const d = root.document
+    if (d && d.addEventListener) {   // 組頁（document.write）會清掉舊的監聽，所以每次都「先拿掉舊的、再加新的」
+      const onVis = () => { if (d.visibilityState === "visible") wxTask(wxRefresh).catch(() => {}) }
+      if (root.__wxOnVis) d.removeEventListener("visibilitychange", root.__wxOnVis)
+      root.__wxOnVis = onVis; d.addEventListener("visibilitychange", onVis)
+    }
+    return wxTask(wxRefresh).catch(() => {})
+  }
+  function doWxCfg(raw) {   // 日誌頁「天氣設定」按了確定：存設定、馬上把新設定套到現有的天氣、再背景重查預報
+    let c
+    try { c = JSON.parse(raw) } catch (e) { say("天氣設定讀不了"); return }
+    wxTask(async () => {
+      const st = await readWeather()
+      if (!applyWxCfg(c)) { say("天氣設定的數字不合理"); return }
+      st.cfg = { fcDays: W.fcDays, hotC: W.hotC }; st.u = 0   // u＝0：強制重查預報
+      await saveWeather(st)
+      pushWeather(st, "已儲存天氣設定")
+      if (await weatherUpdate(st)) pushWeather(st)
+    }).catch(e => say("天氣設定失敗：" + (e && e.message || e)))
+  }
+
   // ---------- 訊息：頁面 hostSend 發來的網址 ----------
   function parse(u) {   // scriptable:///run?scriptName=日誌&k=v&… → { k: v }（編碼方式由頁面的 hostURL 決定，這裏只負責解開）
     const p = {}, q = String(u).split("?")[1] || ""
@@ -430,7 +615,7 @@
     }
     return p
   }
-  const UNSUPPORTED = { loadphotos: "整年照片頁", remsave: "提醒", wxcfg: "天氣設定" }
+  const UNSUPPORTED = { loadphotos: "整年照片頁", remsave: "提醒" }
   function actionOf(p) {   // 這個訊息要做什麼：同步（沒有任何動作參數）、打開連結、備份、還原，或還沒開放的動作名
     if (p.openurl) return "open"
     if (p.backup !== undefined) return "backup"
@@ -438,10 +623,11 @@
     if (p.addphoto) return "addphoto"
     if (p.delphoto) return "delphoto"
     if (p.movephoto) return "movephoto"
+    if (p.wxcfg !== undefined) return "wxcfg"
     for (const k of Object.keys(UNSUPPORTED)) if (p[k] !== undefined) return k
     return "sync"
   }
-  const say = m => { try { root.toast(m, 3500) } catch (e) {} }
+  const say = (m, ms) => { try { root.toast(m, ms || 3500) } catch (e) {} }
   async function mergeIncoming(p) {   // 頁面附上的待同步修改，併進宿主的 edits
     try {
       const raw = p.data || await root.navigator.clipboard.readText()
@@ -472,6 +658,7 @@
     else if (act === "addphoto") await doAddPhotos(p.addphoto)
     else if (act === "delphoto") await doDelPhoto(p.delphoto)
     else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
+    else if (act === "wxcfg") doWxCfg(p.wxcfg)   // 不等它做完：定位和查天氣可能要幾秒，結果做完會自己推回頁面
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
     if (restored) await pushCloud()
   }
@@ -483,7 +670,9 @@
     const r = await fetch("diary_template.html", { cache: "no-cache" })
     if (!r.ok) throw new Error("讀不到 diary_template.html（" + r.status + "）")
     const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || []
-    const html = assemble(await r.text(), rows, edits)
+    let wx = {}, cfg
+    try { const wst = await readWeather(); wx = weatherForPage(wst); cfg = { fcDays: W.fcDays, hotC: W.hotC } } catch (e) {}   // 天氣讀不到也照樣打開日誌
+    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg })
     root.document.open(); root.document.write(html); root.document.close()
   }
   async function importFiles(files) {   // 讀 dataXXXX.json（可一次選好幾個）；回傳摘要
@@ -527,8 +716,8 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
-    get store() { return getStore() }, useStore(s) { store = s }, memStore }
+  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, startWeather, weatherForPage, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+    get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
 })(typeof window !== "undefined" ? window : globalThis)

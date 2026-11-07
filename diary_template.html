@@ -561,7 +561,6 @@ function hostURL(msg,o){
  if(o.data!==undefined)u+='&data='+encodeURIComponent(o.data);
  if(o.via)u+='&via='+o.via;
  return u}
-function syncName(){return window.SYNC_NAME||'iCloud'}   // 同步的目的地怎麼稱呼：Scriptable 是 iCloud，PWA 是「本機」
 function hostMax(n){return window.HOST_NO_LIMIT?Infinity:n}   // 靠網址傳訊息的宿主（Scriptable）有長度上限，照舊；在同一個視窗內處理的宿主（PWA）不受限制
 function hostDeliver(u){if(window.HOST_DELIVER){window.HOST_DELIVER(u);return}location.href=u}   // 宿主若自己接手（PWA），就直接交給它；否則導向網址，由 Scriptable 腳本攔截
 function hostSend(msg,o){const u=hostURL(msg,o);if(u===null)return false;hostDeliver(u);return true}
@@ -632,7 +631,11 @@ async function applyEdits(){let gone=buildData();for(const d of gone)await delEd
 function phHtml(d){const a=(window.CARD_PHOTOS||{})[d];if(!a||!a.length)return '';return '<div class="ph">'+a.map(p=>p.s?'<img src="'+p.s+'" alt="" decoding="async" data-a="viewph" data-f="'+p.f+'" data-d="'+d+'">':'<div class="phx">📷 這張較舊的照片未載入（超過頁面容量）</div>').join('')+'</div>'}
 function actHtml(d){return '<div class="act">'+remLinks(d)+phHtml(d)+'</div>'}
 let tT=0;function toast(m,ms){const t=document.getElementById('tst');t.textContent=m;t.hidden=false;requestAnimationFrame(()=>t.classList.add('on'));clearTimeout(tT);tT=setTimeout(()=>{t.classList.remove('on');setTimeout(()=>{if(!t.classList.contains('on'))t.hidden=true},260)},ms||3600)}
-function refresh(){const y=window.scrollY;render();window.scrollTo(0,y);bannerUpdate()}
+function refresh(){const y=window.scrollY;render();window.scrollTo(0,y);bannerUpdate();hdrFit()}
+/* 頂欄叫回來：儲存、取消、刪除之後呼叫（頂欄收起時只靠「滑動事件」才會回來；Android 上頁面短、滑不動就沒有事件，頂欄會一直收著，點不到日曆）。
+   實際動作在最後一段腳本（window.__hdrShow／__hdrFit）；那段還沒載入時，頁面也還沒有收起頂欄的動作，所以沒東西可叫 */
+function hdrShow(){if(window.__hdrShow)window.__hdrShow()}
+function hdrFit(){if(window.__hdrFit)window.__hdrFit()}
 async function mergeICloud(){
  if(!Array.isArray(window.ICLOUD_EDITS))return;ICL=true;
  const loc=new Map(EDITS.concat(TOMBS).map(r=>[r.date,r]));
@@ -656,7 +659,7 @@ function pendingList(){
 }
 function doSync(){
  const pend=pendingList();
- if(!pend.length){toast('已全部同步到 '+syncName());return}
+ if(!pend.length){toast('已全部同步到 iCloud');return}
  const payload=JSON.stringify({edits:pend}),enc=encodeURIComponent(payload);
  if(enc.length<=hostMax(15000)){toast(window.LIVE?'同步中…':'同步中…畫面會短暫離開再回來');window.__syncWait=1;hostSend({},{go:lastDate||'',data:payload})}
  else copyText(payload).then(ok=>{if(ok){toast('同步中…');window.__syncWait=1;hostSend({},{go:lastDate||'',via:'clip'})}else toast('修改太多，無法自動傳送；請分幾次修改、每次同步')})
@@ -725,7 +728,7 @@ function startEdit(d){
  const bt=document.createElement('div');bt.className='bt';
  const dl=ib('trash','刪除這一天','dng'),cx=ib('x','取消'),ok=ib('check','儲存','pri');
  ok.onclick=async()=>{await saveEdit(d,ta.value,changed?{stage}:null)};
- cx.onclick=async()=>{const e=EDITS.find(x=>x.date===d);if(e&&e.isNew&&e.text===e.init){await delEdit(d);await applyEdits()}refresh()};
+ cx.onclick=async()=>{const e=EDITS.find(x=>x.date===d);if(e&&e.isNew&&e.text===e.init){await delEdit(d);await applyEdits()}refresh();hdrShow()};
  let dArm=0;
  dl.onclick=async()=>{if(!dArm){dArm=1;setTimeout(()=>{dArm=0},3500);armBtn(dl,3500);return}await deleteDay(d)};
  bt.append(dl,cx,ok);box.append(rb,ta,bt);(pre||el.querySelector('h2')).after(box);ta.focus();
@@ -741,16 +744,16 @@ function startPreEdit(y){
  ta.addEventListener('beforeinput',bulletEnter);
  const bt=document.createElement('div');bt.className='bt';
  const cx=ib('x','取消'),ok=ib('check','儲存','pri');
- ok.onclick=async()=>{await savePre(y,ta.value)};cx.onclick=()=>refresh();
+ ok.onclick=async()=>{await savePre(y,ta.value)};cx.onclick=()=>{refresh();hdrShow()};
  bt.append(cx,ok);box.append(rb,ta,bt);(pre||el.querySelector('h2')).after(box);ta.focus()}
 async function savePre(y,text){
  text=text.replace(/\s+$/,'');const key=y+'-00-00',o=RAWPRE.has(y)?RAWPRE.get(y):'';
  if(text===o)await delEdit(key);else await putEdit({date:key,text,orig:o,pre:true,t:Date.now()});
- await applyEdits();refresh();doSync()}
+ await applyEdits();refresh();hdrShow();doSync()}
 async function deleteDay(d){
  lastDate=d;const full=dayTextOf(d),o=RAWBY.has(d)?RAWBY.get(d):null,r=REMMAP.get(d);
  const tomb={date:d,deleted:true,text:full,orig:o,isNew:o===null,t:Date.now()};if(r)tomb.rem={due:r.due,repeat:r.repeat||0,done:!!r.done};await putEdit(tomb);
- await applyEdits();refresh();
+ await applyEdits();refresh();hdrShow();
  if(r){toast(window.LIVE_ACT?'已刪除，並取消這一天的提醒…':'已刪除，並取消這一天的提醒…畫面會短暫離開再回來');remSend({id:d,date:d,del:true,t:Date.now()});return}
  toast('已刪除 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日（可在「⋯」→「已刪除的日子」還原）');doSync()}
 async function restoreDay(d,noSync){
@@ -765,7 +768,7 @@ async function saveEdit(d,text,rem,noSync){
  if(o!==null&&text===o)await delEdit(d);
  else if(o===null&&text.trim()==='')await delEdit(d);
  else await putEdit({date:d,text,orig:o,isNew:o===null,t:Date.now(),init:ex&&ex.init});
- await applyEdits();refresh();
+ await applyEdits();refresh();hdrShow();
  if(rem){const t=Date.now();
   const rec=rem.stage?{id:d,date:d,due:rem.stage.due,repeat:rem.stage.repeat>1?rem.stage.repeat:0,done:false,t,txt:dayTextOf(d)}:{id:d,date:d,del:true,t};
   toast(window.LIVE_ACT?'儲存中…':'儲存中…畫面會短暫離開再回來');remSend(rec);return}
@@ -803,7 +806,7 @@ function openPanel(){   // 只剩「已刪除的日子」清單；備份／還�
 }
 
 /* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 diary_backups 資料夾存取（內容＋提醒）；還原前會自動先備份目前內容 ===== */
-function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 '+syncName()+'」，再試一次')}
+function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
 function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toast(window.LIVE_BK?y+' 年備份中…':y+' 年備份中…畫面會短暫離開再回來');scriptRun('backup',y)}
 function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
 /* 備份／還原：直接作用在「目前正在看的那一年」（不再先彈出「更多」選單選年份） */
@@ -912,7 +915,7 @@ window.__cloudUpdate=async function(edits,off){
    if(dead.length){TOMBS=TOMBS.filter(r=>!dead.includes(r));if(canE)for(const r of dead){try{await eDel(r.date)}catch(e){canE=false}}}}
   await applyEdits();
   if(sig()!==before&&!document.querySelector('.ed'))refresh();else bannerUpdate();
-  if(window.__syncWait&&pendingList().length===0){window.__syncWait=0;toast('已同步到 '+syncName(),1800)}
+  if(window.__syncWait&&pendingList().length===0){window.__syncWait=0;toast('已同步到 iCloud',1800)}
  }catch(e){}
 };
 /* 活腳本（階段 2）：腳本在原地做完加入／刪除／移動照片後，把「受影響的那幾天」的照片清單推回頁面，頁面不重載。
@@ -1073,7 +1076,7 @@ function pdOpen(){try{bannerUpdate()}catch(e){}HD.classList.remove('hide');HD.cl
 function pdClose(){HD.classList.remove('open');document.body.classList.remove('pdo');pdb.setAttribute('aria-expanded','false')}
 function pdToggle(){HD.classList.contains('open')?pdClose():pdOpen()}
 /* 跳到某一天之後收起頂欄（往回滑一下就再出現） */
-function hdrHide(){if(q.value!=='')return;HD.classList.remove('open','srch');document.body.classList.remove('pdo');sbtn.classList.remove('on');pdb.setAttribute('aria-expanded','false');HD.classList.add('hide')}
+function hdrHide(){if(q.value!=='')return;HD.classList.remove('open','srch');document.body.classList.remove('pdo');sbtn.classList.remove('on');pdb.setAttribute('aria-expanded','false');HD.classList.add('hide');hdrFit()}
 pdb.onclick=pdToggle;scrim.onclick=pdClose;
 function openSearch(){pdClose();HD.classList.add('srch');HD.classList.remove('hide');sbtn.classList.add('on');setTimeout(()=>q.focus(),30)}
 function closeSearch(){HD.classList.remove('srch');sbtn.classList.remove('on');q.blur();if(q.value){q.value='';q.dispatchEvent(new Event('input'))}}
@@ -1132,13 +1135,19 @@ initEdits();
 </script><script>
 /* 往下滑（看後面的日子）時頂欄收起；往上滑一下（回頭看）、回到最上面、搜尋中、小菜單打開時顯示。
    一次跳超過 300px（日曆、當年今日、接月份）是程式在跳，不算手指滑動，維持目前狀態 */
-(function(){const h=document.querySelector('header'),q=document.getElementById('q');let last=window.scrollY,tick=false;
+(function(){const h=document.querySelector('header'),q=document.getElementById('q');let last=window.scrollY,tick=false,hold=0;
 addEventListener('scroll',()=>{if(tick)return;tick=true;requestAnimationFrame(()=>{tick=false;
  const y=window.scrollY,d=y-last,max=document.documentElement.scrollHeight-window.innerHeight;
  if(y<=10||document.activeElement===q||h.classList.contains('open')||h.classList.contains('srch'))h.classList.remove('hide');
  else if(Math.abs(d)>=300){}
- else if(y<max-2&&d>8)h.classList.add('hide');
+ else if(y<max-2&&d>8){if(Date.now()>=hold)h.classList.add('hide')}   /* 剛叫回頂欄的 0.8 秒內不收：Android 收起鍵盤、卡片變矮時會連發幾次捲動事件，不能又把它收掉 */
  else if(y<max-2&&d<-8)h.classList.remove('hide');
- last=y})},{passive:true})})();
+ last=y})},{passive:true});
+/* 頁面短到滑不動（卡片很少）：沒有滑動事件，頂欄收起後就回不來（Android 沒有 iOS 的橡皮筋回彈）。所以只要滑不動，頂欄就不收；內容、視窗大小變了也重新檢查 */
+const fit=()=>{if(h.classList.contains('hide')&&document.documentElement.scrollHeight-window.innerHeight<=10)h.classList.remove('hide')};
+window.__hdrFit=fit;window.__hdrShow=()=>{hold=Date.now()+800;h.classList.remove('hide')};
+addEventListener('resize',fit);
+try{if(window.ResizeObserver)new ResizeObserver(fit).observe(document.body)}catch(e){}
+})();
 </script>
 </body></html>
