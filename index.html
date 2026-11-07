@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>生活日誌</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="日誌">
+<meta name="theme-color" content="#2f5d8a">
+<style>
+:root{color-scheme:light dark;--bg:#fafaf7;--fg:#222;--mut:#666;--pri:#2f5d8a;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#e8e8e8;--mut:#9a9a9a;--pri:#7fb0e0;--err:#ff8a80}}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+#boot{max-width:30rem;margin:0 auto;padding:max(2.5rem,env(safe-area-inset-top)) 1.4rem 2rem}
+h1{font-size:1.5rem;margin:0 0 1rem}p{color:var(--mut)}code{background:rgba(127,127,127,.18);padding:.05em .35em;border-radius:4px}
+.btn{display:inline-block;padding:.6rem 1.1rem;margin:.4rem .4rem .4rem 0;border:1px solid var(--pri);border-radius:10px;color:var(--pri);background:none;font:inherit;cursor:pointer}
+.btn.pri{background:var(--pri);color:var(--bg)}.err{color:var(--err)}
+</style>
+</head>
+<body>
+<div id="boot"><h1>生活日誌</h1><p>載入中…</p></div>
+<script src="host-pwa.js"></script>
+<script>PwaHost.boot()</script>
+</body>
+</html>

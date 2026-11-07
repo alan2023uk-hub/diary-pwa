@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-pal="2"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>生活日誌</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#111315;--sub:#4b5563;--line:#e3e6ea;--accent:#1f3864;--chip:#e8edf6;--warn:#8a5a00;--bad:#c0392b;--mark:#ffe58a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111316;--card:#1b1e23;--text:#f4f5f7;--sub:#bcc2cc;--line:#2c3037;--accent:#8fb0f0;--chip:#252a33;--warn:#f0c060;--bad:#ff8f80;--mark:#7a6a1c}}
+:root[data-theme="dark"]{--bg:#111316;--card:#1b1e23;--text:#f4f5f7;--sub:#bcc2cc;--line:#2c3037;--accent:#8fb0f0;--chip:#252a33;--warn:#f0c060;--bad:#ff8f80;--mark:#7a6a1c}
+html{scroll-padding-top:150px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 -apple-system,"PingFang HK","PingFang TC","Noto Sans TC",Arial,sans-serif;font-weight:var(--fw,500)}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 12px 8px;border-bottom:1px solid var(--line)}
+.row{display:flex;gap:8px}
+input[type=search]{flex:1;min-width:0;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+button{font:inherit;font-size:15px;border:0;border-radius:10px;padding:9px 12px;background:var(--accent);color:var(--bg);white-space:nowrap}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.chip{flex:0 0 auto;background:var(--chip);color:var(--text);padding:5px 11px;border-radius:999px;font-size:14px;border:1.5px solid rgba(128,128,128,.45)}
+.chip.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+#info{font-size:13px;color:var(--sub);margin-top:6px}
+main{padding:10px 12px 40px;max-width:820px;margin:0 auto}
+.day{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 10px;overflow:hidden}
+.day h2{margin:0;padding:8px 12px;font-size:15px;font-weight:700;color:var(--accent);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.day h2 span{color:var(--sub);font-weight:400}
+.day pre{margin:0;padding:10px 12px;white-space:pre-wrap;word-break:break-word;font:inherit;font-size:15.5px;line-height:1.6;overflow-wrap:anywhere}
+.day.flash{outline:2px solid var(--accent)}
+mark{background:var(--mark);color:inherit;border-radius:3px}
+.empty{text-align:center;color:var(--sub);padding:40px 0}
+#gal{padding:10px 12px 40px;max-width:820px;margin:0 auto}#gal[hidden]{display:none}#gal figure{margin:0 0 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}#gal img{display:block;width:100%;height:auto}#gal figcaption:empty{display:none}#gal figcaption{padding:6px 12px;font-size:14px;color:var(--sub)}#ov{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:20;display:flex;align-items:center;justify-content:center;overflow:auto}#ov img{max-width:100%;max-height:100%}.grid{display:flex;gap:6px;align-items:flex-start}.grid .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}#gal .grid figure{margin:0;border-radius:8px}#gal .grid img{height:auto}.chips[hidden]{display:none}#gal .grid figure{position:relative}.badge{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:1px 6px;border-radius:6px}
+#bk{margin-top:6px;font-size:14px;font-weight:600;color:var(--warn,#8a5a00);background:rgba(224,176,80,.18);border-radius:8px;padding:5px 10px}#bk[hidden]{display:none}
+.act{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}
+.ph{display:flex;flex-direction:column;gap:8px;flex-basis:100%;min-width:0}.ph img{display:block;max-width:100%;max-height:78vh;width:auto;height:auto;margin:0 auto;border-radius:10px;border:1px solid var(--line);cursor:zoom-in}.phx{padding:14px;text-align:center;color:var(--sub);border:1px dashed var(--line);border-radius:10px}
+.lnk{display:inline-block;color:var(--accent);background:var(--chip);border:1.5px solid var(--accent);border-radius:10px;padding:6px 14px;font-weight:600;cursor:pointer}.bdg{font-size:14px;font-weight:600;color:var(--warn,#8a5a00)}.bdg.cf{color:var(--bad,#c0392b)}
+.ed{padding:10px 12px}.ed textarea{width:100%;font:inherit;font-size:15.5px;line-height:1.6;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);resize:vertical}
+.ed .bt{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.alt{margin:0 12px 10px;font-size:14px}.alt pre{padding:8px 0 0!important;font-size:14px!important;color:var(--sub)}
+#pn{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+#pn .box{background:var(--card);color:var(--text);width:100%;max-width:560px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom,0px))}
+#pn h3{margin:0 0 10px;font-size:17px}#pn .row2{display:flex;flex-direction:column;gap:8px}#pn textarea{width:100%;height:30vh;font:inherit;font-size:13px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+#pn small{color:var(--sub);display:block;margin:6px 0}#pn button.g{background:var(--chip);color:var(--text)}#rem{padding:10px 12px 40px;max-width:820px;margin:0 auto}#rem[hidden]{display:none}.od{color:#c0392b}.rem-note{font-size:14px;color:var(--sub);margin:6px 0 12px}#pn input[type=text],#pn input[type=number],#pn input[type=datetime-local]{width:100%;font:inherit;font-size:16px;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}#pn textarea.rb{height:16vh}#pn .qs{display:flex;flex-wrap:wrap;gap:8px}#pn .qs button{background:var(--chip);color:var(--text)}#pn .qs button.on{background:var(--accent);color:var(--bg)}#list .day{cursor:pointer;-webkit-tap-highlight-color:rgba(143,176,240,.25)}.act:empty{display:none}#lyb{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));max-width:820px;margin:0 auto;z-index:6;display:flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 2px 12px rgba(0,0,0,.25)}#lyb[hidden]{display:none}#lyb .lyt{font-size:14px;color:var(--sub);white-space:nowrap}#lyb .lyy{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto}#lyb button.g{background:var(--chip);color:var(--text);border:1.5px solid rgba(128,128,128,.45);padding:7px 11px}#lyb button.g.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}body.lyon main{padding-bottom:90px}
+header{transition:transform .25s ease}header.hide{transform:translateY(calc(-100% - env(safe-area-inset-top,0px) - 2px))}
+</style><style id="ui2">
+/* ===== UI v2：圖標列 + 拉下菜單 ===== */
+:root{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+[hidden]{display:none!important}
+html{scroll-padding-top:70px;-webkit-tap-highlight-color:transparent}
+
+/* 圖標 */
+.ib svg,.ib2 svg,.lnk svg,.bdg svg,.lyt svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lnk svg{width:18px;height:18px}
+.bdg svg{width:15px;height:15px;display:inline-block;vertical-align:-2px;margin-right:4px}
+.ib,#th.ib,#mn.ib{position:relative;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;border:0;border-radius:12px;background:transparent;color:var(--sub);transition:background .15s,color .15s}
+.ib:active{background:var(--chip)}
+.ib.on,#th.ib.on{color:var(--accent);background:var(--chip)}
+.ib.pri{width:60px;background:var(--accent);color:var(--bg)}
+.ib.dng{color:var(--bad)}
+.ib.arm{background:var(--bad);color:#fff}
+.ib[data-arm],.ib2[data-arm]{width:auto;padding:0 12px;gap:6px}
+[data-arm]::after{content:attr(data-arm);font-size:13px;font-weight:600;white-space:nowrap}
+.ib.pend::after{content:"";position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 2px var(--bg)}
+.ib .cnt{position:absolute;top:3px;right:3px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--warn);color:var(--bg);font:700 11px/17px -apple-system,Arial,sans-serif;font-style:normal;text-align:center}
+
+/* 頂部欄：只留 圖標，其餘收進拉下菜單 */
+header{padding:0 8px;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:2px;height:48px;max-width:820px;margin:0 auto}
+#info{flex:1;min-width:0;margin:0;padding:0 6px;font-size:14px;line-height:48px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+#pdb svg{transition:transform .2s}
+header.open #pdb svg{transform:rotate(180deg)}
+.srow{display:none;align-items:center;gap:6px;max-width:820px;margin:0 auto;padding:0 0 8px}
+header.srch .srow{display:flex}
+#q{flex:1;min-width:0;height:40px;padding:0 14px;border-radius:12px;font-size:16px;-webkit-appearance:none;appearance:none}
+#q:focus{outline:2px solid var(--accent);outline-offset:-1px}
+#q::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+
+/* 拉下菜單 */
+.pdm{position:absolute;left:0;right:0;top:100%;padding:12px 12px 14px;background:var(--bg);border-bottom:1px solid var(--line);border-radius:0 0 20px 20px;box-shadow:0 18px 32px -8px rgba(0,0,0,.35);max-height:calc(100vh - 90px);overflow:auto;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-10px);transition:opacity .18s,transform .2s,visibility 0s .2s}
+header.open .pdm{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition:opacity .18s,transform .2s}
+#scrim{position:fixed;inset:0;z-index:4;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:opacity .2s}
+body.pdo #scrim{opacity:1;pointer-events:auto}
+.pd-in{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.seg{display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--chip)}
+.seg .ib{flex:1;width:auto;height:40px}
+.seg .ib.on{background:var(--accent);color:var(--bg)}
+.pdm .chips{margin:0;padding:0;overflow:visible;flex-wrap:wrap}
+#chips{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+#chips .chip{text-align:center;padding:8px 0;font-size:14.5px}
+#chips .chip:nth-child(n+14){display:none}
+#ychips .chip{padding:8px 14px;font-size:14.5px}
+.tools{display:flex;gap:6px}
+.tools .ib,.tools #th.ib,.tools #mn.ib{flex:1;width:auto;height:44px;background:var(--chip);color:var(--text)}
+#bk{margin:0;display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;border-radius:12px}
+#bk svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* 日誌卡片 */
+main{padding:12px 12px 48px}
+.day{border-radius:16px;margin:0 0 12px}
+.day.today{box-shadow:inset 3px 0 0 var(--accent)}
+.day h2{display:flex;align-items:baseline;justify-content:flex-start;gap:8px;padding:13px 16px 11px;border:0;font-size:15px;font-weight:700;color:var(--accent)}
+.day h2 b{font-size:27px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.day h2 span{font-weight:600}
+.day h2 .ym,.day h2 .wk,.day h2 span:last-child{font-size:13px;font-weight:500;color:var(--sub)}
+.day h2 .wk,.day h2 span:last-child{margin-left:auto}
+.day h2 .wk,.day h2 span:last-child{color:var(--accent)}   /* 星期一至五：日子、星期幾都用藍色（年月維持灰色） */
+.day.we h2 b,.day.we h2 .wk,.day.we h2 span:last-child{color:var(--bad)}   /* 星期六、日和官方假期：日子、星期幾用紅色 */
+.day h2{flex-wrap:wrap;row-gap:2px}   /* 假期名稱放在日期下一橫行 */
+.day h2 .hol{order:9;flex:0 0 100%;min-width:0;font-size:13px;font-weight:400;font-style:normal;line-height:1.35;color:var(--bad);white-space:normal;overflow-wrap:anywhere}   /* 假期名稱：正體，紅色（和週末同一個紅）；太長時自動換行，完整顯示 */
+.day h2 .ym,.day h2 .wk{flex:none;white-space:nowrap}   /* 年月和星期幾不換行 */
+.day h2 .wx{flex:0 1 auto;min-width:0;margin-left:auto;font-size:12px;font-weight:400;line-height:1.35;color:var(--sub);text-align:right;white-space:normal;overflow-wrap:anywhere}   /* 天氣：灰色小字，靠右、貼著星期幾；太長時自動換行 */
+.day h2 .wx+.wk{margin-left:0}
+.day h2 .wx.fc{font-style:italic}   /* 未來日子的天氣預報：斜體，和已發生的天氣分開 */
+.day pre{padding:0 16px 15px;font-size:16px;line-height:1.7}
+.act{gap:8px;padding:0 12px 12px;border:0}
+.lnk{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:50%}
+.bdg{display:inline-flex;align-items:center}
+
+/* 編輯 */
+.ed{padding:6px 12px 12px}
+.ed textarea{font-size:16px;line-height:1.65;border-radius:12px;padding:12px}
+.etools{display:flex;align-items:center;gap:4px;margin:4px 0 8px;min-height:42px}
+.etools .rl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px}
+.etools .chg{font-size:12.5px;color:var(--sub);margin-left:auto;white-space:nowrap}
+.ed .bt{align-items:center;justify-content:flex-end;gap:6px;margin-top:8px;flex-wrap:nowrap}
+.ed .bt .dng{margin-right:auto}
+
+/* 面板／相簿按鈕 */
+.ib2{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;height:44px;padding:0 14px;border-radius:12px;border:1.5px solid rgba(128,128,128,.35);background:var(--chip);color:var(--text);font:inherit;font-size:15px;font-weight:600}
+:is(#pn,body) .ib2.pri,:is(#pn,body) .ib2.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+:is(#pn,body) .ib2.dng{background:transparent;color:var(--bad);border-color:var(--bad)}
+:is(#pn,body) .ib2.arm{background:var(--bad);color:#fff;border-color:var(--bad)}
+#ov .ib2{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.3)}
+#ov .ib2.dng{background:rgba(190,50,50,.92);color:#fff;border-color:transparent}
+.gbar{display:flex;gap:8px;flex-wrap:wrap}
+#pn .box{border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.shd{position:relative;display:flex;justify-content:flex-end;min-height:44px;margin-bottom:4px}
+.grab{position:absolute;left:50%;top:2px;width:40px;height:4px;border-radius:2px;background:var(--line);transform:translateX(-50%)}
+#pn .row2{gap:10px}
+#pn small{margin:8px 0 0;font-size:13px}
+#pn .qs{align-items:center}
+#pn .qs.end{justify-content:flex-end}
+#pn .yr .yl{flex:1;font-size:15px}
+.dr{display:flex;gap:8px}
+#pn .dr input[type=date]{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+
+/* 當年今日小列 */
+#lyb{border-radius:18px;padding:6px 8px;gap:4px}
+#lyb .lyt{display:inline-flex;align-items:center;color:var(--accent);padding:0 6px}
+
+/* 提示 */
+#tst{position:fixed;left:50%;width:max-content;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);z-index:40;max-width:min(88vw,520px);padding:10px 16px;border-radius:16px;background:var(--text);color:var(--bg);font-size:14px;font-weight:600;line-height:1.45;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#tst.on{opacity:1;transform:translate(-50%,0)}
+body.lyon #tst{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+#hol{padding:10px 12px 40px;max-width:820px;margin:0 auto}
+#hol[hidden]{display:none}
+#hol .hm{font-size:14px;font-weight:600;color:var(--sub);margin:16px 0 4px}
+#hol .hr{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+#hol .hd{flex:none;width:78px;font-weight:600;color:var(--bad)}
+#hol .hn{flex:1;min-width:0;overflow-wrap:anywhere}
+#hol .hn small{color:var(--sub);margin-left:6px}
+#hol .hl{flex:none;font-size:13px;color:var(--accent);white-space:nowrap}
+#hol .hmore{display:block;margin:16px auto 6px;padding:10px 20px;border:0;border-radius:12px;background:var(--chip);color:var(--text);font-size:15px}
+.ed textarea:focus{outline:3px solid var(--text);outline-offset:0}   /* 編輯框外框：原本是系統預設藍色，改為白色（夜間）；白天模式自動變深色，才看得見 */
+</style><style id="ui3">
+/* ===== UI v3：拉下菜單——分區標題、文字標籤、配色、加強對比 ===== */
+:root{--k1:#1d4ed8;--k2:#0f766e;--k3:#b45309;--k4:#be123c;--k5:#6d28d9;--k6:#15803d;--on:#fff;--pd-bg:#fff;--pd-bd:#c9d0da}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--k1:#8fb0f0;--k2:#5eead4;--k3:#fbbf24;--k4:#fda4af;--k5:#c4b5fd;--k6:#86efac;--on:#0f1216;--pd-bg:#23272e;--pd-bd:#444b57}}
+:root[data-theme="dark"]{--k1:#8fb0f0;--k2:#5eead4;--k3:#fbbf24;--k4:#fda4af;--k5:#c4b5fd;--k6:#86efac;--on:#0f1216;--pd-bg:#23272e;--pd-bd:#444b57}
+#scrim{background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+header.open #pdb{background:var(--chip);color:var(--accent)}
+header .pdm{background:var(--pd-bg);border:1px solid var(--pd-bd);border-top:0;border-radius:0 0 22px 22px;padding:14px 14px 16px;box-shadow:0 26px 50px -12px rgba(0,0,0,.6);max-height:calc(100vh - 80px);max-height:calc(100dvh - 80px)}
+.pd-in{gap:16px}
+.pd-in [data-t]::before{content:attr(data-t);display:block;margin:0 2px 7px;font-size:12.5px;font-weight:700;letter-spacing:.14em;color:var(--sub)}
+.pd-in .chips[data-t]::before{flex:0 0 100%;width:100%;margin-bottom:1px}
+#chips[data-t]::before{grid-column:1/-1}
+/* 檢視／工具：圖標＋文字，各有顏色 */
+.seg,.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0;background:none;border-radius:0}
+header .seg .ib,header .tools :is(.ib,#th.ib,#mn.ib){flex-direction:column;gap:3px;width:auto;height:62px;padding:0;border-radius:14px;color:var(--c);background:var(--chip);background:color-mix(in srgb,var(--c) 13%,var(--pd-bg));border:1.5px solid color-mix(in srgb,var(--c) 40%,transparent)}
+header .seg .ib::after,header .tools .ib::after{content:attr(data-lb);font-size:13px;font-weight:700;line-height:1}
+header .seg .ib.on{background:var(--c);color:var(--on);border-color:var(--c)}
+#vb1{--c:var(--k1)}#vb2{--c:var(--k2)}#vb3{--c:var(--k3)}#vb4{--c:var(--k4)}
+header .tools #th{--c:var(--k3)}header .tools #fz,header .tools #fw{--c:var(--k6)}header .tools #mn{--c:var(--k5)}
+header .tools .ib:active,header .seg .ib:active{filter:brightness(.92)}
+/* 年份／月份：彩色按鈕，選中時實心 */
+.pdm .chip{color:var(--text);font-weight:600;border-radius:12px}
+#ychips{--c:var(--k2)}#chips{--c:var(--k1)}
+#ychips .chip,#chips .chip{background:var(--chip);background:color-mix(in srgb,var(--c) 11%,var(--pd-bg));border:1.5px solid color-mix(in srgb,var(--c) 38%,transparent)}
+#ychips .chip.on,#chips .chip.on{background:var(--c);border-color:var(--c);color:var(--on)}
+#chips .chip{padding:10px 0}#ychips .chip{padding:10px 16px}
+/* 拉下手柄：實心彩色按鈕＋雙箭咀 */
+header #pdb.ib{width:48px;height:40px;margin-right:6px;border-radius:12px;background:var(--k3);color:var(--on);box-shadow:0 2px 6px rgba(0,0,0,.28)}
+header #pdb.ib svg{width:26px;height:26px;stroke-width:2.8}
+header.open #pdb.ib{background:var(--accent);color:var(--bg)}
+header #pdb.ib:active{filter:brightness(.9)}
+/* 沒有日誌的月份：虛線框、淡化、無底色 */
+#chips .chip.empty{background:transparent;border-style:dashed;border-color:var(--sub);color:var(--sub);font-weight:400;opacity:.55}
+#chips .chip.empty.on{background:transparent;color:var(--c);border-color:var(--c);opacity:1}
+/* 待同步提示 */
+#bk{justify-content:center;font-weight:700;color:var(--warn);background:var(--chip);background:color-mix(in srgb,var(--warn) 16%,var(--pd-bg));border:1.5px solid var(--warn)}
+</style><style id="ui4">
+/* ===== UI v4：護眼閱讀配色（柔和底色 + 高對比文字） ===== */
+:root{--bg:#cbc6b8;--card:#d6d1c4;--ta:#e4dfd2;--h2:#e4dfd2;--text:#24201a;--sub:#4a4439;--line:#b3ac99;--accent:#1d3f7a;--chip:#c8c2b1;--warn:#7a4e00;--bad:#a8231b;--mark:#f2d46a;--pd-bg:#f7f4ec;--pd-bd:#b9b19e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121418;--card:#1c2026;--text:#e9ebef;--sub:#c3c9d3;--line:#343a43;--accent:#9dbcf5;--chip:#272c34;--warn:#f0c060;--bad:#ff9a8c;--mark:#66581a;--pd-bg:#23272e;--pd-bd:#444b57;--ta:#121418;--h2:#1c2026}}
+:root[data-theme="dark"]{--bg:#121418;--card:#1c2026;--text:#e9ebef;--sub:#c3c9d3;--line:#343a43;--accent:#9dbcf5;--chip:#272c34;--warn:#f0c060;--bad:#ff9a8c;--mark:#66581a;--pd-bg:#23272e;--pd-bd:#444b57;--ta:#121418;--h2:#1c2026}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.day h2{background:var(--h2)}   /* 日期標題欄：日間保留較淺的底色；夜間與卡片同色 */
+.ed textarea{background:var(--ta)}   /* 編輯框底色：日間比卡片淺一級；夜間仍是較深色 */
+.day{box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.day pre{color:var(--text)}
+</style><style id="ui5">
+/* 顯示模式：卡片內文加一圈幼的淺灰框（編輯時內文隱藏，不受影響） */
+:root{--ib:#bcc0c7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ib:rgba(188,192,199,.5)}}
+:root[data-theme="dark"]{--ib:rgba(188,192,199,.5)}
+.day pre{margin:0 12px 12px;padding:11px 13px;border:1.5px solid var(--ib);border-radius:10px}
+/* 頂部欄只留手柄（靠右）；日誌數量文字、搜尋、當年今日、寫今天 都在菜單第一橫列 */
+.bar{justify-content:flex-end}
+header .bar #pdb.ib{margin:0 0 0 auto}
+.toprow{display:flex;align-items:center;gap:6px}
+.toprow #info{flex:1;min-width:0;padding:0 4px;font-size:16px;line-height:44px;color:var(--text);cursor:default}
+.toprow .ib{width:40px;height:40px;background:var(--chip)}
+.toprow .ib.on{background:var(--chip);color:var(--accent)}
+.toprow{position:relative}.toprow #ndi{position:absolute;right:0;top:50%;transform:translateY(-50%);width:40px;height:40px;opacity:0;font-size:16px;border:0;padding:0;margin:0;cursor:pointer}
+/* 年份、月份按鈕已由日曆按鈕取代：藏起來（背後的年／月篩選仍在，日曆跳轉要用） */
+#ychips,#chips{display:none!important}
+/* ===== 拉下菜單配色：中性／暖色（按鈕在菜單「工具」區） ===== */
+/* 中性 */
+:root[data-pal="2"] header{--bg:#eeeeef;--line:#d0d1d4;--sub:#4b4c52;--chip:#e3e3e6;--pd-bg:#f8f8f9;--pd-bd:#b9bac0;--accent:#33363d;--on:#ffffff;--k1:#475569;--k2:#3f6f68;--k3:#8a6a2c;--k4:#8a4a58;--k5:#5f5788;--k6:#4a7350;}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"])[data-pal="2"] header{--bg:#101012;--line:#33343a;--sub:#c6c7cc;--chip:#2c2d32;--pd-bg:#232326;--pd-bd:#4a4b52;--accent:#d3d8e0;--on:#121214;--k1:#b8c0cc;--k2:#9fcfc4;--k3:#d8c08a;--k4:#d9a3ac;--k5:#b8a9d9;--k6:#a3c9a8;}}
+:root[data-pal="2"][data-theme="dark"] header{--bg:#101012;--line:#33343a;--sub:#c6c7cc;--chip:#2c2d32;--pd-bg:#232326;--pd-bd:#4a4b52;--accent:#d3d8e0;--on:#121214;--k1:#b8c0cc;--k2:#9fcfc4;--k3:#d8c08a;--k4:#d9a3ac;--k5:#b8a9d9;--k6:#a3c9a8;}
+</style><style id="ui5">
+/* ===== UI v5：精簡圖標菜單（沒有分區標題、按鈕不寫字；狀態用小圓點表示） ===== */
+.pd-in{gap:10px}
+.pd-in .sec[data-t]::before{display:none}
+header .seg,header .tools{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+header .seg .ib,header .tools :is(.ib,#th.ib,#mn.ib){height:48px}
+header .seg .ib::after,header .tools .ib::after{content:none}
+header .seg .ib svg,header .tools .ib svg{width:25px;height:25px}
+header .tools .ib[data-dots]::after{content:attr(data-dots);position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:9px;line-height:1;letter-spacing:1px}
+header .tools #palb.ib{width:auto;margin:0;padding:0;--c:var(--k1)}
+#bk{align-self:center;padding:7px 22px;gap:6px;font-size:17px}
+#bk b{font-weight:800}
+#pn .pnh{display:flex;align-items:center;gap:8px;margin:2px 0 0;color:var(--sub);font-size:14px}
+#pn .pnh svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#pn .yr .yl b{font-size:18px}
+#pn .yr .yl .n{margin-left:10px;color:var(--sub);font-size:13px}
+header .tools #bkp,header .tools #rst{--c:var(--k5)}
+.pills{display:flex;justify-content:center;gap:10px}
+.pills:not(:has(>:not([hidden]))){display:none}
+#dl,#off{display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 22px;border-radius:12px;font:inherit;font-size:17px;font-weight:700;color:var(--sub);background:var(--chip);background:color-mix(in srgb,var(--sub) 12%,var(--pd-bg));border:1.5px solid var(--line)}
+#dl svg,#off svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#dl b{font-weight:800}
+.lk{color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.12)}
+.day pre .li{display:block;padding-left:var(--h,0px);text-indent:calc(-1 * var(--h,0px))}
+#pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
+#pn .qs.cf{gap:12px}
+#pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
+</style><style id="ui6">
+/* ===== UI v6：頂部欄——5 個圖標平均排開、沒有下拉菜單；「⋯」開小菜單；搜尋欄蓋住整條頂欄 ===== */
+html{scroll-padding-top:12px}
+header{padding:0 6px}
+header .bar{display:flex;align-items:center;justify-content:space-around;gap:0;height:52px;max-width:820px;margin:0 auto}
+header .bar>.ib,header .bar>.cal{flex:1 1 0;min-width:0}
+header .bar .ib,header .bar #pdb.ib{width:auto;height:46px;margin:0;border-radius:12px;background:transparent;color:var(--accent);box-shadow:none}
+header .bar .ib svg{width:25px;height:25px;stroke-width:2}
+header .bar .ib:active{background:var(--chip);filter:none}
+header.open .bar #pdb.ib{background:var(--chip);color:var(--accent)}
+header.open #pdb svg{transform:none}
+header .bar #pdb.pend::after{top:9px;right:auto;left:calc(50% + 7px)}
+.bar .cal{position:relative;display:flex;height:46px}
+header .bar .cal .ib{width:100%}
+.bar .cal #ndi{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;padding:0;margin:0;cursor:pointer;transform:none}
+/* 搜尋欄：展開後蓋住頂欄的按鈕 */
+header .srow{display:none;position:absolute;left:0;right:0;top:0;bottom:0;z-index:2;align-items:center;gap:6px;max-width:none;margin:0;padding:0 max(6px,calc((100% - 820px)/2)) 0 max(6px,calc((100% - 820px)/2));background:var(--bg)}
+header.srch .srow{display:flex}
+#si{flex:none;width:30px;height:46px;display:flex;align-items:center;justify-content:center;color:var(--accent)}
+#si svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#qn{flex:none;font-size:13px;color:var(--sub);white-space:nowrap}
+#qn:empty{display:none}
+/* 「⋯」小菜單：靠右、只佔需要的寬度 */
+header .pdm{left:auto;right:max(8px,calc((100% - 820px)/2 + 8px));top:calc(100% + 6px);width:min(280px,calc(100vw - 16px));border:1px solid var(--pd-bd);border-radius:18px;padding:8px;box-shadow:0 18px 40px -8px rgba(0,0,0,.5)}
+header .pd-in{max-width:none;margin:0;gap:4px}
+.menu{display:flex;flex-direction:column;gap:2px}
+.menu .mi{display:flex;align-items:center;gap:14px;width:100%;height:48px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--text);font-size:16px;font-weight:600;text-align:left}
+.menu .mi svg{width:22px;height:22px;flex:none;display:block;fill:none;stroke:var(--accent);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.menu .mi::after{content:attr(data-lb)}
+.menu #th::after{content:"顯示：" attr(data-lb)}
+.menu .mi:active{background:var(--chip)}
+.menu .mi.on{background:var(--chip);color:var(--accent)}
+.pills{margin-top:4px}
+</style></head><body>
+<header>
+ <div class="bar">
+  <button class="ib" id="vb3" type="button" aria-label="提醒清單" title="提醒清單"></button>
+  <button class="ib" id="sb" type="button" aria-label="搜尋" title="搜尋"></button>
+  <button class="ib" id="ly" type="button" aria-label="當年今日" title="當年今日"></button>
+  <span class="cal"><button class="ib" id="nd" type="button" aria-label="跳到某一天" title="跳到某一天" tabindex="-1"></button><input type="date" id="ndi" aria-label="跳到某一天"></span>
+  <button class="ib" id="pdb" type="button" aria-label="更多" title="更多" aria-expanded="false"></button>
+ </div>
+ <div class="srow"><span id="si" aria-hidden="true"></span><input id="q" type="search" placeholder="搜尋，例如 迷你倉、Kingston" enterkeyhint="search" autocomplete="off"><span id="qn"></span><button class="ib" id="sx" type="button" aria-label="清除" title="清除"></button></div>
+ <div class="pdm" id="pd"><div class="pd-in">
+  <div id="info" hidden></div>
+  <div class="chips" id="ychips" data-t="年份"></div>
+  <div class="chips" id="chips" data-t="月份（虛線 = 沒有日誌）"></div>
+  <div class="menu">
+   <button class="mi" id="vb4" data-lb="假期" type="button" aria-label="假期" title="假期"></button>
+   <button class="mi" id="wxs" data-lb="天氣" type="button" aria-label="天氣設定" title="天氣設定"></button>
+   <button class="mi" id="th" data-lb="自動" type="button" aria-label="切換 自動／白天／夜間" title="顯示模式"></button>
+   <button class="mi" id="fz" data-lb="文字" type="button" aria-label="切換文字大小" title="切換文字大小"></button>
+   <button class="mi" id="fw" data-lb="粗細" type="button" aria-label="切換字體粗細" title="切換字體粗細"></button>
+   <button class="mi" id="bkp" data-lb="備份" type="button" aria-label="備份（可選年份）" title="備份（可選年份）"></button>
+   <button class="mi" id="rst" data-lb="還原" type="button" aria-label="還原（可選年份）" title="還原（可選年份）"></button>
+  </div>
+  <div class="pills"><div id="bk" hidden></div><button id="off" type="button" hidden></button><button id="dl" type="button" hidden></button></div>
+ </div></div>
+</header>
+<div id="scrim"></div>
+<div id="tst" hidden></div>
+<main id="list"></main>
+<div id="gal" hidden></div>
+<div id="rem" hidden></div>
+<div id="hol" hidden></div>
+<div id="lyb" hidden></div>
+<script>
+const RAW=__DATA__;let DATA=RAW;
+/* ===== UI v2：圖標 ===== */
+const IP={
+chevDown:'<path d="m6 9 6 6 6-6"/>',
+chevDbl:'<path d="m6 5 6 6 6-6"/><path d="m6 13 6 6 6-6"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+pencil:'<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+x:'<path d="M18 6 6 18M6 6l12 12"/>',
+book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+imagePlus:'<path d="M16 5h6M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/>',
+bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+bellOff:'<path d="M8.7 3A6 6 0 0 1 18 8c0 2.7.5 4.8 1.1 6.3"/><path d="M17 17H3s3-2 3-9c0-.8.1-1.5.4-2.2"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+themeAuto:'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+fontDown:'<path d="M3 20 8.5 5 14 20M5.2 14h6.6"/><path d="M17 17h5"/>',
+fontSize:'<path d="M3 20 8.5 5 14 20M5.2 14h6.6"/><path d="M16.5 20 19.5 11 22.5 20M17.6 17h3.8"/>',
+fontBold:'<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z"/>',
+fontUp:'<path d="M3 20 8.5 5 14 20M5.2 14h6.6"/><path d="M17 17h5M19.5 14.5v5"/>',
+cloud:'<path d="M12 13v8"/><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/>',
+more:'<circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/>',
+check:'<path d="M20 6 9 17l-5-5"/>',
+trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+list:'<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>',
+dash:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 6h4M3 12h4M3 18h4"/>',
+dot:'<path d="M10 6h11M10 12h11M10 18h11"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor"/>',
+num:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3.5 5l1.5-1v5"/><path d="M3.3 13.4c.3-1 2.9-1.2 2.9.2 0 1.1-2.9 2-2.9 3.3h3"/>',
+flag:'<path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/>',calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',calendarCheck:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+undo:'<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>',
+copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12"/><circle cx="12" cy="12" r="3"/>',
+move:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'};
+IP.palette='<circle cx="13.5" cy="6.5" r="1" fill="currentColor"/><circle cx="17.5" cy="10.5" r="1" fill="currentColor"/><circle cx="8.5" cy="7.5" r="1" fill="currentColor"/><circle cx="6.5" cy="12.5" r="1" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.75 1.6-1.7 0-.45-.18-.85-.44-1.13-.29-.29-.44-.65-.44-1.12a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.55-2.5 5.55-5.55C21.96 6 17.46 2 12 2z"/>';
+IP.cloudOff='<path d="m2 2 20 20"/><path d="M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19"/><path d="M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07"/>';
+IP.alert='<path d="M12 9v4M12 17h.01"/><path d="m10.3 3.9-8.4 14.5A2 2 0 0 0 3.6 21h16.8a2 2 0 0 0 1.7-2.6L13.7 3.9a2 2 0 0 0-3.4 0z"/>';
+IP.more='<circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/>';
+function ico(n){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(IP[n]||'')+'</svg>'}
+function ib(n,label,cls){const b=document.createElement('button');b.type='button';b.className='ib'+(cls?' '+cls:'');b.innerHTML=ico(n);b.title=label;b.setAttribute('aria-label',label);return b}
+function todayStr(){const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')}
+function armBtn(b,ms){b.classList.add('arm');b.setAttribute('data-arm','再按一次');return setTimeout(()=>{b.classList.remove('arm');b.removeAttribute('data-arm')},ms)}
+const gal=document.getElementById('gal'),list=document.getElementById('list'),q=document.getElementById('q'),info=document.getElementById('info'),chips=document.getElementById('chips');
+let month=0,year=0,dayF=null;const lyb=document.getElementById('lyb');
+let YEARS=[...new Set(DATA.map(x=>+x[0].slice(0,4)).concat([new Date().getFullYear()]))].sort();const ychips=document.getElementById('ychips');
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function hl(t,k){const e=esc(t);if(!k)return e;const re=new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/&/g,'&amp;'),'gi');return e.replace(re,m=>'<mark>'+m+'</mark>')}
+/* 網址（http/https、www.）和電郵：顯示成可點的連結。網址只含英文字母、數字和網址符號，所以後面緊跟的中文不會被算進去；
+   用 <span> 而不是 <a>：長按仍然可以選取、拷貝網址，點一下才開（交給「日誌」腳本用內建瀏覽器開，關掉後回到這一天） */
+const LRE=/(https?:\/\/[A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]+)|(www\.[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+(?:[\/?#][A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]*)?)|([A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,})/g;
+/* 長網址只顯示「網域/第一段路徑/…」（點開仍是完整網址；拷貝時也會還原成完整網址）；搜尋字出現在網址裏時顯示完整網址，才看得到高亮 */
+function shortUrl(u,k){
+ if(k&&u.toLowerCase().includes(k.toLowerCase()))return u;
+ const b=u.replace(/^https?:\/\//i,'');if(b.length<=36)return u;
+ const m=/^([^\/?#]+)(?:\/([^\/?#]+))?/.exec(b);if(!m)return u;
+ const sh=m[1]+(m[2]?'/'+m[2]:'')+'/…';return sh.length+6<b.length?sh:u}
+function lhtml(t,k){
+ if(!/https?:|www\.|@/.test(t))return hl(t,k);
+ let o='',last=0,m;LRE.lastIndex=0;
+ while((m=LRE.exec(t))){
+  let u=m[0];
+  for(;;){const c=u.slice(-1);   // 結尾的標點不算網址的一部分；括號不成對才去掉
+   if('.,;:!?\'"'.includes(c))u=u.slice(0,-1);
+   else if(c===')'&&(u.match(/\)/g)||[]).length>(u.match(/\(/g)||[]).length)u=u.slice(0,-1);
+   else if(c===']'&&(u.match(/\]/g)||[]).length>(u.match(/\[/g)||[]).length)u=u.slice(0,-1);
+   else break}
+  if(u.length<4){LRE.lastIndex=m.index+1;continue}
+  const href=m[1]?u:m[2]?'https://'+u:'mailto:'+u;
+  const lab=m[3]?u:shortUrl(u,k),at=v=>esc(v).replace(/"/g,'&quot;');
+  o+=hl(t.slice(last,m.index),k)+'<span class="lk" role="link" data-u="'+at(href)+'"'+(lab!==u?' data-o="'+at(u)+'"':'')+'>'+hl(lab,k)+'</span>';
+  last=m.index+u.length;LRE.lastIndex=last}
+ return o+hl(t.slice(last),k)}
+/* 項目行（「- 」「• 」「1. 」開頭）：換行後的文字對齊到項目符號後面（懸掛縮排）。符號仍是原本的文字，複製出來和原文一樣；
+   符號的寬度用實際排版量出來（fixHang），所以字體大小、粗細改變也會對齊。編輯框（textarea）做不到逐行縮排，只有顯示的卡片有。 */
+const BHANG=/^(\s*)(?:- |• |\d+\. )/;
+function bhtml(vt,k){
+ const lines=String(vt).split('\n');
+ if(!lines.some(l=>BHANG.test(l)))return lhtml(vt,k);
+ if(lines.length>1&&lines[lines.length-1]==='')lines.pop();
+ let o='';
+ for(const l of lines){const m=BHANG.exec(l);
+  if(m)o+='<span class="li"><span class="mk">'+esc(m[0])+'</span>'+lhtml(l.slice(m[0].length),k)+'</span>';
+  else o+=lhtml(l,k)+'\n'}
+ return o}
+function fixHang(){
+ if(list.hidden)return;const els=[...list.querySelectorAll('.li')];if(!els.length)return;
+ const ws=els.map(e=>e.firstChild.getBoundingClientRect().width);
+ els.forEach((e,n)=>{if(ws[n]>0)e.style.setProperty('--h',ws[n]+'px')})}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{try{fixHang()}catch(e){}});
+/* 卡片標題已經有日期，所以顯示時去掉內容裏的「18. 星期日」；內容本身不變（編輯、複製、更新日誌都用完整文字） */
+const RAWDAYS=new Set(RAW.filter(r=>!r[3]).map(r=>r[0]));   // 原稿裏的日子才有「18. 星期日」標題行；新增的卡片沒有，內容一律原樣顯示
+/* ===== 官方假期：英國（英格蘭及威爾斯；GOV.UK，2019–2028 年，補假已列入）和香港（香港政府憲報、政府一站通，2025–2027 年，官方稱呼原樣）；之後要加其他國家／地區，在 HOL 加一組資料，再把名稱加進 HOLIDAY_SETS ===== */
+const HOL={'uk':{'2019-01-01':'元旦','2019-04-19':'耶穌受難節','2019-04-22':'復活節星期一','2019-05-06':'五月初銀行假期','2019-05-27':'春季銀行假期','2019-08-26':'夏季銀行假期','2019-12-25':'聖誕節','2019-12-26':'節禮日','2020-01-01':'元旦','2020-04-10':'耶穌受難節','2020-04-13':'復活節星期一','2020-05-08':'五月初銀行假期（歐戰勝利紀念日）','2020-05-25':'春季銀行假期','2020-08-31':'夏季銀行假期','2020-12-25':'聖誕節','2020-12-28':'節禮日（補假）','2021-01-01':'元旦','2021-04-02':'耶穌受難節','2021-04-05':'復活節星期一','2021-05-03':'五月初銀行假期','2021-05-31':'春季銀行假期','2021-08-30':'夏季銀行假期','2021-12-27':'聖誕節（補假）','2021-12-28':'節禮日（補假）','2022-01-03':'元旦（補假）','2022-04-15':'耶穌受難節','2022-04-18':'復活節星期一','2022-05-02':'五月初銀行假期','2022-06-02':'春季銀行假期','2022-06-03':'白金禧年假期','2022-08-29':'夏季銀行假期','2022-09-19':'伊麗莎白二世女王國葬日','2022-12-26':'節禮日','2022-12-27':'聖誕節（補假）','2023-01-02':'元旦（補假）','2023-04-07':'耶穌受難節','2023-04-10':'復活節星期一','2023-05-01':'五月初銀行假期','2023-05-08':'查理三世加冕日','2023-05-29':'春季銀行假期','2023-08-28':'夏季銀行假期','2023-12-25':'聖誕節','2023-12-26':'節禮日','2024-01-01':'元旦','2024-03-29':'耶穌受難節','2024-04-01':'復活節星期一','2024-05-06':'五月初銀行假期','2024-05-27':'春季銀行假期','2024-08-26':'夏季銀行假期','2024-12-25':'聖誕節','2024-12-26':'節禮日','2025-01-01':'元旦','2025-04-18':'耶穌受難節','2025-04-21':'復活節星期一','2025-05-05':'五月初銀行假期','2025-05-26':'春季銀行假期','2025-08-25':'夏季銀行假期','2025-12-25':'聖誕節','2025-12-26':'節禮日','2026-01-01':'元旦','2026-04-03':'耶穌受難節','2026-04-06':'復活節星期一','2026-05-04':'五月初銀行假期','2026-05-25':'春季銀行假期','2026-08-31':'夏季銀行假期','2026-12-25':'聖誕節','2026-12-28':'節禮日（補假）','2027-01-01':'元旦','2027-03-26':'耶穌受難節','2027-03-29':'復活節星期一','2027-05-03':'五月初銀行假期','2027-05-31':'春季銀行假期','2027-08-30':'夏季銀行假期','2027-12-27':'聖誕節（補假）','2027-12-28':'節禮日（補假）','2028-01-03':'元旦（補假）','2028-04-14':'耶穌受難節','2028-04-17':'復活節星期一','2028-05-01':'五月初銀行假期','2028-05-29':'春季銀行假期','2028-08-28':'夏季銀行假期','2028-12-25':'聖誕節','2028-12-26':'節禮日'}  ,'hk':{'2025-01-01':'一月一日','2025-01-29':'農曆年初一','2025-01-30':'農曆年初二','2025-01-31':'農曆年初三','2025-04-04':'清明節','2025-04-18':'耶穌受難節','2025-04-19':'耶穌受難節翌日','2025-04-21':'復活節星期一','2025-05-01':'勞動節','2025-05-05':'佛誕','2025-05-31':'端午節','2025-07-01':'香港特別行政區成立紀念日','2025-10-01':'國慶日','2025-10-07':'中秋節翌日','2025-10-29':'重陽節','2025-12-25':'聖誕節','2025-12-26':'聖誕節後第一個周日','2026-01-01':'一月一日','2026-02-17':'農曆年初一','2026-02-18':'農曆年初二','2026-02-19':'農曆年初三','2026-04-03':'耶穌受難節','2026-04-04':'耶穌受難節翌日','2026-04-06':'清明節翌日','2026-04-07':'復活節星期一翌日','2026-05-01':'勞動節','2026-05-25':'佛誕翌日','2026-06-19':'端午節','2026-07-01':'香港特別行政區成立紀念日','2026-09-26':'中秋節翌日','2026-10-01':'國慶日','2026-10-19':'重陽節翌日','2026-12-25':'聖誕節','2026-12-26':'聖誕節後第一個周日','2027-01-01':'一月一日','2027-02-06':'農曆年初一','2027-02-08':'農曆年初三','2027-02-09':'農曆年初四','2027-03-26':'耶穌受難節','2027-03-27':'耶穌受難節翌日','2027-03-29':'復活節星期一','2027-04-05':'清明節','2027-05-01':'勞動節','2027-05-13':'佛誕','2027-06-09':'端午節','2027-07-01':'香港特別行政區成立紀念日','2027-09-16':'中秋節翌日','2027-10-01':'國慶日','2027-10-08':'重陽節','2027-12-25':'聖誕節','2027-12-27':'聖誕節後第一個周日'}};
+const HOLIDAY_SETS=['uk','hk'];
+const HOLSAME={'一月一日':'元旦'};   // 不同地區對同一個假期的叫法不同，同一天只顯示一次
+const HOLFLAG={uk:'🇬🇧',hk:'🇭🇰'};   // 假期名稱前面的旗：英國🇬🇧、香港🇭🇰；兩地同名同日，名稱只列一次，前面兩面旗都加
+function holidayOf(d){const o=[],ix={};for(const k of HOLIDAY_SETS){const x=HOL[k]&&HOL[k][d];if(!x)continue;const c=HOLSAME[x]||x;let e=ix[c];if(!e){e=ix[c]={n:x,f:[]};o.push(e)}const g=HOLFLAG[k]||'';if(g&&!e.f.includes(g))e.f.push(g)}return o.map(e=>e.f.join('')+e.n).join('、')}
+function viewText(d,t){
+ if(!RAWDAYS.has(d))return t.replace(/^\n+/,'').replace(/\s+$/,'');
+ const day=+d.slice(8),re=new RegExp('^\\s{0,3}'+day+'\\s*[.．]\\s*(星期[一二三四五六日])?\\s*'),re2=new RegExp('^\\s{0,3}'+day+'\\s*[.．]\\s*星期[一二三四五六日]\\s*');
+ const lines=t.split('\n');let first=true;const out=[];
+ for(let i=0;i<lines.length;i++){const l=lines[i];
+  if(first&&i<8&&re.test(l)){first=false;const r=l.replace(re,'');if(r.trim()!=='')out.push(r);continue}
+  if(!first&&re2.test(l)){const r=l.replace(re2,'');if(r.trim()!=='')out.push(r);continue}
+  out.push(l)}
+ return out.join('\n').replace(/^\n+/,'').replace(/\s+$/,'')}
+function markMonths(){const has=new Set();for(const r of DATA){if(r[3]||!String(r[2]).trim())continue;if(year&&+r[0].slice(0,4)!==year)continue;has.add(+r[0].slice(5,7))}
+ [...chips.children].forEach((c,i)=>{if(i>=1&&i<=12){const e=!has.has(i);c.classList.toggle('empty',e);e?c.title='沒有日誌':c.removeAttribute('title')}})}
+/* ===== 連續瀏覽：上下滑動可以接到前一個月／後一個月的卡片 =====
+   平常顯示「目前這個月 ± 1 個月」；滑到上面或下面快到盡頭時，再接上更早／更晚有日誌的月份（離太遠的月份會收掉，免得太重）。 */
+const ymOf=d=>+d.slice(0,4)*12+ +d.slice(5,7)-1;
+let winLo=0,winHi=0,winReady=false;
+function setWin(){if(year&&month){const f=year*12+month-1;winLo=f-1;winHi=f+1}}
+function monthRows(ym){return DATA.filter(r=>!r[3]&&ymOf(r[0])===ym)}
+function monthInfo(){return year+'年 '+month+'月 共 '+monthRows(year*12+month-1).length+' 天'}
+function wxHtml(d){const a=(window.WEATHER||{})[d];if(!a)return '';const t=[];if(a[0])t.push(a[0]);if(typeof a[1]==='number'&&typeof a[2]==='number')t.push(a[1]===a[2]?a[1]+'°':a[1]+'–'+a[2]+'°');if(a[4])t.push('下雪');else if(a[3])t.push('有雨');if(a[5])t.push('大風');if(a[6])t.push('酷熱');return t.length?'<span class="wx'+(a[7]?' fc':'')+'">'+esc(t.join(' '))+'</span>':''}   /* 天氣：window.WEATHER（日期 → [地名,最低,最高,雨,雪,風]），來自「日誌」腳本；沒有資料就不顯示 */
+function cardHtml(d,w,t,k,TD,multi){
+ const y=+d.slice(0,4),m=+d.slice(5,7),dd=+d.slice(8),wd=new Date(y,m-1,dd).getDay(),hn=holidayOf(d),vt=viewText(d,t);
+ return '<section class="day'+((wd===0||wd===6||hn)?' we':'')+(d===TD?' today':'')+'" id="d'+d+'"><h2><b>'+dd+'</b><span class="ym">'+y+'年'+m+'月</span>'+(hn?'<span class="hol">'+hn+'</span>':'')+wxHtml(d)+'<span class="wk">'+w+'</span></h2>'+(vt?'<pre>'+bhtml(vt,k)+'</pre>':'')+actHtml(d)+'</section>'}
+function render(){
+ markMonths();const k=q.value.trim();let n=0,html='';const multi=YEARS.length>1,TD=todayStr(),win=!!(year&&month)&&!k&&!dayF;
+ for(const [d,w,t,lab] of DATA){
+  if(lab)continue;   // 前言卡片不再顯示（內容已搬到各自的日期卡片）
+  const y=+d.slice(0,4),m=+d.slice(5,7),dd=+d.slice(8);
+  if(dayF){if(d.slice(5)!==dayF.md||y>=dayF.y)continue}
+  else if(win){const e=ymOf(d);if(e<winLo||e>winHi)continue}
+  else if(!k){if(year&&y!==year)continue;if(month&&m!==month)continue}   // 有搜尋字時：搜全部年份、全部月份
+  if(k&&!(t.toLowerCase().includes(k.toLowerCase())||(m+'/'+dd).includes(k)))continue;
+  n++;html+=cardHtml(d,w,t,k,TD,multi)
+ }
+ list.innerHTML=html||'<div class="empty">找不到相符的內容</div>';
+ info.textContent=win?monthInfo():(dayF?'當年今日 '+dayF.md.replace('-','/')+' ':'')+(k?'「'+k+'」 ':'')+(dayF?'':(year&&!k?year+'年 ':'全部年份 ')+(month&&!k?month+'月 ':''))+'共 '+n+' 天';
+ {const qn=document.getElementById('qn');if(qn)qn.textContent=k?n+' 天':''}
+ fixHang()
+}
+/* 接上前一個／後一個有日誌的月份。向上接時，先等圖片解好（高度才準），再插入並把捲動位置補回去，畫面不會跳 */
+let extending=false;
+async function extend(dir){
+ if(extending)return;extending=true;
+ try{
+  const have=new Set(DATA.filter(r=>!r[3]).map(r=>ymOf(r[0])));if(!have.size)return;
+  const lo=Math.min(...have),hi=Math.max(...have);let ym=dir<0?winLo-1:winHi+1;
+  while(!have.has(ym)){ym+=dir;if(ym<lo||ym>hi)return}
+  const box=document.createElement('div'),TD=todayStr(),multi=YEARS.length>1;
+  box.innerHTML=monthRows(ym).map(r=>cardHtml(r[0],r[1],r[2],'',TD,multi)).join('');
+  const imgs=[...box.querySelectorAll('img')];
+  if(imgs.length)await Promise.all(imgs.map(i=>i.decode?i.decode().catch(()=>0):0));
+  if(!winOn())return;   // 等圖片的時候已經切到別的畫面
+  if(dir<0){const h0=document.documentElement.scrollHeight,y0=window.scrollY;list.prepend(...box.children);fixHang();window.scrollTo(0,y0+document.documentElement.scrollHeight-h0);winLo=ym}
+  else{list.append(...box.children);fixHang();winHi=ym}
+  trimFar(ym)
+ }finally{extending=false}}
+function trimFar(keep){
+ /* 距離只算「有日誌的月份」：中間隔著空月份（例如 12 月之後直到 3 月）不會讓 3 月被誤清；剛接上的月份（keep）這一輪不清 */
+ const hm=[...new Set(DATA.filter(r=>!r[3]).map(r=>ymOf(r[0])))].sort((a,b)=>a-b),R=new Map(hm.map((v,i)=>[v,i])),
+  f=year*12+month-1,r0=hm.filter(x=>x<f).length,
+  id2=e=>e.id&&/^d\d{4}-\d{2}-\d{2}$/.test(e.id)?ymOf(e.id.slice(1)):null,
+  span=()=>{const ms=[...list.children].map(id2).filter(v=>v!==null);return ms.length?[Math.min(...ms),Math.max(...ms)]:null};
+ const above=[...list.children].filter(e=>{const v=id2(e);return v!==null&&v!==keep&&R.has(v)&&R.get(v)<r0-3});
+ if(above.length){const h0=document.documentElement.scrollHeight,y0=window.scrollY;above.forEach(e=>e.remove());window.scrollTo(0,y0-(h0-document.documentElement.scrollHeight));const sp=span();if(sp)winLo=sp[0]}
+ const below=[...list.children].filter(e=>{const v=id2(e);return v!==null&&v!==keep&&R.has(v)&&R.get(v)>r0+3});
+ if(below.length){below.forEach(e=>e.remove());const sp=span();if(sp)winHi=sp[1]}}
+function winOn(){return !!(year&&month)&&!dayF&&!q.value.trim()&&!inPhotos&&!inRem&&!inHol&&!list.hidden}
+let scTick=false;
+function onScrollWin(){
+ if(!winReady||!winOn())return;
+ const days=[...list.children].filter(e=>e.id&&e.id[0]==='d');if(!days.length)return;
+ let a=0,b=days.length-1,idx=days.length-1;   // 找出最上面那張還看得到的卡片（卡片由上到下排好，用二分法）
+ while(a<=b){const m=(a+b)>>1;if(days[m].getBoundingClientRect().bottom>90){idx=m;b=m-1}else a=m+1}
+ const id=days[idx].id;
+ if(/^d\d{4}-\d{2}-\d{2}$/.test(id)){const y=+id.slice(1,5),m=+id.slice(6,8);if(y!==year||m!==month){year=y;month=m;info.textContent=monthInfo()}}
+ if(window.scrollY<900)extend(-1);
+ else if(document.documentElement.scrollHeight-window.scrollY-window.innerHeight<1400)extend(1)}
+addEventListener('scroll',()=>{if(scTick)return;scTick=true;requestAnimationFrame(()=>{scTick=false;onScrollWin()})},{passive:true});
+setTimeout(()=>{winReady=true},2500);   // 頁面剛開、還在定位的時候先不接月份
+let inPhotos=false;
+let inRem=false;const remEl=document.getElementById('rem');let inHol=false,holMonths=12;const holEl=document.getElementById('hol');
+function showList(){inPhotos=false;inRem=false;inHol=false;list.hidden=false;gal.hidden=true;remEl.hidden=true;holEl.hidden=true;navSync();fixHang()}
+function showPhotos(){lyHide();if(window.PHOTOS_LOADED===false){toast('載入照片…畫面會短暫離開再回來');hostSend({loadphotos:1},{ph:year||0,go:lastDate||''});return}inPhotos=true;inRem=false;inHol=false;list.hidden=true;remEl.hidden=true;holEl.hidden=true;gal.hidden=false;[...chips.children].forEach(c=>c.classList.toggle('on',c.textContent==='照片'));(canStore?loadStored():Promise.resolve()).then(renderGal);navSync();window.scrollTo(0,0)}
+function showRem(){lyHide();inPhotos=false;inRem=true;inHol=false;list.hidden=true;gal.hidden=true;holEl.hidden=true;remEl.hidden=false;[...chips.children].forEach(c=>c.classList.toggle('on',c.textContent==='提醒清單'));renderRem();navSync();window.scrollTo(0,0)}
+function setYear(y){lyHide();const was=inPhotos;if(!was)showList();dayF=null;year=y;setWin();[...ychips.children].forEach((c,i)=>c.classList.toggle('on',i===0?!y:YEARS[i-1]===y));if(was)renderGal();else{render();window.scrollTo(0,0)}}
+function setMonth(m){lyHide();showList();dayF=null;month=m;setWin();[...chips.children].forEach((c,i)=>c.classList.toggle('on',i===m));render();window.scrollTo(0,0)}
+['全年'].concat([...Array(12)].map((_,i)=>(i+1)+'月')).forEach((l,i)=>{const b=document.createElement('span');b.className='chip'+(i===0?' on':'');b.textContent=l;b.onclick=()=>setMonth(i);chips.appendChild(b)});
+function buildYearChips(){ychips.innerHTML='';['全部'].concat(YEARS.map(y=>y+'年')).forEach((l,i)=>{const b=document.createElement('span');b.className='chip'+((i===0?!year:YEARS[i-1]===year)?' on':'');b.textContent=l;b.onclick=()=>setYear(i?YEARS[i-1]:0);ychips.appendChild(b)});ychips.hidden=YEARS.length<2}
+buildYearChips();
+/* 年份清單跟著實際資料走：預先建立未來年份的卡片後，年份標籤、備份與還原都會出現那一年 */
+function syncYears(){const ys=[...new Set(DATA.map(x=>+x[0].slice(0,4)).concat([new Date().getFullYear()]))].sort();if(ys.join()===YEARS.join())return;YEARS=ys;if(year&&!YEARS.includes(year))year=0;buildYearChips()}
+q.addEventListener('input',()=>{lyHide();showList();dayF=null;render()});
+/* 當年今日：顯示完整日誌並跳到去年今日那張卡片，可以上下滑動看前後的日子；底部小列可切換其他年份，或回到今天 */
+function lyHide(){lyb.hidden=true;document.body.classList.remove('lyon')}
+function lyJump(d){const el=document.getElementById('d'+d);if(!el)return null;hdrHide();el.scrollIntoView({block:'start'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);return el}
+function lyShow(label,dates,cur){
+ lyb.innerHTML='';
+ const t=document.createElement('span');t.className='lyt';t.innerHTML=ico('history');t.title=label;t.setAttribute('aria-label',label);lyb.appendChild(t);
+ const ys=document.createElement('span');ys.className='lyy';let curD=cur;
+ dates.forEach(d=>{const b=document.createElement('button');b.className='g'+(d===cur?' on':'');b.textContent=d.slice(0,4)+'年';
+  b.onclick=()=>{curD=d;lyJump(d);[...ys.children].forEach(c=>c.classList.toggle('on',c===b));info.textContent=d.replace(/-/g,'/')+' · 當年今日'};ys.appendChild(b)});
+ lyb.appendChild(ys);
+ const back=document.createElement('button');back.type='button';back.className='ib';back.innerHTML=ico('calendarCheck');back.title='回到今天';back.setAttribute('aria-label','回到今天');back.onclick=()=>{lyHide();landToday()};lyb.appendChild(back);
+ const x=document.createElement('button');x.type='button';x.className='ib';x.innerHTML=ico('x');x.title='關閉';x.setAttribute('aria-label','關閉');x.onclick=()=>{lyHide();if(curD)goDay(curD)};lyb.appendChild(x);
+ lyb.hidden=false;document.body.classList.add('lyon')}
+document.getElementById('ly').onclick=()=>{showList();q.value='';
+ const now=new Date(),y0=now.getFullYear(),md=String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+ dayF=null;month=0;year=0;[...chips.children].forEach((c,i)=>c.classList.toggle('on',i===0));[...ychips.children].forEach((c,i)=>c.classList.toggle('on',i===0));
+ const D2=DATA.filter(x=>!x[3]&&+x[0].slice(0,4)<y0),same=D2.filter(x=>x[0].slice(5)===md);
+ render();
+ if(same.length){const dates=same.map(x=>x[0]).reverse();lyShow('當年今日',dates,dates[0]);lyJump(dates[0]);info.textContent=dates[0].replace(/-/g,'/')+' · 當年今日';return}
+ const pool=D2.length?D2:DATA.filter(x=>!x[3]);if(!pool.length)return;
+ const latest=Math.max(...pool.map(x=>+x[0].slice(0,4))),P=pool.filter(x=>+x[0].slice(0,4)===latest);
+ const hit=P.find(x=>x[0].slice(5)>md)||P[P.length-1];
+ lyShow('今日沒有舊記錄',[],null);lyJump(hit[0]);
+ info.textContent='當年今日沒有記錄，最近一天：'+hit[0].replace(/-/g,'/');toast(info.textContent);
+};
+const root=document.documentElement,thBtn=document.getElementById('th'),modes=['auto','light','dark'],icons=['🌓','☀️','🌙'];
+let mi=0;try{mi=Math.max(0,modes.indexOf(localStorage.getItem('theme')))}catch(e){}
+function applyTheme(){if(modes[mi]==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',modes[mi]);thBtn.innerHTML=ico(['themeAuto','sun','moon'][mi]);thBtn.dataset.lb=['自動','白天','夜間'][mi]}
+thBtn.onclick=()=>{mi=(mi+1)%3;try{localStorage.setItem('theme',modes[mi])}catch(e){}applyTheme();toast('顯示模式：'+['自動（跟隨手機）','白天','夜間'][mi])};
+const ICP=Array.isArray(window.ICLOUD_PHOTOS)?window.ICLOUD_PHOTOS:[];let stored=[],canStore=true;
+/* 照片存在 iCloud（由「日誌」腳本讀寫）；stored 只是舊版留在這部裝置裏的照片 */
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('diaryPhotos',1);r.onupgradeneeded=()=>r.result.createObjectStore('p',{keyPath:'id',autoIncrement:true});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbAll(){const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('p').objectStore('p').getAll();q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function idbClear(){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('p','readwrite');t.objectStore('p').clear();t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function loadStored(){try{stored=await idbAll()}catch(e){canStore=false}}
+/* ===== 傳輸層：頁面送給「宿主」的所有訊息，都從這三個函式出去 =====
+   訊息 msg＝一組依序的「動作名:值」；附帶資訊 o：tab（回到哪個分頁）、ph（年份）、go（跳到哪一天）、data（要送的內容）、via、pend（是否附上待同步的修改）。
+   o.pend：'skip'＝有待同步的修改就附上（太大就不附）；'strict'＝附上，太大就不送、回傳 false；省略＝不附。
+   現在的宿主是 Scriptable 的「日誌」腳本：訊息編成 scriptable:///run?scriptName=日誌&… 網址（hostURL），用 location.href 送出（hostDeliver），由腳本攔截。
+   換宿主時，只需要改 hostURL（怎麼編碼）和 hostDeliver（怎麼送出）；頁面其他地方一律呼叫 hostSend，不再碰網址。
+   PWA 宿主：在注入的腳本裏設定 window.HOST_DELIVER（訊息直接交給它處理）和 window.HOST_NO_LIMIT（不受網址長度限制）。 */
+function hostURL(msg,o){
+ o=o||{};let u='scriptable:///run?scriptName='+encodeURIComponent('日誌');
+ for(const k in msg)u+='&'+k+'='+encodeURIComponent(msg[k]);
+ if(o.tab)u+='&tab='+o.tab;
+ if(o.ph!==undefined)u+='&ph='+o.ph;
+ u+='&go='+encodeURIComponent(o.go||'');
+ if(o.pend){const pend=pendingList();if(pend.length){const enc=encodeURIComponent(JSON.stringify({edits:pend}));if(enc.length<=hostMax(9000))u+='&data='+enc;else if(o.pend==='strict')return null}}
+ if(o.data!==undefined)u+='&data='+encodeURIComponent(o.data);
+ if(o.via)u+='&via='+o.via;
+ return u}
+function hostMax(n){return window.HOST_NO_LIMIT?Infinity:n}   // 靠網址傳訊息的宿主（Scriptable）有長度上限，照舊；在同一個視窗內處理的宿主（PWA）不受限制
+function hostDeliver(u){if(window.HOST_DELIVER){window.HOST_DELIVER(u);return}location.href=u}   // 宿主若自己接手（PWA），就直接交給它；否則導向網址，由 Scriptable 腳本攔截
+function hostSend(msg,o){const u=hostURL(msg,o);if(u===null)return false;hostDeliver(u);return true}
+function zoom(p){const o=document.createElement('div');o.id='ov';const b=document.createElement('img');b.src=p.s;o.appendChild(b);o.onclick=()=>o.remove();
+ if(p.f){const bar=document.createElement('div');bar.style.cssText='position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 12px';
+   
+  const di=document.createElement('input');di.type='date';di.value=p.d||'';di.className='ib2';di.title='指定日期（照片會出現在那天的卡片）';di.setAttribute('aria-label','指定日期');di.onclick=e=>e.stopPropagation();di.onchange=()=>{if(/^\d{4}-\d{2}-\d{2}$/.test(di.value)){toast(window.LIVE_PH?'更新中…':'更新中…畫面會短暫離開再回來');hostSend({movephoto:p.f,to:di.value},p.card?{go:di.value,pend:'skip'}:{ph:year||0,go:lastDate||''})}};bar.appendChild(di);
+  (p.card?[]:YEARS.filter(y=>y!==p.y)).forEach(y=>{const m=document.createElement('button');m.className='ib2';m.innerHTML=ico('move')+'<span>'+y+'</span>';m.title='移到 '+y+' 年';m.setAttribute('aria-label','移到 '+y+' 年');m.onclick=e=>{e.stopPropagation();toast('移動中…畫面會短暫離開再回來');hostSend({movephoto:p.f,to:y},{ph:year||0,go:lastDate||''})};bar.appendChild(m)});
+  const d=document.createElement('button');d.className='ib2 dng';d.innerHTML=ico('trash');d.title='刪除這張';d.setAttribute('aria-label','刪除這張');let armed=0;
+  d.onclick=e=>{e.stopPropagation();if(!armed){armed=1;armBtn(d,3000);setTimeout(()=>{armed=0},3000);return}
+   toast(window.LIVE_PH?'刪除中…':'刪除中…畫面會短暫離開再回來');hostSend({delphoto:p.f},p.card?{go:p.d||'',pend:'skip'}:{ph:year||0,go:lastDate||''})};
+  bar.appendChild(d);o.appendChild(bar)}
+ document.body.appendChild(o)}
+function renderGal(){
+ gal.innerHTML='';
+ const nt=document.createElement('div');nt.style.cssText='margin:0 0 12px;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;font-size:14px;color:var(--sub)';nt.textContent='這裏只留下還沒指定日期的舊照片。點開照片，用底部的日期欄指定日期，照片就會移到那天的卡片；不要的可以刪除。全部處理完，這個分頁會自動消失。';gal.appendChild(nt);
+ if(stored.length>0){const row=document.createElement('div');row.style.cssText='margin:0 0 12px;padding:10px 12px;border:1px dashed var(--line);border-radius:12px;font-size:14px;color:var(--sub)';
+  row.textContent='有 '+stored.length+' 張舊照片只存在這部裝置，沒有同步到 iCloud。需要的請先用上面的「＋」重新加入，再刪除這些舊照片。';
+  const bt=document.createElement('button');bt.style.cssText='display:block;margin-top:8px;background:#a33;color:#fff';bt.textContent='刪除這些舊照片';let armed=0;
+  bt.onclick=async()=>{if(!armed){armed=1;bt.textContent='再按一次確認：刪除 '+stored.length+' 張';setTimeout(()=>{armed=0;bt.textContent='刪除這些舊照片'},4000);return}
+   try{await idbClear()}catch(e){}stored=[];await loadStored();renderGal()};
+  row.appendChild(bt);gal.appendChild(row)}
+ const all=ICP.map(p=>({s:p.s,f:p.f,y:p.y,r:p.r,d:p.d})).concat(stored.map(p=>({s:p.s,id:p.id,y:p.y})));
+ const shown=year?all.filter(p=>p.y===year):all;
+ const grid=document.createElement('div');grid.className='grid';const cols=[0,1,2].map(()=>{const c=document.createElement('div');c.className='col';grid.appendChild(c);return c}),hs=[0,0,0];
+ shown.forEach(p=>{const f=document.createElement('figure'),i=document.createElement('img');i.src=p.s;i.loading='lazy';i.onclick=()=>zoom(p);f.appendChild(i);
+  if(!year&&YEARS.length>1){const g=document.createElement('span');g.className='badge';g.textContent=p.d?p.d.slice(5).replace('-','/'):p.y?p.y+'年':'未分年';f.appendChild(g)}
+  const k=hs.indexOf(Math.min(...hs));cols[k].appendChild(f);hs[k]+=(p.r||1.33)});
+ gal.appendChild(grid);
+ info.textContent='照片 共 '+shown.length+' 張'+(year?'（'+year+'年）':'');
+}
+const pc=document.createElement('span');pc.className='chip';pc.textContent='照片';pc.onclick=showPhotos;chips.appendChild(pc);if(!(window.UNDATED>0))pc.style.display='none';
+applyTheme();
+
+/* ===== 編輯功能：修改另存一層（按日期），不改動更新日誌產生的原稿 ===== */
+let EDITS=[],TOMBS=[],canE=true,META={},ICL=false,lastDate='';
+const RAWBY=new Map(RAW.filter(r=>!r[3]).map(r=>[r[0],r[2]])),RAWPRE=new Map(RAW.filter(r=>r[3]).map(r=>[+r[0].slice(0,4),r[2]])),ST={};
+const WKN='日一二三四五六';
+function eOpen(){return new Promise((res,rej)=>{try{const r=indexedDB.open('diaryEdits',1);r.onupgradeneeded=()=>r.result.createObjectStore('e',{keyPath:'date'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function eAll(){const d=await eOpen();return new Promise((res,rej)=>{const q=d.transaction('e').objectStore('e').getAll();q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function ePut(rec){const d=await eOpen();return new Promise((res,rej)=>{const t=d.transaction('e','readwrite');t.objectStore('e').put(rec);t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function eDel(date){const d=await eOpen();return new Promise((res,rej)=>{const t=d.transaction('e','readwrite');t.objectStore('e').delete(date);t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function loadEdits(){
+ if(canE){try{const all=await eAll();const m=all.find(x=>x.date==='__meta');if(m)META=m;EDITS=all.filter(x=>x.date!=='__meta'&&!x.del);TOMBS=all.filter(x=>x.del)}catch(e){canE=false}}
+}
+async function putEdit(rec){delete rec.del;TOMBS=TOMBS.filter(x=>x.date!==rec.date);const i=EDITS.findIndex(e=>e.date===rec.date);if(i>=0)EDITS[i]=rec;else EDITS.push(rec);if(canE){try{await ePut(rec)}catch(e){canE=false}}}
+async function delEdit(date){EDITS=EDITS.filter(e=>e.date!==date);const tb={date,del:true,t:Date.now()};TOMBS=TOMBS.filter(x=>x.date!==date).concat([tb]);if(canE){try{await ePut(tb)}catch(e){canE=false}}}
+async function saveMeta(){META.date='__meta';if(canE){try{await ePut(META)}catch(e){canE=false}}}
+function wkOf(d){return '週'+WKN[new Date(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8)).getDay()]}
+/* 把修改套在原稿上；同時判斷每一天的狀態 */
+function buildData(){
+ for(const k in ST)delete ST[k];
+ const by=new Map(EDITS.map(e=>[e.date,e])),out=[],extra=[];
+ for(const r of RAW){const [d,w,t,lab]=r;
+  if(lab){const pk=d.slice(0,4)+'-00-00',pe=by.get(pk);if(pe){by.delete(pk);out.push([d,w,pe.text,lab])}else out.push(r);continue}   // 前言列：套用前言的修改
+  const e=by.get(d);
+  if(!e){out.push(r);continue}
+  by.delete(d);
+  if(e.deleted)continue;                 // 已刪除的日子：不顯示
+  out.push([d,w,e.text])}                // 你在日誌裏改的，永遠以你改的為準
+ for(const [d,e] of by){if(e.deleted||/-00-00$/.test(d))continue;extra.push([d,wkOf(d),e.text])}   // 「YYYY-00-00」是前言的修改，不是一天
+ DATA=out.concat(extra).sort((a,b)=>a[0]===b[0]?((b[3]?1:0)-(a[3]?1:0)):(a[0]<b[0]?-1:1));
+ syncYears();
+ return [];
+}
+async function applyEdits(){let gone=buildData();for(const d of gone)await delEdit(d);if(gone.length)buildData()}
+/* 卡片照片：圖來自「日誌」腳本（window.CARD_PHOTOS：日期 → [{f,s}]），直接顯示在卡片裏，點一下放大；s 為空＝超過容量，不載入 */
+function phHtml(d){const a=(window.CARD_PHOTOS||{})[d];if(!a||!a.length)return '';return '<div class="ph">'+a.map(p=>p.s?'<img src="'+p.s+'" alt="" decoding="async" data-a="viewph" data-f="'+p.f+'" data-d="'+d+'">':'<div class="phx">📷 這張較舊的照片未載入（超過頁面容量）</div>').join('')+'</div>'}
+function actHtml(d){return '<div class="act">'+remLinks(d)+phHtml(d)+'</div>'}
+let tT=0;function toast(m,ms){const t=document.getElementById('tst');t.textContent=m;t.hidden=false;requestAnimationFrame(()=>t.classList.add('on'));clearTimeout(tT);tT=setTimeout(()=>{t.classList.remove('on');setTimeout(()=>{if(!t.classList.contains('on'))t.hidden=true},260)},ms||3600)}
+function refresh(){const y=window.scrollY;render();window.scrollTo(0,y);bannerUpdate()}
+async function mergeICloud(){
+ if(!Array.isArray(window.ICLOUD_EDITS))return;ICL=true;
+ const loc=new Map(EDITS.concat(TOMBS).map(r=>[r.date,r]));
+ for(const r of window.ICLOUD_EDITS){if(!r||!/^\d{4}-\d{2}-\d{2}$/.test(r.date))continue;const l=loc.get(r.date);
+  if(!l||(r.t||0)>(l.t||0)){
+   if(r.del){EDITS=EDITS.filter(e=>e.date!==r.date);TOMBS=TOMBS.filter(x=>x.date!==r.date).concat([r]);if(canE){try{await ePut(r)}catch(e){canE=false}}}
+   else await putEdit(Object.assign({},r))}}
+}
+/* 空白草稿：按日曆跳到「還沒有日誌的日子」時會先建一張空白卡；沒按儲存就離開，它不是真正的修改，不要算進待同步，也不要同步 */
+function isDraft(r){return !!r&&!r.del&&!r.deleted&&r.isNew===true&&typeof r.text==='string'&&r.text.trim()===''}
+async function dropDrafts(except){
+ const gone=EDITS.filter(r=>isDraft(r)&&r.date!==except);if(!gone.length)return false;
+ EDITS=EDITS.filter(r=>!gone.includes(r));
+ if(canE)for(const r of gone){try{await eDel(r.date)}catch(e){canE=false}}
+ return true}
+function pendingList(){
+ const ic=new Map(ICL?window.ICLOUD_EDITS.map(r=>[r.date,r]):[]);
+ return EDITS.filter(r=>!isDraft(r)).concat(TOMBS).filter(r=>{const x=ic.get(r.date);
+  if(r.del&&ICL)return !!x&&!x.del&&(r.t||0)>(x.t||0);   // 刪除記號：iCloud 本來就沒有這一天的修改，就不用同步
+  return !x||(r.t||0)>(x.t||0)})
+}
+function doSync(){
+ const pend=pendingList();
+ if(!pend.length){toast('已全部同步到 iCloud');return}
+ const payload=JSON.stringify({edits:pend}),enc=encodeURIComponent(payload);
+ if(enc.length<=hostMax(15000)){toast(window.LIVE?'同步中…':'同步中…畫面會短暫離開再回來');window.__syncWait=1;hostSend({},{go:lastDate||'',data:payload})}
+ else copyText(payload).then(ok=>{if(ok){toast('同步中…');window.__syncWait=1;hostSend({},{go:lastDate||'',via:'clip'})}else toast('修改太多，無法自動傳送；請分幾次修改、每次同步')})
+}
+function bannerUpdate(){
+ const bk=document.getElementById('bk'),pn=pendingList().length;
+ if(pn>0){bk.hidden=false;bk.innerHTML=ico('cloud')+'<b>'+pn+'</b>';bk.title=bk.ariaLabel=pn+' 筆待同步（點一下同步）';bk.onclick=doSync}else bk.hidden=true;
+ const of=document.getElementById('off');if(window.OFFLINE){of.hidden=false;of.innerHTML=ico('cloudOff');of.title=of.ariaLabel=offMsg()}else of.hidden=true;
+ const dl=document.getElementById('dl'),gn=EDITS.filter(e=>e.deleted).length;
+ if(gn>0){dl.hidden=false;dl.innerHTML=ico('trash')+'<b>'+gn+'</b>';dl.title=dl.ariaLabel='已刪除的日子（點一下還原）'}else dl.hidden=true;
+ uiPend(pn)}
+async function copyText(t){
+ try{await navigator.clipboard.writeText(t);return true}catch(e){}
+ try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(e){return false}
+}
+/* ===== 項目符號：三種——「- 」短橫線、「• 」圓點、「1. 」編號；在項目行按 Enter 自動接下一行（縮排和上一行一樣），編號會自動接續並重排後面的號碼 ===== */
+const BRE=/^(\s*)(?:(- )|(• )|(\d+)\. )/;
+const bmark=(k,n)=>k==='num'?n+'. ':k==='dot'?'• ':'- ';
+const bkind=l=>{const m=BRE.exec(l);return m?(m[2]?'dash':m[3]?'dot':'num'):null};
+function lineBounds(v,s,e){const a=v.lastIndexOf('\n',s-1)+1;let ee=e;if(e>s&&v[e-1]==='\n')ee=e-1;let z=v.indexOf('\n',ee);if(z<0)z=v.length;return [a,z]}
+function toggleBullet(ta,kind){
+ const v=ta.value,[a,z]=lineBounds(v,ta.selectionStart,ta.selectionEnd),lines=v.slice(a,z).split('\n');
+ const blank=l=>l.trim()==='',body=lines.filter(l=>!blank(l));
+ let out,n=0;
+ if(!body.length)out=lines.map(l=>l+bmark(kind,++n));                                   // 空行：直接加上
+ else if(body.every(l=>bkind(l)===kind))out=lines.map(l=>blank(l)?l:l.replace(BRE,'$1'));   // 全部已經是這一種：取消
+ else out=lines.map(l=>blank(l)?l:l.replace(BRE,'$1').replace(/^(\s*)/,'$1'+bmark(kind,++n)));  // 其他：加上或換成這一種（編號從 1 起接續）
+ const nv=out.join('\n');ta.value=v.slice(0,a)+nv+v.slice(z);
+ if(lines.length===1){ta.selectionStart=ta.selectionEnd=a+nv.length}else{ta.selectionStart=a;ta.selectionEnd=a+nv.length}
+ ta.focus()}
+function renumberAfter(v,lineStart,indent,n){   // 從 lineStart 這一行的下一行起，把緊接著、縮排相同的編號行接續編下去
+ let p=v.indexOf('\n',lineStart);
+ while(p>=0){const st=p+1;let e=v.indexOf('\n',st);if(e<0)e=v.length;const line=v.slice(st,e),m=/^(\s*)(\d+)\. /.exec(line);
+  if(!m||m[1]!==indent)break;
+  v=v.slice(0,st)+line.replace(/^(\s*)\d+\. /,'$1'+(++n)+'. ')+v.slice(e);p=v.indexOf('\n',st)}
+ return v}
+function bulletEnter(ev){
+ if(ev.inputType!=='insertLineBreak')return;const ta=ev.target,v=ta.value,s=ta.selectionStart,en=ta.selectionEnd;
+ const a=v.lastIndexOf('\n',s-1)+1;let z=v.indexOf('\n',s);if(z<0)z=v.length;
+ const m=/^(\s*)(?:(- |• )|(\d+)\. )(.*)$/.exec(v.slice(a,z));if(!m)return;
+ const mk=m[2]||(m[3]+'. ');
+ if(s<a+m[1].length+mk.length)return;
+ ev.preventDefault();
+ if(m[4].trim()===''){ta.value=v.slice(0,a)+m[1]+v.slice(z);ta.selectionStart=ta.selectionEnd=a+m[1].length}   // 空的項目行再按 Enter：結束列表
+ else{
+  const next=m[3]?(+m[3]+1)+'. ':mk,ins='\n'+m[1]+next;let nv=v.slice(0,s)+ins+v.slice(en);
+  if(m[3])nv=renumberAfter(nv,s+1,m[1],+m[3]+1);
+  ta.value=nv;ta.selectionStart=ta.selectionEnd=s+ins.length}}
+function startEdit(d){
+ const el=document.getElementById('d'+d);if(!el)return;const row=DATA.find(x=>x[0]===d&&!x[3]);if(!row)return;
+ const pre=el.querySelector('pre'),act=el.querySelector('.act');if(pre)pre.hidden=true;act.hidden=true;
+ const box=document.createElement('div');box.className='ed';
+ const ta=document.createElement('textarea');ta.value=row[2];ta.rows=Math.min(22,Math.max(6,row[2].split('\n').length+2));
+ /* 提醒：在這裏設定，按「儲存」才一起生效 */
+ const cur=REMMAP.get(d);let stage=cur?{due:cur.due,repeat:cur.repeat||0}:null,changed=false;
+ const rb=document.createElement('div');rb.className='etools';
+ const draw=()=>{rb.innerHTML='';
+  [['dash','短橫線 -'],['dot','圓點 •'],['num','編號 1.']].forEach(([k,lab])=>{const bl=ib(k,lab);bl.onpointerdown=e=>e.preventDefault();bl.onclick=()=>toggleBullet(ta,k);rb.appendChild(bl)});
+  const pb=ib('imagePlus','加入照片');pb.onclick=async()=>{if(changed){toast('請先按「儲存」保存提醒設定，再加入照片');return}await saveEdit(d,ta.value,null,true);toast(window.LIVE_PH?'打開相簿…':'打開相簿…畫面會短暫離開再回來');hostSend({addphoto:d},{go:d,pend:'skip'})};rb.appendChild(pb);
+   const bb=ib('bell',stage?'修改提醒':'設提醒',stage?'on':'');bb.onclick=()=>openRemPicker(d,stage,v=>{stage=v;changed=true;draw()});rb.appendChild(bb);
+  if(stage){const lab=document.createElement('span');lab.className='bdg rl';lab.textContent=fmtDue(stage.due)+(stage.repeat>1?' ×'+stage.repeat+'天':'');rb.appendChild(lab);
+   const bo=ib('bellOff','取消提醒');bo.onclick=()=>{stage=null;changed=true;draw()};rb.appendChild(bo)}
+  if(changed){const n=document.createElement('span');n.className='chg';n.textContent='儲存後生效';rb.appendChild(n)}};
+ draw();
+ ta.addEventListener('beforeinput',bulletEnter);
+ const bt=document.createElement('div');bt.className='bt';
+ const dl=ib('trash','刪除這一天','dng'),cx=ib('x','取消'),ok=ib('check','儲存','pri');
+ ok.onclick=async()=>{await saveEdit(d,ta.value,changed?{stage}:null)};
+ cx.onclick=async()=>{const e=EDITS.find(x=>x.date===d);if(e&&e.isNew&&e.text===e.init){await delEdit(d);await applyEdits()}refresh()};
+ let dArm=0;
+ dl.onclick=async()=>{if(!dArm){dArm=1;setTimeout(()=>{dArm=0},3500);armBtn(dl,3500);return}await deleteDay(d)};
+ bt.append(dl,cx,ok);box.append(rb,ta,bt);(pre||el.querySelector('h2')).after(box);ta.focus();
+}
+/* ===== 前言（開頭未標日期的文字）也可以編輯：點前言卡片即可；修改以「YYYY-00-00」為鍵存起來，和一般日子一樣同步與備份 ===== */
+function startPreEdit(y){
+ const el=document.getElementById('pre'+y);if(!el||el.querySelector('.ed'))return;const row=DATA.find(x=>x[3]&&+x[0].slice(0,4)===y);if(!row)return;
+ const pre=el.querySelector('pre');if(pre)pre.hidden=true;
+ const box=document.createElement('div');box.className='ed';
+ const ta=document.createElement('textarea');ta.value=row[2];ta.rows=Math.min(22,Math.max(6,row[2].split('\n').length+2));
+ const rb=document.createElement('div');rb.className='etools';
+ [['dash','短橫線 -'],['dot','圓點 •'],['num','編號 1.']].forEach(([k,lab])=>{const bl=ib(k,lab);bl.onpointerdown=e=>e.preventDefault();bl.onclick=()=>toggleBullet(ta,k);rb.appendChild(bl)});
+ ta.addEventListener('beforeinput',bulletEnter);
+ const bt=document.createElement('div');bt.className='bt';
+ const cx=ib('x','取消'),ok=ib('check','儲存','pri');
+ ok.onclick=async()=>{await savePre(y,ta.value)};cx.onclick=()=>refresh();
+ bt.append(cx,ok);box.append(rb,ta,bt);(pre||el.querySelector('h2')).after(box);ta.focus()}
+async function savePre(y,text){
+ text=text.replace(/\s+$/,'');const key=y+'-00-00',o=RAWPRE.has(y)?RAWPRE.get(y):'';
+ if(text===o)await delEdit(key);else await putEdit({date:key,text,orig:o,pre:true,t:Date.now()});
+ await applyEdits();refresh();doSync()}
+async function deleteDay(d){
+ lastDate=d;const full=dayTextOf(d),o=RAWBY.has(d)?RAWBY.get(d):null,r=REMMAP.get(d);
+ const tomb={date:d,deleted:true,text:full,orig:o,isNew:o===null,t:Date.now()};if(r)tomb.rem={due:r.due,repeat:r.repeat||0,done:!!r.done};await putEdit(tomb);
+ await applyEdits();refresh();
+ if(r){toast(window.LIVE_ACT?'已刪除，並取消這一天的提醒…':'已刪除，並取消這一天的提醒…畫面會短暫離開再回來');remSend({id:d,date:d,del:true,t:Date.now()});return}
+ toast('已刪除 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日（可在「⋯」→「已刪除的日子」還原）');doSync()}
+async function restoreDay(d,noSync){
+ const e=EDITS.find(x=>x.date===d);if(!e)return;const rm=e.rem;
+ if((e.isNew&&e.orig===null)||(typeof e.text==='string'&&e.text.trim()!==''&&e.text!==e.orig)){const c=Object.assign({},e);delete c.deleted;delete c.rem;c.t=Date.now();await putEdit(c)}else await delEdit(d);
+ await applyEdits();refresh();toast('已還原 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日');
+ if(rm&&!noSync&&!REMMAP.has(d)){lastDate=d;toast(window.LIVE_ACT?'已還原，並恢復這一天的提醒…':'已還原，並恢復這一天的提醒…畫面會短暫離開再回來');remSend({id:d,date:d,due:rm.due,repeat:rm.repeat||0,done:!!rm.done,t:Date.now(),txt:dayTextOf(d)});return}
+ if(!noSync)doSync()}
+async function saveEdit(d,text,rem,noSync){
+ lastDate=d;text=text.replace(/\s+$/,'');
+ const o=RAWBY.has(d)?RAWBY.get(d):null,ex=EDITS.find(e=>e.date===d);
+ if(o!==null&&text===o)await delEdit(d);
+ else if(o===null&&text.trim()==='')await delEdit(d);
+ else await putEdit({date:d,text,orig:o,isNew:o===null,t:Date.now(),init:ex&&ex.init});
+ await applyEdits();refresh();
+ if(rem){const t=Date.now();
+  const rec=rem.stage?{id:d,date:d,due:rem.stage.due,repeat:rem.stage.repeat>1?rem.stage.repeat:0,done:false,t,txt:dayTextOf(d)}:{id:d,date:d,del:true,t};
+  toast(window.LIVE_ACT?'儲存中…':'儲存中…畫面會短暫離開再回來');remSend(rec);return}
+ if(!noSync)doSync();
+}
+function goDay(d){
+ showList();dayF=null;q.value='';setYear(+d.slice(0,4));setMonth(+d.slice(5,7));
+ hdrHide();const el=document.getElementById('d'+d);if(el)el.scrollIntoView({block:'start'});winReady=true;return el}
+/* 年曆按鈕：已有日誌的日子只跳到那張卡片（不進編輯）；還沒有（或已刪除）的日子才新增並進入編輯 */
+function openDay(d){
+ if(DATA.some(x=>x[0]===d&&!x[3])&&!EDITS.some(x=>x.date===d&&x.deleted)){const el=goDay(d);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500)}return}
+ newDay(d)}
+async function newDay(d,view){   // view＝true：只跳到那一天、不進編輯模式（日曆按鈕用）；點卡片才編輯
+ const stay=()=>{const el=goDay(d);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(d)}};
+ if(EDITS.some(x=>x.date===d&&x.deleted)){await restoreDay(d,1);if(view)stay();else{goDay(d);startEdit(d)};return}
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||+d.slice(0,4)<2000||+d.slice(0,4)>2100){toast('日期不正確：年份要在 2000 到 2100 之間');return}
+ if(!DATA.some(x=>x[0]===d&&!x[3])){
+  await dropDrafts(d);await putEdit({date:d,text:'',orig:null,isNew:true,t:Date.now(),init:''});await applyEdits()}   // 卡片標題已有日期和星期，新卡片不再預填「18. 星期日」
+ if(view)stay();else{goDay(d);startEdit(d)}}
+/* ===== 「更多」選單：新增某一天、同步到 iCloud ===== */
+function openPanel(){   // 只剩「已刪除的日子」清單；備份／還原已改成菜單上的兩個直接按鈕
+ const o=document.createElement('div');o.id='pn';const box=document.createElement('div');box.className='box';o.appendChild(box);
+ o.onclick=e=>{if(e.target===o)o.remove()};
+ const close=()=>o.remove();
+ const mk=(t,fn,cls,ic,only)=>{const b=document.createElement('button');b.type='button';b.className='ib2'+(cls?' '+cls:'');if(ic){b.innerHTML=ico(ic)+(only?'':'<span>'+esc(t)+'</span>');b.title=t;b.setAttribute('aria-label',t)}else b.textContent=t;b.onclick=fn;return b};
+ const hdr=(ic,t,tip)=>{const x=document.createElement('div');x.className='pnh';x.innerHTML=ico(ic)+((t===''||t==null)?'':'<b>'+esc(String(t))+'</b>');x.title=tip||'';x.setAttribute('aria-label',tip||'');return x};
+ const hd=document.createElement('div');hd.className='shd';const gr=document.createElement('i');gr.className='grab';hd.append(gr,mk('關閉',close,'','x',1));box.append(hd);
+ const col=document.createElement('div');col.className='row2';
+ const gone=EDITS.filter(e=>e.deleted).sort((a,b)=>a.date<b.date?1:-1);
+ col.append(hdr('trash',gone.length,'已刪除的日子（點一下還原）'));
+ const r=document.createElement('div');r.className='qs';
+ gone.slice(0,10).forEach(e=>r.append(mk(dayLabel(e.date),async()=>{close();await restoreDay(e.date)},'','undo')));col.append(r);
+ box.append(col);
+ document.body.appendChild(o);
+}
+
+/* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 diary_backups 資料夾存取（內容＋提醒）；還原前會自動先備份目前內容 ===== */
+function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
+function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toast(window.LIVE_BK?y+' 年備份中…':y+' 年備份中…畫面會短暫離開再回來');scriptRun('backup',y)}
+function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
+/* 備份／還原：直接作用在「目前正在看的那一年」（不再先彈出「更多」選單選年份） */
+function curYear(){const y=year||(+(lastDate||'').slice(0,4))||0;return YEARS.includes(y)?y:YEARS[YEARS.length-1]}
+/* 備份／還原：彈窗內先選年份（只列有日誌的年份），✕ 取消／✓ 確定。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
+function yearDays(y){return DATA.filter(x=>!x[3]&&+x[0].slice(0,4)===y&&String(x[2]).trim()!=='').length}
+function yearDialog(mode){
+ const bk=mode==='backup',ys=YEARS.filter(y=>bk?yearDays(y)>0:true);
+ if(!ys.length){toast('沒有日誌可備份');return}
+ let sel=ys.includes(curYear())?curYear():ys[ys.length-1];
+ const o=document.createElement('div');o.id='pn';const box=document.createElement('div');box.className='box';o.appendChild(box);
+ o.onclick=e=>{if(e.target===o)o.remove()};
+ const mkb=(t,ic,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className='ib2'+(cls?' '+cls:'');b.innerHTML=ic?ico(ic):'';b.title=t;b.setAttribute('aria-label',t);b.onclick=fn;return b};
+ const hd=document.createElement('div');hd.className='pnh big';
+ const setHd=()=>{hd.innerHTML=ico(bk?'download':'undo')+'<b>'+sel+' 年'+(bk?' · '+yearDays(sel)+' 天':'')+'</b>'};setHd();
+ box.append(hd);
+ if(ys.length>1){const yr=document.createElement('div');yr.className='qs';yr.style.marginBottom='14px';
+  ys.forEach(y=>{const b=mkb(y+' 年','','',()=>{sel=y;setHd();[...yr.children].forEach(c=>c.classList.toggle('on',c===b))});b.textContent=y;if(y===sel)b.classList.add('on');yr.append(b)});
+  box.append(yr)}
+ const row=document.createElement('div');row.className='qs cf';
+ row.append(mkb('取消','x','',()=>o.remove()),mkb(bk?'確定備份':'確定還原','check','pri',()=>{o.remove();pdClose();bk?backupYear(sel,yearDays(sel)):restoreYear(sel)}));
+ box.append(row);document.body.appendChild(o)}
+document.getElementById('bkp').onclick=()=>yearDialog('backup');
+document.getElementById('rst').onclick=()=>yearDialog('restore');
+document.getElementById('wxs').onclick=()=>{pdClose();wxDialog()};
+/* 天氣設定：預報天數（0–16）、酷熱溫度（25–50°C）；按確定後交給「日誌」腳本存進 weather.json 並重查預報 */
+function wxDialog(){
+ const c=window.WXCFG||{fcDays:7,hotC:38};
+ const o=document.createElement('div');o.id='pn';const box=document.createElement('div');box.className='box';o.appendChild(box);
+ o.onclick=e=>{if(e.target===o)o.remove()};
+ const mkb=(tt,ic,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className='ib2'+(cls?' '+cls:'');b.innerHTML=ic?ico(ic):'';b.title=tt;b.setAttribute('aria-label',tt);b.onclick=fn;return b};
+ const hd=document.createElement('div');hd.className='pnh big';hd.innerHTML=ico('sun')+'<b>天氣設定</b>';box.append(hd);
+ const fld=(lb,val,min,max,step)=>{const w=document.createElement('div');w.style.marginBottom='14px';const s=document.createElement('small');s.textContent=lb;const i=document.createElement('input');i.type='number';i.inputMode='decimal';i.min=min;i.max=max;i.step=step;i.value=val;w.append(s,i);box.append(w);return i};
+ const fi=fld('未來天氣預報：往後看幾天（0＝不顯示，最多 16）',c.fcDays,0,16,1);
+ const hi=fld('酷熱：最高氣溫達幾度（°C）才顯示「酷熱」（25–50）',c.hotC,25,50,1);
+ const row=document.createElement('div');row.className='qs cf';
+ row.append(mkb('取消','x','',()=>o.remove()),mkb('確定','check','pri',()=>{
+  const fd=Number(fi.value),hc=Number(hi.value);
+  if(fi.value===''||!Number.isInteger(fd)||fd<0||fd>16){toast('預報天數要是 0 至 16 的整數');return}
+  if(hi.value===''||!isFinite(hc)||hc<25||hc>50){toast('酷熱溫度要在 25 至 50 之間');return}
+  o.remove();toast(window.LIVE_ACT?'儲存中…':'儲存中…畫面會短暫離開再回來');
+  hostSend({wxcfg:JSON.stringify({fcDays:fd,hotC:hc})},{go:lastDate,pend:'skip'})}));
+ box.append(row);document.body.appendChild(o)}
+document.getElementById('dl').onclick=()=>{pdClose();openPanel()};
+/* 連不上 iCloud 的提示（用白話，不提檔名）：1＝照常使用、修改先存在這部裝置；2＝另外還有內容這部裝置沒下載過 */
+function offMsg(){return window.OFFLINE===2?'目前連不上 iCloud，而且有些內容這部裝置還沒下載過。連上網後再打開一次日誌，就會補齊。':'目前連不上 iCloud。日誌照常能看、能寫，修改先存在這部裝置，連上網後會自動同步。'}
+document.getElementById('off').onclick=()=>{pdClose();toast(offMsg(),7000)};
+/* 年曆按鈕：透明的日期欄蓋在按鈕上，點一下直接彈出日曆。
+   欄位預設放一個不會被選的日期（見下面），避免 iOS 一打開日曆就自動填入今天而觸發跳轉。選好日期、按 Done 之後，才收起面板、跳到那一天（只顯示，不進編輯）。 */
+(function(){const di=document.getElementById('ndi');
+ /* 日期欄預先放一個「不用選」的日期（正在看的那一天），這樣 iOS 一打開日曆不會自動填入今天而觸發跳轉 */
+ const pad=n=>String(n).padStart(2,'0');
+ /* 預設值＝「畫面上最上面那張卡片的日期」（看不到卡片就用今天）。選你正在看的那一天本來就不需要跳，所以不會有任何一天「選不到」；
+   日曆也會直接打開在你正在看的那個月。預設值記在 armed，change 時和它比較（不再每次重算，避免捲動後對不上） */
+ const topDate=()=>{try{if(!list.hidden){for(const e of list.children){if(e.id&&/^d\d{4}-\d{2}-\d{2}$/.test(e.id)&&e.getBoundingClientRect().bottom>90)return e.id.slice(1)}}}catch(x){}return todayStr()};
+ let armed='';
+ const arm=()=>{armed=topDate();di.value=armed};arm();
+ di.addEventListener('pointerdown',arm);di.addEventListener('touchstart',arm,{passive:true});
+ /* 選了日期之後先不跳：等你按「Done」（日曆收起來）才跳到那一天；改選別的日期、按「Reset」都可以。
+   備用：如果收起來時系統沒有通知頁面，最後一次選擇後閒置 4 秒也會自動跳 */
+ let pv=null,tm=0;
+ const go=()=>{clearTimeout(tm);const v=pv;pv=null;if(!v)return;di.blur();setTimeout(()=>{arm();pdClose();newDay(v,true)},450)};
+ di.addEventListener('change',()=>{const v=di.value;clearTimeout(tm);pv=(!v||v===armed)?null:v;if(pv)tm=setTimeout(go,4000)});
+ di.addEventListener('blur',()=>{if(pv)go()})})();
+/* 落點保持：卡片裏的照片要等圖載入後才會撐高，會把目標卡片往下推（所以偶爾打開時停在月初）。
+   所以跳到目標卡片後的幾秒內，每張圖載入完都重新對準；你一開始自己滑動或點擊，就立刻停止。 */
+let holdOff=null;
+function holdLanding(d){
+ if(holdOff)holdOff();
+ const re=()=>{const el=document.getElementById('d'+d);if(el)el.scrollIntoView({block:'start'})};
+ const evs=['touchstart','mousedown','wheel','keydown'];let timers=[];
+ const off=()=>{evs.forEach(e=>removeEventListener(e,off,true));list.removeEventListener('load',re,true);removeEventListener('load',onload);timers.forEach(clearTimeout);if(holdOff===off)holdOff=null};
+ evs.forEach(e=>addEventListener(e,off,{capture:true,passive:true}));
+ list.addEventListener('load',re,true);
+ /* 頁面還在載入（照片多、檔案大時）：系統可能在載入完成時把捲動位置重設，所以載入完成後也要再對準一次；載入完才結束保持 */
+ const onload=()=>{re();timers.push(setTimeout(re,300),setTimeout(re,1000))};
+ if(document.readyState!=='complete')addEventListener('load',onload,{once:true});
+ const fin=()=>{if(document.readyState!=='complete')timers.push(setTimeout(fin,500));else timers.push(setTimeout(off,1500))};
+ timers=[250,600,1200,2500].map(t=>setTimeout(re,t));timers.push(setTimeout(fin,4500));
+ holdOff=off}
+/* 打開日誌：直接看到今天的卡片；今天沒有就看今天以前最新的一張；都沒有就看最新的一張 */
+function landToday(){
+ const real=DATA.filter(x=>!x[3]);if(!real.length)return;
+ const t=new Date(),td=t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());
+ let hit=real.find(x=>x[0]===td);
+ if(!hit){const past=real.filter(x=>x[0]<td);hit=past.length?past[past.length-1]:real[real.length-1]}
+ setTimeout(()=>{const el=goDay(hit[0]);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(hit[0])}},60)}
+async function initEdits(){await loadEdits();applyFont();if(window.OFFLINE)setTimeout(()=>toast(offMsg(),7000),1600);if(!canE)setTimeout(()=>toast('這個環境不保存網頁資料，修改只留到關閉為止'),1800);if(!META.hint1){META.hint1=1;saveMeta();setTimeout(()=>toast('提示：點任何一張卡片就可以編輯；長按可以選取文字來拷貝'),1200)}await mergeICloud();await dropDrafts();
+ if(ICL){const have=new Set(window.ICLOUD_EDITS.map(r=>r.date));const dead=TOMBS.filter(r=>!have.has(r.date));
+  if(dead.length){TOMBS=TOMBS.filter(r=>!dead.includes(r));if(canE)for(const r of dead){try{await eDel(r.date)}catch(e){canE=false}}}}
+ await applyEdits();refresh();
+ if(window.GOTAB==='rem')showRem();
+ else if(window.GOPHOTOS&&window.UNDATED>0){const gy=+window.GOYEAR||0;if(gy&&YEARS.includes(gy))setYear(gy);showPhotos()}
+ else if(window.GOTO&&DATA.some(x=>x[0]===window.GOTO&&!x[3]))setTimeout(()=>{goDay(window.GOTO);holdLanding(window.GOTO)},60)
+ else landToday()}
+/* 活腳本（階段 1）：腳本在原地把「同步後的 iCloud 修改」推回頁面，頁面不重載。
+   有變動才重畫；正在編輯（有打開的編輯框）時只更新資料、不重畫，免得打到一半的字消失 */
+window.__cloudUpdate=async function(edits,off){
+ try{
+  if(!Array.isArray(edits))return;
+  const sig=()=>JSON.stringify(EDITS.map(e=>[e.date,e.t||0]).sort())+JSON.stringify(TOMBS.map(e=>[e.date,e.t||0]).sort());
+  const before=sig();
+  window.ICLOUD_EDITS=edits;window.OFFLINE=off||0;
+  await mergeICloud();
+  if(ICL){const have=new Set(window.ICLOUD_EDITS.map(r=>r.date));const dead=TOMBS.filter(r=>!have.has(r.date));
+   if(dead.length){TOMBS=TOMBS.filter(r=>!dead.includes(r));if(canE)for(const r of dead){try{await eDel(r.date)}catch(e){canE=false}}}}
+  await applyEdits();
+  if(sig()!==before&&!document.querySelector('.ed'))refresh();else bannerUpdate();
+  if(window.__syncWait&&pendingList().length===0){window.__syncWait=0;toast('已同步到 iCloud',1800)}
+ }catch(e){}
+};
+/* 活腳本（階段 2）：腳本在原地做完加入／刪除／移動照片後，把「受影響的那幾天」的照片清單推回頁面，頁面不重載。
+   map：日期 → [{f,s?}]；s 沒給＝沿用頁面裡已經有的那張圖；陣列裡沒有的檔名＝已刪除或已移走。
+   只換那幾天卡片裡的照片區塊，不重畫整個列表，所以不會打斷正在編輯的卡片 */
+window.__photosUpdate=function(map,msg){
+ try{
+  window.CARD_PHOTOS=window.CARD_PHOTOS||{};
+  const ov=document.getElementById('ov');if(ov)ov.remove();
+  for(const d of Object.keys(map||{})){
+   const old=new Map((window.CARD_PHOTOS[d]||[]).map(p=>[p.f,p]));
+   const arr=(map[d]||[]).map(p=>({f:p.f,s:(typeof p.s==='string')?p.s:((old.get(p.f)||{}).s||'')}));
+   if(arr.length)window.CARD_PHOTOS[d]=arr;else delete window.CARD_PHOTOS[d];
+   const el=document.getElementById('d'+d),act=el&&el.querySelector('.act');
+   if(act)act.outerHTML=actHtml(d);
+  }
+  if(msg)toast(msg,1800);
+ }catch(e){}
+};
+/* 活腳本（階段 3）：腳本在原地存好提醒（設定、完成、取消）、重新排定通知後，把最新的提醒清單推回頁面，頁面不重載。
+   只換「提醒有變動的那幾天」卡片裡的提醒／照片區塊（不重畫整個列表）；正在看「提醒清單」分頁就重畫那個分頁 */
+window.__remUpdate=function(rems,msg){
+ try{
+  if(!Array.isArray(rems))return;
+  const old=new Map(REMMAP);
+  window.ICLOUD_REMINDERS=rems;REMMAP.clear();
+  rems.forEach(r=>{if(r&&!r.del&&DATERE.test(r.date||''))REMMAP.set(r.date,r)});
+  if(inRem)renderRem();
+  for(const d of new Set([...old.keys(),...REMMAP.keys()])){
+   if(JSON.stringify(old.get(d))===JSON.stringify(REMMAP.get(d)))continue;
+   const el=document.getElementById('d'+d),act=el&&el.querySelector('.act');
+   if(act)act.outerHTML=actHtml(d);
+  }
+  if(msg)toast(msg,1800);
+ }catch(e){}
+};
+/* 活腳本（階段 3）：天氣設定存好、預報重查後，腳本把最新的天氣和設定推回頁面。
+   天氣顯示在每張卡片的標題欄，所以要重畫列表；正在編輯卡片時只更新資料、不重畫（編輯完下次重畫就會顯示） */
+window.__wxUpdate=function(w,c,msg){
+ try{
+  window.WEATHER=w||{};if(c)window.WXCFG=c;
+  if(!document.querySelector('.ed'))refresh();
+  if(msg)toast(msg,1800);
+ }catch(e){}
+};
+
+
+/* 活腳本（階段 4a）：腳本在原地做完備份後，只在頁面上顯示一則提示（頁面不重載）。腳本靠這個函式存在與否，決定要不要攔截備份網址 */
+window.__bkUpdate=function(msg){
+ try{if(msg)toast(msg,4200)}catch(e){}
+};
+
+
+/* 活腳本（階段 4b）：腳本在原地做完還原後，先把最新的修改（__cloudUpdate）和提醒（__remUpdate）推回頁面，最後呼叫這個函式顯示一則提示（頁面不重載）。腳本靠這個函式存在與否，決定要不要攔截還原網址 */
+window.__rsUpdate=function(msg){
+ try{if(msg)toast(msg,5000)}catch(e){}
+};
+
+
+/* 點卡片進入編輯；選取文字（長按）時不會誤開。要複製就用系統內建的選取與拷貝 */
+let selClearT=0,hadSel=false;
+function preSel(){const s=getSelection();if(!s||s.rangeCount===0||s.isCollapsed)return false;const n=s.anchorNode,el=n&&(n.nodeType===1?n:n.parentElement);return !!(el&&el.closest&&el.closest('.day > pre')&&String(s).length>0)}
+document.addEventListener('selectionchange',()=>{const has=preSel();if(hadSel&&!has)selClearT=Date.now();hadSel=has});
+list.addEventListener('click',ev=>{
+ if(ev.target.closest('.act,.ed,details,a,button,input,textarea,.lk'))return;
+ if(Date.now()-selClearT<700||preSel())return;
+ const card=ev.target.closest('.day');if(!card||!card.id||card.querySelector('.ed'))return;
+ if(/^pre\d{4}$/.test(card.id)){startPreEdit(+card.id.slice(3));return}
+ const d=card.id.slice(1);if(/^\d{4}-\d{2}-\d{2}$/.test(d))startEdit(d)});
+/* 點連結：網址交給「日誌」腳本用內建瀏覽器打開（關掉後回到這一天）；電郵交給「郵件」。剛選取過文字（長按）不算點擊 */
+list.addEventListener('click',ev=>{const a=ev.target.closest('.lk');if(!a)return;ev.preventDefault();
+ if(Date.now()-selClearT<700||preSel())return;
+ const c=a.closest('.day'),d=c&&/^d\d{4}-\d{2}-\d{2}$/.test(c.id)?c.id.slice(1):'';
+ toast(window.LIVE_ACT?'開啟連結…':'開啟連結…畫面會短暫離開再回來');hostSend({openurl:a.dataset.u},{go:d,pend:'skip'})});
+/* 選取整張卡片顯示的內容再拷貝時，補回被隱藏的「18. 星期日」那一行，貼回備忘錄才不會缺了日期標題 */
+document.addEventListener('copy',e=>{
+ const s=getSelection();if(!s||s.rangeCount===0||s.isCollapsed)return;
+ const n=s.anchorNode,el=n&&(n.nodeType===1?n:n.parentElement),pre=el&&el.closest&&el.closest('.day > pre');if(!pre)return;
+ const d=pre.parentElement.id.slice(1),full=dayTextOf(d),vt=viewText(d,full),raw=s.toString();
+ let st=raw;pre.querySelectorAll('.lk[data-o]').forEach(x=>{if(s.containsNode(x,true)&&st.includes(x.textContent))st=st.replace(x.textContent,x.dataset.o)});   // 縮短顯示的網址還原成完整網址
+ if(full&&st.replace(/\s+/g,'')===vt.replace(/\s+/g,'')){e.clipboardData.setData('text/plain',full);e.preventDefault()}
+ else if(st!==raw){e.clipboardData.setData('text/plain',st);e.preventDefault()}});
+/* ===== 提醒：是「日誌某一天」的屬性。資料存在 iCloud（reminders.json），一天最多一個提醒 ===== */
+const REMOK=Array.isArray(window.ICLOUD_REMINDERS),REMMAP=new Map(),DATERE=/^\d{4}-\d{2}-\d{2}$/;
+(REMOK?window.ICLOUD_REMINDERS:[]).forEach(r=>{if(r&&!r.del&&DATERE.test(r.date||''))REMMAP.set(r.date,r)});
+function remSend(rec){return hostSend({remsave:JSON.stringify(rec)},{tab:inRem?'rem':'',go:rec.date||'',pend:'skip'})}
+function dayStart(t){const d=new Date(t);return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime()}
+function fmtDue(ts){const d=new Date(ts),diff=Math.round((dayStart(ts)-dayStart(Date.now()))/864e5),hh=d.getHours(),h12=hh%12||12,mm=String(d.getMinutes()).padStart(2,'0');
+ const lab=diff===0?'今天':diff===1?'明天':diff===-1?'昨天':(d.getMonth()+1)+'月'+d.getDate()+'日';return lab+'，'+(hh<12?'上午':'下午')+' '+h12+':'+mm}
+function nextOcc(r){const n=Math.max(1,r.repeat||1);for(let k=0;k<n;k++){const d=new Date(r.due);d.setDate(d.getDate()+k);if(d.getTime()>Date.now())return d.getTime()}return null}
+function dayLabel(d){return (+d.slice(0,4))+'年'+(+d.slice(5,7))+'月'+(+d.slice(8))+'日'}
+function dayTextOf(d){const r=DATA.find(x=>x[0]===d&&!x[3]);return r?r[2]:''}
+function remBadge(r){const nx=nextOcc(r),over=!r.done&&nx===null;
+ return '<span class="bdg'+(over?' cf':'')+'">'+ico('bell')+(r.done?'已完成 · ':over?'已逾期 · ':'')+fmtDue(nx??r.due)+((r.repeat||0)>1?'　每天重複，共 '+r.repeat+' 天':'')+'</span>'}
+function remLinks(d){const r=REMMAP.get(d);if(!r)return '';
+ return remBadge(r)+(r.done?'':'<span class="lnk" data-a="remdone" data-d="'+d+'" role="button" title="完成" aria-label="完成">'+ico('check')+'</span>')}
+list.addEventListener('click',ev=>{
+ const a=ev.target.closest('[data-a]');if(!a)return;
+ if(a.dataset.a==='remdone')remDone(a.dataset.d,true);
+ else if(a.dataset.a==='viewph'&&a.tagName==='IMG')zoom({s:a.src,f:a.dataset.f,d:a.dataset.d,card:1})});
+function remDone(d,v){const r=REMMAP.get(d);if(!r)return;toast(window.LIVE_ACT?'更新中…':'更新中…畫面會短暫離開再回來');remSend(Object.assign({},r,{done:v,t:Date.now()}))}
+function editDay(d){goDay(d);startEdit(d)}
+function renderRem(){
+ remEl.innerHTML='';
+ if(!REMOK){const n=document.createElement('div');n.className='rem-note';n.textContent='請用「日誌」腳本打開日誌，才能看到提醒清單。';remEl.appendChild(n);info.textContent='提醒清單';return}
+ const all=[...REMMAP.values()],todo=all.filter(r=>!r.done).sort((a,b)=>(nextOcc(a)??a.due)-(nextOcc(b)??b.due)),done=all.filter(r=>r.done).sort((a,b)=>b.t-a.t);
+ const card=r=>{
+  const s=document.createElement('section');s.className='day';s.style.cursor='pointer';s.onclick=()=>editDay(r.date);
+  const h2=document.createElement('h2'),t=document.createElement('span');t.style.color='var(--accent)';t.textContent=dayLabel(r.date);
+  const w=document.createElement('span');w.textContent=wkOf(r.date);h2.append(t,w);s.appendChild(h2);
+  const txt=viewText(r.date,dayTextOf(r.date)||r.txt||'');if(txt){const lines=txt.split('\n'),pre=document.createElement('pre');pre.textContent=lines.slice(0,8).join('\n')+(lines.length>8?'\n…':'');s.appendChild(pre)}
+  const m=document.createElement('div');m.className='act';m.insertAdjacentHTML('beforeend',remBadge(r));
+  const x=document.createElement('span');x.className='lnk';x.innerHTML=ico(r.done?'undo':'check');x.title=r.done?'取消完成':'完成';x.setAttribute('aria-label',x.title);x.onclick=e=>{e.stopPropagation();remDone(r.date,!r.done)};m.appendChild(x);
+  s.appendChild(m);return s};
+ if(!todo.length&&!done.length){const n=document.createElement('div');n.className='rem-note';n.textContent='還沒有提醒。在任何一天按「編輯」，就能設提醒。';remEl.appendChild(n)}
+ todo.forEach(r=>remEl.appendChild(card(r)));
+ if(done.length){const t=document.createElement('div');t.className='rem-note';t.textContent='已完成';remEl.appendChild(t);done.forEach(r=>remEl.appendChild(card(r)))}
+ info.textContent='提醒清單 共 '+todo.length+' 則'+(done.length?'，已完成 '+done.length+' 則':'');
+}
+function pad2(n){return String(n).padStart(2,'0')}
+function localVal(ts){const d=new Date(ts);return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+'T'+pad2(d.getHours())+':'+pad2(d.getMinutes())}
+function atTime(daysAhead,hh,mm){const d=new Date();d.setDate(d.getDate()+daysAhead);d.setHours(hh,mm||0,0,0);return d.getTime()}
+function openRemPicker(d,init,onOk){
+ const o=document.createElement('div');o.id='pn';const box=document.createElement('div');box.className='box';o.appendChild(box);o.onclick=e=>{if(e.target===o)o.remove()};
+ const close=()=>o.remove(),h3=document.createElement('h3');h3.textContent='提醒：'+dayLabel(d);box.appendChild(h3);
+ const col=document.createElement('div');col.className='row2';box.appendChild(col);
+ let sel=init?init.due:atTime(1,8);
+ const show=document.createElement('small');
+ const dt=document.createElement('input');dt.type='datetime-local';
+ const upd=()=>{show.textContent='提醒時間：'+fmtDue(sel);dt.value=localVal(sel)};
+ const qs=document.createElement('div');qs.className='qs';
+ const opts=[];if(new Date().getHours()<17)opts.push(['今晚 6:00',atTime(0,18)]);
+ const wk='日一二三四五六'[new Date().getDay()];
+ opts.push(['明早 8:00',atTime(1,8)],['明晚 6:00',atTime(1,18)],['下星期'+wk+' 8:00',atTime(7,8)]);
+ opts.forEach(([tx,v])=>{const b=document.createElement('button');b.textContent=tx;b.onclick=()=>{sel=v;upd()};qs.appendChild(b)});
+ col.appendChild(qs);
+ col.append(dt);
+ dt.onchange=()=>{const v=new Date(dt.value).getTime();if(!isNaN(v)){sel=v;upd()}};
+ const l3=document.createElement('small');l3.textContent='連續提醒幾天（留空＝一次）';
+ const rp=document.createElement('input');rp.type='number';rp.min='2';rp.max='60';rp.placeholder='天數';rp.value=init&&init.repeat>1?init.repeat:'';col.append(l3,rp);
+ upd();
+ const ok=document.createElement('button');ok.className='ib2 pri';ok.innerHTML=ico('check');ok.title='確定';ok.setAttribute('aria-label','確定');
+ ok.onclick=()=>{const n=parseInt(rp.value);close();onOk({due:sel,repeat:n>1?Math.min(60,n):0})};
+ const cx=document.createElement('button');cx.className='ib2';cx.innerHTML=ico('x');cx.title='取消';cx.setAttribute('aria-label','取消');cx.onclick=close;
+ const ar=document.createElement('div');ar.className='qs end';ar.append(cx,ok);col.append(ar);document.body.appendChild(o);
+}
+/* ===== 文字大小與粗細（存在這部裝置，預設已放大加粗） ===== */
+const TA=[100,125,150,175],FW=[400,500,600],FLAB=['標準','大','特大','超大'],WLAB=['標準','較粗','最粗'];
+function applyFont(){const s=META.fs??1,w=META.fb??1;document.documentElement.style.webkitTextSizeAdjust=TA[s]+'%';document.documentElement.style.setProperty('--fw',FW[w]);const z=document.getElementById('fz');if(z){z.dataset.lb='文字：'+FLAB[s];z.dataset.dots='•'.repeat(s+1)}const f=document.getElementById('fw');if(f){f.dataset.lb='粗細：'+WLAB[w];f.dataset.dots='•'.repeat(w+1)}try{requestAnimationFrame(fixHang)}catch(e){}}
+applyFont();
+
+const rc=document.createElement('span');rc.className='chip';rc.textContent='提醒清單';rc.onclick=showRem;chips.appendChild(rc);
+
+/* ===== UI v2：頂部圖標列、拉下菜單、搜尋、手勢 ===== */
+const HD=document.querySelector('header'),pdb=document.getElementById('pdb'),sbtn=document.getElementById('sb'),scrim=document.getElementById('scrim');
+[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkp','download'],['rst','undo']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
+function pdOpen(){try{bannerUpdate()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
+function pdClose(){HD.classList.remove('open');document.body.classList.remove('pdo');pdb.setAttribute('aria-expanded','false')}
+function pdToggle(){HD.classList.contains('open')?pdClose():pdOpen()}
+/* 跳到某一天之後收起頂欄（往回滑一下就再出現） */
+function hdrHide(){if(q.value!=='')return;HD.classList.remove('open','srch');document.body.classList.remove('pdo');sbtn.classList.remove('on');pdb.setAttribute('aria-expanded','false');HD.classList.add('hide')}
+pdb.onclick=pdToggle;scrim.onclick=pdClose;
+function openSearch(){pdClose();HD.classList.add('srch');HD.classList.remove('hide');sbtn.classList.add('on');setTimeout(()=>q.focus(),30)}
+function closeSearch(){HD.classList.remove('srch');sbtn.classList.remove('on');q.blur();if(q.value){q.value='';q.dispatchEvent(new Event('input'))}}
+sbtn.onclick=()=>HD.classList.contains('srch')?closeSearch():openSearch();
+document.getElementById('sx').onclick=()=>{if(q.value){q.value='';q.dispatchEvent(new Event('input'));q.focus()}else closeSearch()};
+q.addEventListener('keydown',e=>{if(e.key==='Enter')q.blur()});
+document.getElementById('ly').addEventListener('click',()=>{pdClose();if(HD.classList.contains('srch')){HD.classList.remove('srch');sbtn.classList.remove('on')}});
+/* 檢視切換：日誌／照片／提醒 */
+/* ===== 假期清單（只看）：從今天起往後，英國和香港分別標記；資料範圍以 HOL 為準 ===== */
+const HOLTAG={uk:'英',hk:'港'},HOLNAME={uk:'英國',hk:'香港'};
+function holUpcoming(){const td=todayStr(),days={};
+ for(const k of HOLIDAY_SETS){const m=HOL[k]||{};for(const d in m){if(d<td)continue;const nm=m[d],c=HOLSAME[nm]||nm,a=days[d]||(days[d]=[]);let e=a.find(x=>x.c===c);if(!e){e={c,n:nm,t:[]};a.push(e)}const tg=HOLTAG[k]||k;if(!e.t.includes(tg))e.t.push(tg)}}
+ return Object.keys(days).sort().map(d=>({d,items:days[d]}))}
+function renderHol(){holEl.innerHTML='';
+ const all=holUpcoming(),now=new Date();now.setHours(0,0,0,0);
+ const lim=new Date(now.getFullYear(),now.getMonth()+holMonths,now.getDate()),limS=lim.getFullYear()+'-'+pad2(lim.getMonth()+1)+'-'+pad2(lim.getDate());
+ const shown=all.filter(x=>x.d<=limS);let cur='';
+ shown.forEach(x=>{const ym=x.d.slice(0,4)+'年'+(+x.d.slice(5,7))+'月';
+  if(ym!==cur){cur=ym;const h=document.createElement('div');h.className='hm';h.textContent=ym;holEl.appendChild(h)}
+  const left=Math.round((new Date(+x.d.slice(0,4),+x.d.slice(5,7)-1,+x.d.slice(8))-now)/864e5);
+  const r=document.createElement('div');r.className='hr';
+  const hd=document.createElement('span');hd.className='hd';hd.textContent=(+x.d.slice(8))+'日 '+wkOf(x.d);
+  const hn=document.createElement('span');hn.className='hn';
+  x.items.forEach((e,i)=>{if(i)hn.appendChild(document.createTextNode('、'));hn.appendChild(document.createTextNode(e.n));const sm=document.createElement('small');sm.textContent=e.t.join('、');hn.appendChild(sm)});
+  const hl=document.createElement('span');hl.className='hl';hl.textContent=left<=0?'今天':left===1?'明天':'還有 '+left+' 天';
+  r.append(hd,hn,hl);holEl.appendChild(r)});
+ if(!shown.length){const n=document.createElement('div');n.className='rem-note';n.textContent='這段時間沒有假期資料。';holEl.appendChild(n)}
+ if(shown.length<all.length){const b=document.createElement('button');b.className='hmore';b.textContent='顯示更多';b.onclick=()=>{holMonths+=12;renderHol()};holEl.appendChild(b)}
+ const rg=HOLIDAY_SETS.map(k=>{const ks=Object.keys(HOL[k]||{}).sort();return ks.length?(HOLNAME[k]||k)+'到 '+ks[ks.length-1].slice(0,4)+' 年底':''}).filter(Boolean).join('，');
+ const nt=document.createElement('div');nt.className='rem-note';nt.textContent='資料範圍：'+rg;holEl.appendChild(nt);
+ info.textContent='假期 共 '+shown.length+' 個'}
+function showHol(){lyHide();inPhotos=false;inRem=false;inHol=true;list.hidden=true;gal.hidden=true;remEl.hidden=true;holEl.hidden=false;[...chips.children].forEach(c=>c.classList.remove('on'));renderHol();navSync();window.scrollTo(0,0)}
+function navSync(){const m={vb1:!inPhotos&&!inRem&&!inHol,vb2:inPhotos,vb3:inRem,vb4:inHol};for(const k in m){const b=document.getElementById(k);if(b)b.classList.toggle('on',m[k])}}
+/* 提醒（頂欄）／假期（小菜單）：進去後再按一次，回到離開前看的那一天 */
+let backD='';
+function topCardDate(){try{if(!list.hidden){for(const e of list.children){if(e.id&&/^d\d{4}-\d{2}-\d{2}$/.test(e.id)&&e.getBoundingClientRect().bottom>80)return e.id.slice(1)}}}catch(x){}return ''}
+function leaveList(){if(!inRem&&!inHol&&!inPhotos)backD=topCardDate()}
+function backToList(){const d=backD;backD='';if(d&&DATA.some(x=>x[0]===d&&!x[3])){goDay(d);holdLanding(d)}else landToday()}
+document.getElementById('vb3').onclick=()=>{pdClose();if(inRem)backToList();else{leaveList();showRem()}};
+document.getElementById('vb4').onclick=()=>{pdClose();if(inHol)backToList();else{leaveList();showHol()}};
+chips.addEventListener('click',e=>{if(e.target.closest('.chip'))pdClose()});
+/* 工具列 */
+function fontCycle(){const n=((META.fs??1)+1)%TA.length;META.fs=n;saveMeta();applyFont();toast('文字大小：'+FLAB[n])}
+document.getElementById('fz').onclick=fontCycle;
+document.getElementById('fw').onclick=()=>{const n=((META.fb??1)+1)%FW.length;META.fb=n;saveMeta();applyFont();toast('字體粗細：'+WLAB[n])};
+function uiPend(pn){pdb.classList.toggle('pend',pn>0)}
+navSync();
+/* 手勢：小菜單上往上滑＝收起；Esc 也可收起 */
+(function(){let y1=null;const pm=document.getElementById('pd');
+pm.addEventListener('touchstart',e=>{y1=e.touches[0].clientY},{passive:true});
+pm.addEventListener('touchmove',e=>{if(y1===null)return;if(y1-e.touches[0].clientY>60&&pm.scrollTop<=0){y1=null;pdClose()}},{passive:true});
+addEventListener('keydown',e=>{if(e.key==='Escape'){pdClose();if(HD.classList.contains('srch'))closeSearch()}})})();
+
+render();
+initEdits();
+</script><script>
+/* 往下滑（看後面的日子）時頂欄收起；往上滑一下（回頭看）、回到最上面、搜尋中、小菜單打開時顯示。
+   一次跳超過 300px（日曆、當年今日、接月份）是程式在跳，不算手指滑動，維持目前狀態 */
+(function(){const h=document.querySelector('header'),q=document.getElementById('q');let last=window.scrollY,tick=false;
+addEventListener('scroll',()=>{if(tick)return;tick=true;requestAnimationFrame(()=>{tick=false;
+ const y=window.scrollY,d=y-last,max=document.documentElement.scrollHeight-window.innerHeight;
+ if(y<=10||document.activeElement===q||h.classList.contains('open')||h.classList.contains('srch'))h.classList.remove('hide');
+ else if(Math.abs(d)>=300){}
+ else if(y<max-2&&d>8)h.classList.add('hide');
+ else if(y<max-2&&d<-8)h.classList.remove('hide');
+ last=y})},{passive:true})})();
+</script>
+</body></html>
