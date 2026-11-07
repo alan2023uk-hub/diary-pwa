@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。提醒、整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。提醒、整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -207,12 +207,13 @@
   async function doRestore(yearStr) {   // 回傳 true＝有改動（呼叫端要把最新的修改推回頁面）
     if (!/^\d{4}$/.test(yearStr || "")) { say("還原失敗：年份不對"); return false }
     const year = +yearStr, s = getStore(), pres = await s.get("pre:" + year) || []
-    const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片（.jpg）…", value: "photos" }]
+    const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片（.jpg）…", value: "photos" }, { label: "匯入天氣資料（weather.json）…", onclick: done => pickFile(r => done({ wx: r.file })) }]
     pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + " 天", value: { pre: i } }))
     buttons.push({ label: "取消", value: null })
-    const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
+    const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片；或按「匯入天氣資料」，把 Scriptable 版 weather.json 裏已經發生的天氣補進卡片（不影響日誌內容）。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
     if (!pick) return false
     if (pick === "photos") { await doRestorePhotos(); return false }
+    if (pick.wx) { await doImportWeather(pick.wx); return false }
     let b
     try { b = pick.file ? JSON.parse(await pick.file.text()) : pres[pick.pre].body } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
     const rows = await s.get("rows") || [], edits = await s.get("edits") || [], now = Date.now()
@@ -619,6 +620,49 @@
     }).catch(e => say("天氣設定失敗：" + (e && e.message || e)))
   }
 
+  // ---------- 匯入 Scriptable 版的天氣檔（weather.json）：把已經發生的日子補進這裡 ----------
+  // 只拿 days（已發生的日子）；預報（fc）、最後所在地（last）、設定（cfg）都不拿。同一天這裡已經有「定案」的就不動（以這部裝置自己查到的為準）。
+  // 檔案只在這部裝置上讀（從「還原」視窗選取，或第一次使用時和日誌資料檔一起選），不上傳到任何地方。
+  const isWxFile = o => !!o && typeof o === "object" && !Array.isArray(o) && !!o.days && typeof o.days === "object" && !Array.isArray(o.days)   // 備份檔的 days 是一列一列的陣列，天氣檔的 days 是「日期 → 紀錄」，靠這個分開
+  const wxNum = x => (typeof x === "number" && isFinite(x)) ? x : null
+  function cleanWxRec(d, r) {   // 一天的天氣紀錄：日期不是真的日期、欄位或型別不對的丟掉（回傳 null）；留下來的只有已知的欄位
+    if (!DATERE.test(d) || ymd(noon(d)) !== d || !r || typeof r !== "object") return null
+    const lo = wxNum(r.lo), hi = wxNum(r.hi)
+    if (lo == null || hi == null) return null
+    return { p: typeof r.p === "string" ? r.p.trim().slice(0, 60) : "", lo, hi, r: r.r ? 1 : 0, s: r.s ? 1 : 0, w: r.w ? 1 : 0, rv: wxNum(r.rv) || 2, f: r.f ? 1 : 0, t: wxNum(r.t) || 0 }
+  }
+  async function importWeatherData(imp) {   // 讀這裡的天氣、併入匯入檔的 days、存回去；回傳摘要（不碰畫面）。呼叫端要用 wxTask 包起來，才不會和背景更新互相蓋掉
+    const st = await readWeather(), today = ymd(new Date()), res = { add: 0, upg: 0, keep: 0, skip: 0, from: "", to: "", st }
+    for (const [d, raw] of Object.entries(imp.days)) {
+      const r = cleanWxRec(d, raw)
+      if (!r || d > today) { res.skip++; continue }   // 未來的日子不是「已發生的天氣」，不收
+      const x = st.days[d]
+      if (!x) { st.days[d] = r; res.add++ }
+      else if (r.f && !x.f) { st.days[d] = r; res.upg++ }   // 這裡的是還沒定案的（例如今天），匯入檔的是定案的：換成定案的
+      else { res.keep++; continue }
+      if (!res.from || d < res.from) res.from = d
+      if (!res.to || d > res.to) res.to = d
+    }
+    if (res.add || res.upg) await saveWeather(st)
+    return res
+  }
+  function wxImportMsg(r) {
+    const n = r.add + r.upg
+    if (!n) return r.keep ? "這部裝置已經有這些日子的天氣，沒有新增" : "天氣檔裏沒有可用的日子"
+    return "已匯入天氣：" + n + " 天（" + r.from + " 至 " + r.to + "）" + (r.keep ? "；" + r.keep + " 天這裡已有，沒動" : "") + (r.skip ? "；" + r.skip + " 筆無法使用，略過" : "")
+  }
+  async function doImportWeather(file) {   // 「還原」視窗裏按了「匯入天氣資料」並選好檔案
+    let imp
+    try { imp = JSON.parse(await file.text()) } catch (e) { await modal("天氣檔讀取失敗", "「" + (file.name || "") + "」不是有效的 JSON。", [{ label: "好", value: 1 }]); return }
+    if (!isWxFile(imp)) { await modal("這不是天氣檔", "「" + (file.name || "") + "」裏找不到天氣資料。請選 Scriptable 版存在 iCloud 資料夾裏的 weather.json。", [{ label: "好", value: 1 }]); return }
+    say("匯入天氣中…")
+    wxTask(async () => {   // 不等它做完（可能要排在背景更新後面）：做完會自己更新畫面並顯示結果
+      const r = await importWeatherData(imp)
+      if (r.add || r.upg) pushWeather(r.st)
+      say(wxImportMsg(r), 7000)
+    }).catch(e => say("天氣匯入失敗：" + (e && e.message || e)))
+  }
+
   // ---------- 訊息：頁面 hostSend 發來的網址 ----------
   function parse(u) {   // scriptable:///run?scriptName=日誌&k=v&… → { k: v }（編碼方式由頁面的 hostURL 決定，這裏只負責解開）
     const p = {}, q = String(u).split("?")[1] || ""
@@ -690,10 +734,11 @@
     root.document.open(); root.document.write(html); root.document.close()
   }
   async function importFiles(files) {   // 讀 dataXXXX.json（可一次選好幾個）；回傳摘要
-    const s = getStore(), found = []
+    const s = getStore(), found = [], wxs = []
     for (const f of files) {
       let list
       try { list = JSON.parse(await f.text()) } catch (e) { throw new Error("「" + f.name + "」不是有效的 JSON") }
+      if (isWxFile(list)) { wxs.push(list); continue }   // Scriptable 版的天氣檔（weather.json）：日誌資料之外另外收
       if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔也可以直接當資料來源（例如搬到新手機）
         list = list.days.filter(x => x && typeof x.text === "string").map(x => [x.date, "", x.text]).concat(list.pre ? [[list.year + "-00-00", "", list.pre, true]] : [])
       }
@@ -705,7 +750,9 @@
     const rows = mergeRows(await s.get("rows") || [], found)
     await s.set("rows", rows)
     const days = rows.filter(r => !r[3]).length, years = [...new Set(rows.map(r => r[0].slice(0, 4)))].sort()
-    return { days, years }
+    let wx = 0
+    for (const imp of wxs) { const r = await wxTask(() => importWeatherData(imp)); wx += r.add + r.upg }
+    return { days, years, wx }
   }
   function showImport(el) {
     el.innerHTML = '<h1>生活日誌</h1><p>第一次使用：請選取日誌資料檔（<code>data2025.json</code>、<code>data2026.json</code> …，或之前備份的 <code>backup_…json</code>，可以一次選好幾個）。資料只會存在這部裝置的瀏覽器裏，不會上傳到任何地方。</p>' +
@@ -715,7 +762,7 @@
       msg.className = ""; msg.textContent = "匯入中…"
       try {
         const r = await importFiles([...e.target.files])
-        msg.textContent = "已匯入 " + r.days + " 天（" + r.years.join("、") + " 年）"; go.hidden = false
+        msg.textContent = (r.days ? "已匯入 " + r.days + " 天（" + r.years.join("、") + " 年）" : "還沒有日誌資料，請再選取日誌資料檔") + (r.wx ? (r.days ? "；" : "") + "天氣 " + r.wx + " 天" : ""); go.hidden = !r.days
       } catch (err) { msg.className = "err"; msg.textContent = String(err.message || err) }
     }
     go.onclick = () => launch().catch(err => { msg.className = "err"; msg.textContent = String(err.message || err) })
@@ -730,7 +777,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, startWeather, weatherForPage, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, startWeather, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
