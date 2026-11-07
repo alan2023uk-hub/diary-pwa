@@ -3,7 +3,8 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（備份檔格式和 Scriptable 版相同，兩邊可以互相使用）。照片、提醒、天氣還沒開放（會在頁面上提示）。 */
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（備份檔格式和 Scriptable 版相同，兩邊可以互相使用）、卡片照片（加入、顯示、刪除、換日期）。提醒、天氣、整年照片頁還沒開放（會在頁面上提示）。
+   注意：照片存在這部裝置的瀏覽器裏，備份檔只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -65,8 +66,8 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_BK=true;window.LIVE_RS=true;window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)}</script>'
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};document.addEventListener("DOMContentLoaded",function(){PwaHost.loadCardPhotos()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
@@ -207,6 +208,97 @@
     return true
   }
 
+  // ---------- 卡片照片：縮小後存在這部裝置（IndexedDB），檔名規則和 Scriptable 版一樣：「日期_時間_序號.jpg」----------
+  const IMG_W = 450, Q_STEPS = [0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1], NOSRC_BPP = 0.25   // 和 Scriptable 版相同：最大寬度、JPEG 品質由高到低、沒有原檔時的容量上限（每像素位元組）
+  const okName = n => /^\d{4}(-\d{2}-\d{2})?_[\w.-]+\.jpg$/.test(n || "")
+  const dateOf = n => /^\d{4}-\d{2}-\d{2}_/.test(n || "") ? n.slice(0, 10) : ""   // 檔名以日期開頭＝屬於那一天的卡片；以年份開頭＝只屬於那一年
+  const photoUrls = new Map()   // 檔名 → blob 網址（顯示用，不佔太多記憶體）
+  async function photoIndex() { return await getStore().get("photoIndex") || [] }
+  const namesOf = (idx, d) => idx.filter(x => dateOf(x.f) === d).map(x => x.f).sort()
+  async function urlFor(f) {
+    if (photoUrls.has(f)) return photoUrls.get(f)
+    const blob = await getStore().get("photo:" + f)
+    if (!blob) return ""
+    const u = root.URL.createObjectURL(blob); photoUrls.set(f, u); return u
+  }
+  async function cardMap(dates) {   // 日期 → [{f, s}]：頁面更新卡片照片用的格式
+    const idx = await photoIndex(), map = {}
+    for (const d of dates) map[d] = await Promise.all(namesOf(idx, d).map(async f => ({ f, s: await urlFor(f) })))
+    return map
+  }
+  function pushPhotos(map, msg) { if (typeof root.__photosUpdate === "function") root.__photosUpdate(map, msg) }
+  async function loadCardPhotos() {   // 頁面載入後，把所有卡片照片補上去
+    try {
+      const idx = await photoIndex(), dates = [...new Set(idx.map(x => dateOf(x.f)).filter(Boolean))]
+      if (dates.length) pushPhotos(await cardMap(dates), "")
+    } catch (e) { say("載入照片失敗：" + (e && e.message || e)) }
+  }
+  async function encodePhoto(file) {   // 縮到最大寬度 IMG_W，JPEG 品質由高往低試，直到不超過原檔大小（和 Scriptable 版同一套規則）
+    const url = root.URL.createObjectURL(file)
+    try {
+      const img = new root.Image(); img.src = url; await img.decode()
+      const iw = img.naturalWidth, ih = img.naturalHeight
+      if (!iw || !ih) throw new Error("讀不到圖片大小")
+      const small = iw <= IMG_W + 8, w = Math.min(IMG_W, iw), h = Math.round(ih * w / iw)
+      const isJpeg = /jpe?g$/i.test(file.name) || file.type === "image/jpeg"
+      const budget = isJpeg ? file.size : w * h * NOSRC_BPP
+      const c = root.document.createElement("canvas"); c.width = w; c.height = h
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h)
+      let blob = null
+      for (const q of Q_STEPS) { blob = await new Promise(r => c.toBlob(r, "image/jpeg", q)); if (blob && blob.size <= budget) break }
+      if (!blob) throw new Error("壓縮失敗")
+      if (isJpeg && blob.size > file.size && small) blob = file.slice(0, file.size, "image/jpeg")   // 壓縮後仍比原檔大，而且原圖本來就夠小 → 直接用原檔
+      return blob
+    } finally { root.URL.revokeObjectURL(url) }
+  }
+  function pickImages(done) {   // 在按鈕被按下的當下呼叫（手機：相片圖庫／拍照／檔案）
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.hidden = true
+    inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  async function doAddPhotos(date) {
+    if (!DATERE.test(date || "")) { say("加入照片失敗：日期不對"); return }
+    const pick = await modal("加入照片到 " + date, "選取一張或好幾張相片，會縮小後存在這部裝置。", [{ label: "選取相片…", kind: "pri", onclick: pickImages }, { label: "取消", value: null }])
+    if (!pick) return
+    const s = getStore(); let idx = await photoIndex(), ok = 0, bad = 0, i = 0
+    say("處理 " + pick.files.length + " 張照片…")
+    for (const f of pick.files) {
+      try {
+        const blob = await encodePhoto(f)
+        let name = date + "_" + Date.now() + "_" + (i++) + ".jpg"
+        while (idx.some(x => x.f === name)) name = date + "_" + Date.now() + "_" + (i++) + ".jpg"
+        await s.set("photo:" + name, blob)
+        idx = [...idx, { f: name, size: blob.size, created: Date.now() }]
+        await s.set("photoIndex", idx); ok++
+      } catch (e) { bad++ }
+    }
+    pushPhotos(await cardMap([date]), ok ? "已加入 " + ok + " 張照片" + (bad ? "，有 " + bad + " 張讀不了" : "") : "")
+    if (!ok) say(bad ? "這 " + bad + " 張照片讀不了（可能不是常見的圖片格式）" : "沒有加入任何照片")
+  }
+  async function doDelPhoto(name) {
+    if (!okName(name)) { say("刪除失敗：檔名不對"); return }
+    const s = getStore(), idx = await photoIndex()
+    await s.set("photoIndex", idx.filter(x => x.f !== name)); await s.del("photo:" + name)
+    if (photoUrls.has(name)) { root.URL.revokeObjectURL(photoUrls.get(name)); photoUrls.delete(name) }
+    const d = dateOf(name)
+    pushPhotos(d ? await cardMap([d]) : {}, "已刪除")
+  }
+  async function doMovePhoto(name, to) {   // to＝年份（變成只屬於那一年）或日期（綁到那一天）
+    if (!okName(name) || !/^(\d{4}|\d{4}-\d{2}-\d{2})$/.test(to || "")) { say("移動失敗：參數不對"); return }
+    const s = getStore(), idx = await photoIndex(), nn = to + name.replace(/^\d{4}(-\d{2}-\d{2})?/, "")
+    if (nn !== name) {
+      if (idx.some(x => x.f === nn)) { say("移動失敗：那裏已經有同名的照片"); return }
+      const blob = await s.get("photo:" + name)
+      if (!blob) { say("移動失敗：找不到這張照片"); return }
+      await s.set("photo:" + nn, blob)
+      await s.set("photoIndex", idx.map(x => x.f === name ? { ...x, f: nn } : x)); await s.del("photo:" + name)
+      if (photoUrls.has(name)) { photoUrls.set(nn, photoUrls.get(name)); photoUrls.delete(name) }
+    }
+    const dates = [...new Set([dateOf(name), dateOf(nn)].filter(Boolean))]
+    pushPhotos(await cardMap(dates), "已更新")
+  }
+
   // ---------- 訊息：頁面 hostSend 發來的網址 ----------
   function parse(u) {   // scriptable:///run?scriptName=日誌&k=v&… → { k: v }（編碼方式由頁面的 hostURL 決定，這裏只負責解開）
     const p = {}, q = String(u).split("?")[1] || ""
@@ -217,11 +309,14 @@
     }
     return p
   }
-  const UNSUPPORTED = { addphoto: "照片", delphoto: "照片", movephoto: "照片", loadphotos: "照片", remsave: "提醒", wxcfg: "天氣設定" }
+  const UNSUPPORTED = { loadphotos: "整年照片頁", remsave: "提醒", wxcfg: "天氣設定" }
   function actionOf(p) {   // 這個訊息要做什麼：同步（沒有任何動作參數）、打開連結、備份、還原，或還沒開放的動作名
     if (p.openurl) return "open"
     if (p.backup !== undefined) return "backup"
     if (p.restore !== undefined) return "restore"
+    if (p.addphoto) return "addphoto"
+    if (p.delphoto) return "delphoto"
+    if (p.movephoto) return "movephoto"
     for (const k of Object.keys(UNSUPPORTED)) if (p[k] !== undefined) return k
     return "sync"
   }
@@ -247,13 +342,17 @@
     const p = parse(u)
     if (p.scriptName !== "日誌") return
     const merged = (p.data || p.via === "clip") ? await mergeIncoming(p) : false
+    if (merged) await pushCloud()   // 頁面附上的待同步修改先存好、先推回頁面（後面的動作可能要等使用者操作很久）
     const act = actionOf(p)
     let restored = false
     if (act === "open") openUrl(p.openurl)
     else if (act === "backup") await doBackup(p.backup)
     else if (act === "restore") restored = await doRestore(p.restore)
+    else if (act === "addphoto") await doAddPhotos(p.addphoto)
+    else if (act === "delphoto") await doDelPhoto(p.delphoto)
+    else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
-    if (merged || restored) await pushCloud()
+    if (restored) await pushCloud()
   }
   let queue = Promise.resolve()   // 一個一個處理，免得連按兩下時互相蓋掉
   function handle(u) { queue = queue.then(() => run(u)).catch(e => say("出錯了：" + (e && e.message || e))); return queue }
@@ -307,7 +406,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, loadCardPhotos, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
