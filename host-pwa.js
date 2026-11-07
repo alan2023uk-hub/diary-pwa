@@ -438,10 +438,12 @@
     fillDays: 14,       // 漏掉的日子最多往回補幾天
     minGapMin: 20,      // 同一天內，離上次更新不到這麼多分鐘就不再聯網
     netMs: 8000,        // 定位、查天氣、查地名，每一步最多等多久（毫秒）
-    alias: {},          // 地名改寫，例如 { "Greater London": "倫敦" }
-    bigCities: ["london", "倫敦", "伦敦", "hong kong", "香港", "guangzhou", "廣州", "广州", "shenzhen", "深圳", "macau", "澳門", "澳门"]   // 這些城市（以及所有以「市」結尾的中文城市）改用更細的「區」；其他地方用「城鎮」
+    alias: {},          // 地名改寫，例如 { "New Malden": "新莫爾登" }
+    debugPlace: false,  // 改成 true：每次查地名時，在畫面上顯示反查回來的原始地址（欄位）和選出的地名，方便檢查為什麼選了這個名字
+    bigCities: ["greater london", "london", "倫敦", "伦敦", "hong kong", "香港", "guangzhou", "廣州", "广州", "shenzhen", "深圳", "macau", "澳門", "澳门"]   // 這些城市（以及所有以「市」結尾的中文城市）改用更細的「區」；其他地方用「城鎮」
   }
   const w2 = n => Math.round(n * 100) / 100
+  const NAME_V = 2   // 地名挑選規則的版本；改了規則就把這個數字加一，舊規則存下的地名會重新查一次
   const ymd = d => d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate())
   const noon = s => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8), 12)
   const shiftDay = (s, n) => { const d = noon(s); d.setDate(d.getDate() + n); return ymd(d) }
@@ -475,20 +477,27 @@
     })
   }
   // 地名：反查地址，取「最細」的一層——大城市（倫敦、香港、廣州…）用「區」（尖沙咀、荔灣區），其他用「城鎮」（New Malden）
+  // 不指定 zoom（用預設的最細一級）才會拿到完整的一串（suburb、town、borough、city…）；指定太粗，只會回傳到「郡／大倫敦」一級。
+  // 只送出約 100 米精度的位置（小數 3 位）；地名只要到區、城鎮，不需要更準。
   async function placeName(lat, lon) {
-    const zh = inZh(lat, lon)
+    const zh = inZh(lat, lon), w3 = n => Math.round(n * 1000) / 1000
     let a = null
     try {
-      const j = await fetchJson("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=14&lat=" + lat + "&lon=" + lon + "&accept-language=" + (zh ? "zh-HK,zh" : "en-GB,en"))
+      const j = await fetchJson("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=" + w3(lat) + "&lon=" + w3(lon) + "&accept-language=" + (zh ? "zh-HK,zh" : "en-GB,en"))
       a = j && j.address
     } catch (e) {}
     if (!a) return ""
     const t = x => String(x || "").trim()
-    const loc = t(a.city || a.town || a.village || a.municipality)
-    const sub = t(a.suburb || a.city_district || a.borough || a.district || a.quarter || a.neighbourhood)
-    const wide = t(a.county || a.state_district || a.state || a.region)
+    const city = t(a.city), town = t(a.town || a.village || a.municipality)
+    const loc = city || town                                                                              // 城市／城鎮
+    const s1 = t(a.suburb || a.hamlet)                                                                     // 最細的一層（尖沙咀、New Malden）
+    const s2 = t(a.city_district || a.borough || a.district || a.quarter || a.neighbourhood)               // 行政區之類，比較粗
+    const sub = s1 || s2
+    const wide = t(a.county || a.state_district || a.state || a.region)                                    // 郡、州：只有其他都沒有時才用
     const big = !!loc && (/市$/.test(loc) || W.bigCities.includes(loc.replace(/市$/, "").toLowerCase()))
-    const n = (big && sub) ? sub : (loc || sub || wide)
+    const fine = s1 || (city && town && town !== city ? town : "") || s2   // 大城市裏的順序：最細一層 → 城鎮名（例如倫敦的 New Malden）→ 行政區；城鎮名比「Royal Borough of …」更貼近 iOS 的結果
+    const n = (big && fine) ? fine : (loc || sub || wide)
+    if (W.debugPlace) say("地名查詢：" + JSON.stringify(a) + " → " + n, 15000)
     return W.alias[n] || n
   }
   async function fetchDaily(lat, lon, past) {
@@ -534,16 +543,21 @@
     say("天氣需要「位置」權限：請在瀏覽器的網站設定裏允許位置，之後打開就會顯示天氣", 7000)
   }
   async function weatherUpdate(st) {   // 回傳 true＝有查到新資料並已存好；false＝什麼都沒改（太近才更新過、沒定位、沒網路…）
-    const today = ymd(new Date())
-    if (st.u && Date.now() - st.u < W.minGapMin * 60000 && st.last && st.last.d === today && st.days[today] && st.fc) return false
+    const today = ymd(new Date()), migrate = st.nv !== NAME_V   // migrate＝存下來的地名是舊規則查的：這一次一定重新查，不沿用
+    if (!migrate && st.u && Date.now() - st.u < W.minGapMin * 60000 && st.last && st.last.d === today && st.days[today] && st.fc) return false
     const pos = await getPosition()
     if (pos === "denied") { await wxDeniedHint(); return false }
     if (!pos) return false
     const cur = { lat: w2(pos.latitude), lon: w2(pos.longitude) }
     const last = st.last, same = !!last && distKm(last, cur) <= W.sameKm
-    let name
-    if (last && last.name && distKm(last, cur) < W.stickyKm) name = last.name
-    else { name = await placeName(pos.latitude, pos.longitude); if (!name && same) name = last.name || "" }
+    let name, got = false
+    if (!migrate && last && last.name && distKm(last, cur) < W.stickyKm) name = last.name
+    else { name = await placeName(pos.latitude, pos.longitude); got = !!name; if (!name && same) name = last.name || "" }
+    if (migrate && got) {   // 新查到地名了：把舊規則存下的地名（只限「還在同一個地方」的日子）換成新的，並記下已經換過
+      const old = same ? (last.name || "") : ""
+      if (old && old !== name) for (const r of Object.values(st.days).concat(Object.values(st.fc || {}))) if (r.p === old) r.p = name
+      st.nv = NAME_V
+    }
     // 要一起查的過去日子：還沒定案的、以及中間漏掉沒打開日誌的日子（只在「還在同一個地方」時才補）
     const need = new Set()
     if (same) {
