@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（備份檔格式和 Scriptable 版相同，兩邊可以互相使用）、卡片照片（加入、顯示、刪除、換日期）。提醒、天氣、整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。提醒、天氣、整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -79,9 +79,18 @@
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
-  // ---------- 備份與還原：備份檔格式和 Scriptable 版完全一樣（{ v:1, kind:"diary-backup", year, created, pre, days:[{date,text}], reminders:[] }）----------
+  // ---------- 備份與還原 ----------
+  // 內容的格式和 Scriptable 版一樣（v、year、created、pre、days:[{date,text}]、reminders），但「檔名」和「類型（kind）」刻意不同，免得兩邊的檔案混在一起：
+  //   網頁版的備份：diary-pwa_backup_年_日期_時間_N d.json，kind＝"diary-pwa-backup"
+  //   Scriptable 的備份：backup_年_日期_時間_N d_N r.json，kind＝"diary-backup"
+  //   網頁版備份出來的照片：diary-pwa_＋原檔名.jpg（Scriptable 的照片資料夾只認「日期_…jpg」開頭的檔名，所以不會把它當成自己的照片）
+  // 這樣就算網頁版的備份檔或照片不小心存進 Scriptable 的資料夾（diary_backups、diary_photos），Scriptable 也不會列出、不會認得它們。
+  // 網頁版這邊兩種備份都認得（可以還原、匯入 Scriptable 的備份），照片則有沒有 diary-pwa_ 前綴都認。
+  const BK_KIND = "diary-pwa-backup", SCRIPTABLE_KIND = "diary-backup", PWA_PHOTO_PREFIX = "diary-pwa_"
+  const okKind = k => k === BK_KIND || k === SCRIPTABLE_KIND
   const p2 = n => String(n).padStart(2, "0")
   const stampOf = t => t.getFullYear() + p2(t.getMonth() + 1) + p2(t.getDate()) + "_" + p2(t.getHours()) + p2(t.getMinutes()) + p2(t.getSeconds())
+  const fmtShort = ms => { const t = new Date(ms); return p2(t.getMonth() + 1) + "-" + p2(t.getDate()) + " " + p2(t.getHours()) + ":" + p2(t.getMinutes()) }   // 按鈕上用的短格式（月-日 時:分）
   const fmtTime = ms => { const t = new Date(ms); return t.getFullYear() + "-" + p2(t.getMonth() + 1) + "-" + p2(t.getDate()) + " " + p2(t.getHours()) + ":" + p2(t.getMinutes()) }
   const preKey = year => year + "-00-00", isPreKey = d => /-00-00$/.test(d)   // 前言（開頭未標日期的文字）的修改，用「年-00-00」當日期鍵
   function effectiveDays(year, rows, edits) {   // 目前這一年實際看到的日誌：原稿加上修改（和頁面的算法一樣）
@@ -95,12 +104,12 @@
   }
   function makeBackupBody(year, rows, edits, now, isPre) {
     const { days, pre } = effectiveDays(year, rows, edits)
-    const name = "backup_" + year + "_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + "_" + days.size + "d_0r.json"
-    const body = { v: 1, kind: "diary-backup", year, created: now, pre, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text })), reminders: [] }
+    const name = "diary-pwa_backup_" + year + "_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + "_" + days.size + "d.json"
+    const body = { v: 1, kind: BK_KIND, app: "pwa", year, created: now, pre, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text })), reminders: [] }
     return { name, body, days: days.size }
   }
   function planRestore(year, rows, edits, b, now) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法，只是這個版本沒有提醒
-    if (!b || b.kind !== "diary-backup" || !Array.isArray(b.days)) return { ok: false, error: "這不是日誌的備份檔" }
+    if (!b || !okKind(b.kind) || !Array.isArray(b.days)) return { ok: false, error: "這不是日誌的備份檔" }
     if (b.year !== year) return { ok: false, error: "這份備份是 " + b.year + " 年的，不能還原到 " + year + " 年。請先切換到 " + b.year + " 年再還原。" }
     const inYear = d => DATERE.test(d || "") && d.startsWith(year + "-")
     const target = new Map(b.days.filter(x => x && inYear(x.date) && typeof x.text === "string" && x.text.trim() !== "").map(x => [x.date, x.text]))
@@ -133,7 +142,7 @@
   const CSS = ".hu-ov{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}" +
     ".hu-box{width:min(26rem,100%);max-height:100%;overflow:auto;box-sizing:border-box;background:#fff;color:#222;border-radius:14px;padding:18px 18px 12px;font:15px/1.6 -apple-system,'PingFang TC','Noto Sans TC',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.3)}" +
     ".hu-box h3{margin:0 0 .5rem;font-size:1.05rem}.hu-box p{margin:0 0 .9rem;white-space:pre-wrap;color:#555}" +
-    ".hu-btn{display:block;width:100%;margin:.4rem 0;padding:.7rem;border:1px solid #2f5d8a;border-radius:10px;background:none;color:#2f5d8a;font:inherit}.hu-btn.pri{background:#2f5d8a;color:#fff}.hu-btn.dng{border-color:#b3261e;color:#b3261e}" +
+    ".hu-btn{display:block;width:100%;margin:.4rem 0;padding:.7rem;border:1px solid #2f5d8a;border-radius:10px;background:none;color:#2f5d8a;font:inherit;line-height:1.4;white-space:normal;overflow-wrap:anywhere}.hu-btn.pri{background:#2f5d8a;color:#fff}.hu-btn.dng{border-color:#b3261e;color:#b3261e}" +
     "@media (prefers-color-scheme:dark){.hu-box{background:#222;color:#eee}.hu-box p{color:#aaa}.hu-btn{border-color:#7fb0e0;color:#7fb0e0}.hu-btn.pri{background:#7fb0e0;color:#111}.hu-btn.dng{border-color:#ff8a80;color:#ff8a80}}"
   // 按鈕：{ label, kind, value }＝按了就回傳 value；或 { label, kind, onclick(done) }＝按了當場執行（選檔案、分享都要在按下的當下呼叫）
   function modal(title, message, buttons) {
@@ -183,6 +192,12 @@
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return false }
     const year = +yearStr, s = getStore()
     const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false)
+    if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
+      const go = await modal("備份前先看一下", "備份檔和備份的照片，會存到你接著選的位置。\n\n建議另外建一個專用資料夾（例如「日誌網頁版備份」），不要存進 Scriptable 的資料夾（diary_backups、diary_photos），免得兩邊的檔案混在一起。\n\n就算不小心存進去，Scriptable 也不會認得網頁版的備份檔和照片。",
+        [{ label: "繼續備份", kind: "pri", value: true }, { label: "取消", value: false }])
+      if (!go) { say("已取消備份"); return false }
+      await s.set("hint:backup", 1)
+    }
     const how = await deliverFile(r.name, JSON.stringify(r.body))
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份 " + year + " 年：" + r.days + " 天" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
     const saved = how === "shared" || how === "downloaded"
@@ -193,7 +208,7 @@
     if (!/^\d{4}$/.test(yearStr || "")) { say("還原失敗：年份不對"); return false }
     const year = +yearStr, s = getStore(), pres = await s.get("pre:" + year) || []
     const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片（.jpg）…", value: "photos" }]
-    pres.forEach((x, i) => buttons.push({ label: fmtTime(x.created) + " · " + x.body.days.length + " 天（還原前自動備份）", value: { pre: i } }))
+    pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + " 天", value: { pre: i } }))
     buttons.push({ label: "取消", value: null })
     const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
     if (!pick) return false
@@ -338,7 +353,7 @@
     const s = getStore(), out = []
     for (const f of yearPhotoNames(await photoIndex(), year)) {
       const blob = await s.get("photo:" + f)
-      if (blob) out.push(new root.File([blob], f, { type: "image/jpeg" }))
+      if (blob) out.push(new root.File([blob], PWA_PHOTO_PREFIX + f, { type: "image/jpeg" }))
     }
     return out
   }
@@ -381,22 +396,23 @@
     d.body.appendChild(inp); inp.click()
   }
   async function doRestorePhotos() {   // 把備份的 .jpg 放回來（各年份可以一次選）：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮
-    const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_….jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」，從「檔案」App 選取；從「照片」圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
+    const pick = await modal("還原照片", "選取備份的照片（檔名像 diary-pwa_2026-03-05_….jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」，從「檔案」App 選取；從「照片」圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     const s = getStore(), dates = new Set()
     let idx = await photoIndex(), ok = 0, dup = 0, skip = 0
     say("處理 " + pick.files.length + " 張照片…")
     for (const f of pick.files) {
       try {
-        if (!okName(f.name)) { skip++; continue }
-        if (idx.some(x => x.f === f.name)) { dup++; continue }
+        const nm = f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name   // 備份時加的前綴，還原時拿掉
+        if (!okName(nm)) { skip++; continue }
+        if (idx.some(x => x.f === nm)) { dup++; continue }
         const buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 2))
         if (head[0] !== 0xFF || head[1] !== 0xD8) { skip++; continue }   // 不是 JPEG
         const blob = new root.Blob([buf], { type: "image/jpeg" })
-        await s.set("photo:" + f.name, blob)
-        idx = [...idx, { f: f.name, size: blob.size, created: Date.now() }]
+        await s.set("photo:" + nm, blob)
+        idx = [...idx, { f: nm, size: blob.size, created: Date.now() }]
         await s.set("photoIndex", idx); ok++
-        if (dateOf(f.name)) dates.add(dateOf(f.name))
+        if (dateOf(nm)) dates.add(dateOf(nm))
       } catch (e) { skip++ }
     }
     const msg = "已還原 " + ok + " 張照片" + (dup ? "，略過 " + dup + " 張已有的" : "") + (skip ? "，" + skip + " 張不能用（檔名不對或不是 JPEG）" : "")
@@ -475,7 +491,7 @@
     for (const f of files) {
       let list
       try { list = JSON.parse(await f.text()) } catch (e) { throw new Error("「" + f.name + "」不是有效的 JSON") }
-      if (list && list.kind === "diary-backup" && Array.isArray(list.days)) {   // 備份檔也可以直接當資料來源（例如搬到新手機）
+      if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔也可以直接當資料來源（例如搬到新手機）
         list = list.days.filter(x => x && typeof x.text === "string").map(x => [x.date, "", x.text]).concat(list.pre ? [[list.year + "-00-00", "", list.pre, true]] : [])
       }
       if (!Array.isArray(list)) throw new Error("「" + f.name + "」的格式不對（應該是一列一列的日誌）")
