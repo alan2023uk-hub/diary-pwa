@@ -301,9 +301,10 @@
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
       try { await nav.share({ files: [file], title: name }); return "shared" } catch (e) {
         if (e && e.name === "AbortError") return "cancelled"
+        if (e && e.name !== "NotAllowedError") { download(name, text); return "downloaded" }   // 分享本身失敗（例如這部手機的分享選單收不了這種檔案）：直接改用下載，不再報失敗
         // 分享選單要在「剛按下」時才能打開；時間過了就請使用者再按一次
         return await modal("備份已準備好", name, [
-          { label: "儲存備份檔", kind: "pri", onclick: done => nav.share({ files: [file], title: name }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "cancelled" : "failed")) },
+          { label: "儲存備份檔", kind: "pri", onclick: done => nav.share({ files: [file], title: name }).then(() => done("shared"), err => { if (err && err.name === "AbortError") done("cancelled"); else { download(name, text); done("downloaded") } }) },   // 分享失敗就改用下載
           { label: "改用下載", value: "download" }, { label: "取消", value: "cancelled" }]).then(v => { if (v === "download") { download(name, text); return "downloaded" } return v })
       }
     }
