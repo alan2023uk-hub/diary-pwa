@@ -624,8 +624,8 @@
     const big = !!loc && (/市$/.test(loc) || W.bigCities.includes(loc.replace(/市$/, "").toLowerCase()))
     const fine = s1 || (city && town && town !== city ? town : "") || s2   // 大城市裏的順序：最細一層 → 城鎮名（例如倫敦的 New Malden）→ 行政區；城鎮名比「Royal Borough of …」更貼近 iOS 的結果
     const n = (big && fine) ? fine : (loc || sub || wide)
-    if (W.debugPlace) { const dd = c => Math.round(distKm({ lat, lon }, { lat: c[1], lon: c[0] }) * 1000); fetchJson("https://photon.komoot.io/reverse?lat=" + w3(lat) + "&lon=" + w3(lon) + "&radius=2&limit=15&lang=en&layer=district&layer=locality").then(j => { const l = ((j && j.features) || []).map(f => ({ n: f.properties.name, v: f.properties.osm_value, m: dd(f.geometry.coordinates) })).sort((a, b) => a.m - b.m).slice(0, 8); say("Nominatim→" + n + "\n最近的地名：" + (l.length ? l.map(x => x.n + "(" + x.v + " " + x.m + "m)").join("、") : "（沒有結果）"), 30000) }).catch(e => say("Photon 失敗：" + e, 15000)) }
-        return W.alias[n] || n
+    if (W.debugPlace) { const dd = c => Math.round(distKm({ lat, lon }, { lat: c[1], lon: c[0] }) * 1000); fetchJson("https://photon.komoot.io/reverse?lat=" + w3(lat) + "&lon=" + w3(lon) + "&radius=2&limit=15&lang=en&layer=district&layer=locality&layer=city").then(j => { const l = ((j && j.features) || []).map(f => ({ n: f.properties.name, v: f.properties.osm_value, m: dd(f.geometry.coordinates) })).sort((a, b) => a.m - b.m).slice(0, 8); say("測試版3\nNominatim→" + n + "\n最近的地名：" + (l.length ? l.map(x => x.n + "(" + x.v + " " + x.m + "m)").join("、") : "（沒有結果）"), 30000) }).catch(e => say("測試版3 Photon 失敗：" + e, 15000)) }
+    return W.alias[n] || n
   }
   async function fetchDaily(lat, lon, past) {
     const url = "https://api.open-meteo.com/v1/forecast?latitude=" + w2(lat) + "&longitude=" + w2(lon) +
