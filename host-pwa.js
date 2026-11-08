@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -108,12 +108,14 @@
   }
 
   // ---------- 備份與還原 ----------
-  // 內容的格式和 Scriptable 版一樣（v、year、created、pre、days:[{date,text}]、reminders），但「檔名」和「類型（kind）」刻意不同，免得兩邊的檔案混在一起：
+  // 內容的格式和 Scriptable 版一樣（v、year、created、pre、preT、days:[{date,text,t}]、gone:[{date,t}]、reminders、remGone）。
+  // v2（現在的格式）：每一天帶修改時間 t（0＝原稿沒改過）；刪除的日子記在 gone；提醒也帶 t，取消的提醒記在 remGone。還原時靠這些時間做「合併」。
+  // 兩邊的備份檔互通（都是日誌的備份，兩邊都認得）；檔名和類型（kind）仍然不同，只是用來分辨是哪一邊備份的：
   //   網頁版的備份：diary-pwa_backup_年_日期_時間_N d_N r.json，kind＝"diary-pwa-backup"
-  //   Scriptable 的備份：backup_年_日期_時間_N d_N r.json，kind＝"diary-backup"
+  //   Scriptable 的備份：backup_年_日期_時間_N d_N r.json，kind＝"diary-backup"（放在 iCloud 的 diary_backups 資料夾）
   //   網頁版備份出來的照片：diary-pwa_＋原檔名.jpg（Scriptable 的照片資料夾只認「日期_…jpg」開頭的檔名，所以不會把它當成自己的照片）
-  // 這樣就算網頁版的備份檔或照片不小心存進 Scriptable 的資料夾（diary_backups、diary_photos），Scriptable 也不會列出、不會認得它們。
-  // 網頁版這邊兩種備份都認得（可以還原、匯入 Scriptable 的備份），照片則有沒有 diary-pwa_ 前綴都認。
+  // 想在 Scriptable 版還原網頁版的日誌備份：把 .json 存進 iCloud 的 diary_backups 資料夾（Scriptable 版也認 diary-pwa_ 開頭的檔名）。
+  // 舊格式（v1，沒有 gone）的備份也認得：每一天的時間一律當作備份建立的時間，也不含刪除記錄。
   const BK_KIND = "diary-pwa-backup", SCRIPTABLE_KIND = "diary-backup", PWA_PHOTO_PREFIX = "diary-pwa_"
   const okKind = k => k === BK_KIND || k === SCRIPTABLE_KIND
   const p2 = n => String(n).padStart(2, "0")
@@ -132,9 +134,12 @@
   }
   function makeBackupBody(year, rows, edits, now, isPre, rems) {
     const { days, pre } = effectiveDays(year, rows, edits)
+    const tOf = new Map((edits || []).map(e => [e.date, Number(e.t) || 0]))   // 每一天最後修改的時間（沒有修改紀錄＝0＝原稿沒改過）
     const rl = [...yearRems(year, rems).values()].sort((a, b) => a.date < b.date ? -1 : 1).map(r => ({ id: r.date, date: r.date, due: r.due, repeat: r.repeat || 0, done: !!r.done, t: r.t || 0, txt: r.txt || "" }))
+    const remGone = (rems || []).filter(r => validRem(r) && r.del && r.date.startsWith(year + "-")).map(r => ({ date: r.date, t: r.t || 0 }))   // 取消的提醒：合併時讓另一邊也取消
+    const gone = (edits || []).filter(e => e && typeof e.date === "string" && e.date.startsWith(year + "-") && !isPreKey(e.date) && !days.has(e.date)).map(e => ({ date: e.date, t: Number(e.t) || 0 }))   // 已刪除（或清空）的日子
     const name = "diary-pwa_backup_" + year + "_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + "_" + days.size + "d_" + rl.length + "r.json"
-    const body = { v: 1, kind: BK_KIND, app: "pwa", year, created: now, pre, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text })), reminders: rl }
+    const body = { v: 2, kind: BK_KIND, app: "pwa", year, created: now, pre, preT: tOf.get(preKey(year)) || 0, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text, t: tOf.get(date) || 0 })), gone, reminders: rl, remGone }
     return { name, body, days: days.size, rems: rl.length }
   }
   function planRestore(year, rows, edits, b, now, rems) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法（日誌＋提醒）
@@ -185,6 +190,79 @@
     }
     return out
   }
+
+  // ---- 備份格式 v2 與「合併還原」（網頁版和 Scriptable 版用同一套規則）----
+  // 備份檔：每一天帶修改時間 t（0＝原稿沒改過）；已刪除的日子記在 gone（刪除時間）；提醒也帶 t，取消的提醒記在 remGone。
+  // 舊格式的備份（沒有 gone）：每一天的時間一律當作備份建立的時間，也沒有「已刪除」的資料（所以合併時不會刪掉任何日子）。
+  function readBackupBody(b, year) {
+    const inYear = d => DATERE.test(d || "") && String(d).startsWith(year + "-")
+    const v2 = Array.isArray(b.gone), created = Number(b.created) || 0
+    const days = new Map(), gone = new Map(), rems = new Map(), remGone = new Map()
+    for (const x of b.days || []) if (x && inYear(x.date) && typeof x.text === "string" && x.text.trim() !== "") days.set(x.date, { text: x.text, t: v2 ? (Number(x.t) || 0) : created })
+    if (v2) for (const x of b.gone) if (x && inYear(x.date) && !days.has(x.date)) gone.set(x.date, Number(x.t) || 0)
+    const remTouch = Array.isArray(b.reminders)
+    if (remTouch) for (const r of b.reminders) if (r && inYear(r.date) && r.due) rems.set(r.date, { date: r.date, due: Number(r.due), repeat: Math.max(0, Math.min(60, Math.round(Number(r.repeat) || 0))), done: !!r.done, t: Number(r.t) || created })
+    if (Array.isArray(b.remGone)) for (const x of b.remGone) if (x && inYear(x.date)) remGone.set(x.date, Number(x.t) || 0)
+    return { v2, created, days, gone, rems, remGone, remTouch, pre: typeof b.pre === "string" ? b.pre : null, preT: v2 ? (Number(b.preT) || 0) : created }
+  }
+  // 合併：逐日比修改時間，備份「嚴格較新」才蓋掉本機；一樣新或本機較新就留本機。只在一邊有的日子都保留（備份裏沒出現的日子完全不動）。
+  // 備份記了刪除、而且比本機的修改新，才刪；本機沒有這一天、也沒有刪除紀錄，就直接加進來。保留備份原本的時間 t，不蓋成「現在」。
+  // eff＝effectiveDays() 的結果；edits＝修改列；remItems＝提醒列（含取消的紀錄）；回傳新的 edits／提醒（還沒寫入）和摘要。
+  function planMerge(year, eff, edits, remItems, nb, now) {
+    const { raw, rawPre, pre: curPre, days: cur } = eff
+    const by = new Map((edits || []).map(r => [r.date, r]))
+    const lt = d => { const e = by.get(d); return e ? (Number(e.t) || 0) : 0 }   // 本機這一天最後修改的時間
+    const curRem = new Map((remItems || []).map(r => [r.date, r]))
+    const final = new Map(cur), deletedNow = new Set()
+    let add = 0, chg = 0, del = 0, keep = 0
+    for (const [d, x] of nb.days) {
+      if (cur.get(d) === x.text) continue
+      const local = cur.has(d)
+      if ((local || by.has(d)) && !(x.t > lt(d))) { keep++; continue }
+      const t = x.t || now
+      if (raw.has(d) && raw.get(d) === x.text) by.set(d, { date: d, del: true, t })   // 回到原稿＝清掉修改
+      else by.set(d, { date: d, text: x.text, orig: raw.has(d) ? raw.get(d) : null, isNew: !raw.has(d), t })
+      final.set(d, x.text)
+      if (local) chg++; else add++
+    }
+    for (const [d, t] of nb.gone) {
+      if (!cur.has(d)) continue
+      if (!(t > lt(d))) { keep++; continue }
+      const r = curRem.get(d)
+      if (raw.has(d)) {
+        const rec = { date: d, deleted: true, text: cur.get(d), orig: raw.get(d), isNew: false, t }
+        if (r && !r.del && r.due) rec.rem = { due: r.due, repeat: r.repeat || 0, done: !!r.done }   // 在「已刪除的日子」還原時，提醒一起回來
+        by.set(d, rec)
+      } else by.set(d, { date: d, del: true, t })
+      final.delete(d); deletedNow.add(d); del++
+    }
+    let preChange = false
+    if (nb.pre !== null && nb.pre !== curPre && nb.preT > lt(preKey(year))) {
+      const t = nb.preT || now
+      if (nb.pre === rawPre) by.set(preKey(year), { date: preKey(year), del: true, t })
+      else by.set(preKey(year), { date: preKey(year), text: nb.pre, orig: rawPre, pre: true, t })
+      preChange = true
+    }
+    const remBy = new Map((remItems || []).map(r => [r.date, r])), remChanged = []
+    const setRem = rec => { remBy.set(rec.date, rec); remChanged.push(rec) }
+    if (nb.remTouch) {
+      for (const [d, br] of nb.rems) {
+        if (!final.has(d)) continue   // 這一天合併後不存在，提醒也不收
+        const c = curRem.get(d)
+        if (c && !c.del && sameRem(c, br)) continue
+        if (c && !(br.t > (Number(c.t) || 0))) continue
+        setRem({ id: d, date: d, due: br.due, repeat: br.repeat, done: br.done, t: br.t || now, txt: final.get(d) })
+      }
+      for (const [d, t] of nb.remGone) {
+        const c = curRem.get(d)
+        if (c && !c.del && t > (Number(c.t) || 0)) setRem({ id: d, date: d, del: true, t })
+      }
+    }
+    for (const d of deletedNow) { const c = remBy.get(d); if (c && !c.del) setRem({ id: d, date: d, del: true, t: now }) }   // 這次合併刪掉的日子，提醒一起取消
+    const remCount = [...remBy.values()].filter(r => !r.del && r.due && String(r.date).startsWith(year + "-")).length
+    return { add, chg, del, keep, preChange, remChanged, remDiff: remChanged.length, remCount, days: final.size, same: !add && !chg && !del && !preChange && !remChanged.length, edits: [...by.values()], rems: [...remBy.values()] }
+  }
+  const mergeSummary = mp => [mp.add && "新增 " + mp.add + " 天", mp.chg && "更新 " + mp.chg + " 天", mp.del && "刪除 " + mp.del + " 天", mp.preChange && "前言更新", mp.remDiff && "提醒 " + mp.remDiff + " 則有變動", mp.keep && "保留本機較新的 " + mp.keep + " 天"].filter(Boolean).join("、")
 
   // ---------- 對話框（備份、還原要用）----------
   const CSS = ".hu-ov{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}" +
@@ -241,7 +319,7 @@
     const year = +yearStr, s = getStore()
     const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems())
     if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
-      const go = await modal("備份前先看一下", "備份檔和備份的照片，會存到你接著選的位置。\n\n建議另外建一個專用資料夾（例如「日誌網頁版備份」），不要存進 Scriptable 的資料夾（diary_backups、diary_photos），免得兩邊的檔案混在一起。\n\n就算不小心存進去，Scriptable 也不會認得網頁版的備份檔和照片。",
+      const go = await modal("備份前先看一下", "備份檔和備份的照片，會存到你接著選的位置。\n\n日誌備份（.json）兩邊通用：想在 Scriptable 版還原，就把它存進 iCloud 的 diary_backups 資料夾。\n\n照片（.jpg）Scriptable 版不認得，建議另外建一個專用資料夾（例如「日誌網頁版備份」），不要存進 diary_photos。",
         [{ label: "繼續備份", kind: "pri", value: true }, { label: "取消", value: false }])
       if (!go) { say("已取消備份"); return false }
       await s.set("hint:backup", 1)
@@ -273,10 +351,22 @@
     if (plan.chg) parts.push("改回備份內容 " + plan.chg + " 天")
     if (plan.del) parts.push("刪除 " + plan.del + " 天")
     if (plan.preChange) parts.push("前言改回備份內容")
-    const ok = await modal("確定還原 " + year + " 年？", "備份時間：" + fmtTime(b.created || now) + "\n日誌：目前 " + plan.cur.size + " 天 → " + plan.target.size + " 天（" + parts.join("、") + "）" +
+    const nb = readBackupBody(b, year)
+    const mp = planMerge(year, effectiveDays(year, rows, edits), edits, rems, nb, now), ms = mergeSummary(mp)
+    const choice = await modal("還原 " + year + " 年？", "備份時間：" + fmtTime(b.created || now) + (b.kind === BK_KIND ? "（網頁版）" : "") + (nb.v2 ? "" : "\n（舊格式備份：每一天的時間以備份建立時間計，也不含刪除記錄）") +
+      "\n\n【合併】依每一天的修改時間，新的留下；只在一邊有的日子都保留\n日誌：目前 " + plan.cur.size + " 天 → " + mp.days + " 天" + (ms ? "（" + ms + "）" : "（沒有變動）") +
+      "\n\n【完全還原】整年改成備份的樣子\n日誌：目前 " + plan.cur.size + " 天 → " + plan.target.size + " 天" + (parts.length ? "（" + parts.join("、") + "）" : "（內容相同）") +
       (plan.remTouch ? "\n提醒：目前 " + plan.remCur + " 則 → " + plan.remTarget + " 則" + (plan.remDiff ? "（" + plan.remDiff + " 則有變動）" : "") : "") + "\n\n還原前會先自動備份目前的內容（存在這部裝置），之後可以再還原回來。",
-      [{ label: "還原", kind: "dng", value: true }, { label: "取消", value: false }])
-    if (!ok) return false
+      [{ label: "合併（新的留下）", kind: "pri", value: "merge" }, { label: "完全還原（以備份為準）", kind: "dng", value: "full" }, { label: "取消", value: null }])
+    if (!choice) return false
+    if (choice === "merge") {
+      if (mp.same) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); return false }
+      await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 合併前先存一份
+      await s.set("edits", mp.edits)
+      if (mp.remDiff) { await saveRems(mp.rems); await markFired(mp.remChanged, now) }   // 備份裏已經過去的提醒時間，不要合併完馬上又響
+      say("已合併 " + year + " 年：日誌 " + mp.days + " 天、提醒 " + mp.remCount + " 則；合併前的內容已自動備份")
+      return true
+    }
     await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 還原前先存一份
     await s.set("edits", plan.edits)
     if (plan.remTouch) { await saveRems(plan.rems); await markFired(plan.rems, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
