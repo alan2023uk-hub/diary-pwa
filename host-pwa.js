@@ -517,6 +517,7 @@
     posMs: 12000,       // 定位第一次（省電、用網路定位）最多等多久（毫秒）；Android 第一次定位常常要十幾秒
     posHighMs: 20000,   // 第一次拿不到時，改用 GPS（高精度）再試，最多等多久（毫秒）
     alias: {},          // 地名改寫，例如 { "New Malden": "新莫爾登" }
+    moves: [{ date: "2026-11-01", from: "New Malden", also: ["Merton"], to: "West Barnes", until: "2026-11-07" }],   // 搬家修正：搬家日「以前」的日子用 from（舊家地名）、「當天起」用 to（新家地名）；also＝也要改成 to 的其他錯誤地名；until＝「當天起改成 to」只作用到這一天（含），之後的日子完全以定位結果為準，真的去了舊家那一區才不會被改掉。每次讀天氣檔都會把兩邊放回正確的地名，重複執行結果不變；搬家日期不對就改 date（格式 年-月-日）
     debugPlace: false,  // 改成 true：每次查地名時，在畫面上顯示反查回來的原始地址（欄位）和選出的地名，方便檢查為什麼選了這個名字
     bigCities: ["greater london", "london", "倫敦", "伦敦", "hong kong", "香港", "guangzhou", "廣州", "广州", "shenzhen", "深圳", "macau", "澳門", "澳门"]   // 這些城市（以及所有以「市」結尾的中文城市）改用更細的「區」；其他地方用「城鎮」
   }
@@ -616,10 +617,19 @@
       rv: 2
     }
   }
+  function applyMoves(st) {   // 搬家修正：依 W.moves 把搬家日前後的地名放回正確的一邊（只改地名剛好等於 from／to 的日子，其他地方不動）
+    for (const m of W.moves || []) {
+      const fix = (cur, d) => (d >= m.date ? (d <= (m.until || "9999-12-31") && (cur === m.from || (m.also || []).includes(cur)) ? m.to : cur) : (cur === m.to ? m.from : cur))
+      for (const [d, r] of Object.entries(st.days || {})) if (r) r.p = fix(r.p, d)
+      for (const [d, r] of Object.entries(st.fc || {})) if (r) r.p = fix(r.p, d)
+      if (st.last && st.last.d && st.last.name) st.last.name = fix(st.last.name, st.last.d)
+    }
+  }
   async function readWeather() {   // 天氣資料：{ v, days（已發生的日子）, fc（未來預報）, last（最後一次所在地）, u（上次更新時間）, cfg（日誌頁設定的預報天數、酷熱溫度） }
     let st = { v: 1, days: {} }
     try { const t = await getStore().get("weather"); if (t && typeof t === "object") st = Object.assign(st, t) } catch (e) {}
     if (!st.days || typeof st.days !== "object") st.days = {}
+    applyMoves(st)
     applyWxCfg(st.cfg)   // 日誌頁設定過的數字，優先於上面的預設值
     return st
   }
@@ -643,11 +653,7 @@
     let name, got = false
     if (!migrate && last && last.name && distKm(last, cur) < W.stickyKm) name = last.name
     else { name = await placeName(pos.latitude, pos.longitude); got = !!name; if (!name && same) name = last.name || "" }
-    if (migrate && got) {   // 新查到地名了：把舊規則存下的地名（只限「還在同一個地方」的日子）換成新的，並記下已經換過
-      const old = same ? (last.name || "") : ""
-      if (old && old !== name) for (const r of Object.values(st.days).concat(Object.values(st.fc || {}))) if (r.p === old) r.p = name
-      st.nv = NAME_V
-    }
+    if (migrate && got) st.nv = NAME_V   // 只記下「已經照新規則查過」；過去日子的地名不再批次改寫（搬過家的話，舊家的日子不能跟著改）
     // 要一起查的過去日子：還沒定案的、以及中間漏掉沒打開日誌的日子（只在「還在同一個地方」時才補）
     const need = new Set()
     if (same) {
@@ -732,7 +738,7 @@
       if (!res.from || d < res.from) res.from = d
       if (!res.to || d > res.to) res.to = d
     }
-    if (res.add || res.upg) await saveWeather(st)
+    if (res.add || res.upg) { applyMoves(st); await saveWeather(st) }
     return res
   }
   function wxImportMsg(r) {
