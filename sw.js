@@ -8,3 +8,12 @@ self.addEventListener("fetch", e => {
   if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return
   e.respondWith(fetch(r).then(res => { if (res.ok) { const cp = res.clone(); caches.open(CACHE).then(c => c.put(r, cp)) } return res }).catch(() => caches.match(r, { ignoreSearch: true })))
 })
+/* 點提醒通知：日誌已經開著（含背景）就叫到前面，並請它切到「提醒清單」（訊息由 host-pwa.js 接收）；沒開著就打開日誌，網址帶 ?tab=rem 直接進提醒清單。 */
+self.addEventListener("notificationclick", e => {
+  e.notification.close()
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    const c = list.find(x => x.url.startsWith(self.registration.scope))
+    if (c) { c.postMessage({ type: "diary-open-rem" }); return c.focus() }
+    return self.clients.openWindow(new URL("./?tab=rem", self.registration.scope).href)
+  }))
+})

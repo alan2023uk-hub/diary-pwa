@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。提醒、整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -58,6 +58,23 @@
     return [...by.values()]
   }
 
+  // ---------- 提醒資料：一天最多一個（以日期為鍵），格式和 Scriptable 版的 reminders.json 的 items 相同 ----------
+  // { id＝日期, date, due（提醒時間，毫秒）, repeat（連續幾天，0＝一次）, done, t（最後修改時間）, txt（設提醒時那天的文字，日子被刪掉時備用）}；取消＝{ id, date, del:true, t }
+  const validRem = r => !!r && typeof r === "object" && DATERE.test(r.date || "")
+  const mergeRems = mergeEdits   // 規則相同：同一天，時間較新（或一樣）的留下
+  function cleanRem(rec) {   // 頁面送來的提醒：只留已知欄位；不合理的回傳 null
+    if (!validRem(rec)) return null
+    const t = Number(rec.t) || Date.now()
+    if (rec.del) return { id: rec.date, date: rec.date, del: true, t }
+    const due = Number(rec.due)
+    if (!isFinite(due) || due <= 0) return null
+    const rp = Math.round(Number(rec.repeat) || 0)
+    return { id: rec.date, date: rec.date, due, repeat: rp > 1 ? Math.min(60, rp) : 0, done: !!rec.done, t, txt: typeof rec.txt === "string" ? rec.txt.slice(0, 2000) : "" }
+  }
+  const yearRems = (year, rems) => new Map((rems || []).filter(r => validRem(r) && !r.del && r.due && r.date.startsWith(year + "-")).map(r => [r.date, r]))
+  const sameRem = (a, b) => a.due === b.due && (a.repeat || 0) === (b.repeat || 0) && !!a.done === !!b.done
+  const REM_KEEP_MS = 90 * 864e5   // 取消的紀錄（墓碑）留 90 天，讓其他裝置也能同步到「已取消」
+
   // ---------- 預先打開相簿（省掉「加入照片」中間那個對話框）----------
   // 瀏覽器只准許在「剛按下按鈕」的當下打開選照片的選單；但頁面按下「加入照片」後要先存檔，才把訊息交給宿主，到那時已經過了「剛按下」，所以以前宿主得先顯示一個對話框，請使用者再按一次。
   // 現在的做法：組頁時，在頁面「加入照片」按鈕的處理函式裏，於存檔之前插入一行，按下的當下就呼叫 HOST_PICK_PHOTOS 打開選單；之後宿主收到訊息，只要等使用者選完。
@@ -85,14 +102,14 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather()})</script>'
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.startReminders()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
   // ---------- 備份與還原 ----------
   // 內容的格式和 Scriptable 版一樣（v、year、created、pre、days:[{date,text}]、reminders），但「檔名」和「類型（kind）」刻意不同，免得兩邊的檔案混在一起：
-  //   網頁版的備份：diary-pwa_backup_年_日期_時間_N d.json，kind＝"diary-pwa-backup"
+  //   網頁版的備份：diary-pwa_backup_年_日期_時間_N d_N r.json，kind＝"diary-pwa-backup"
   //   Scriptable 的備份：backup_年_日期_時間_N d_N r.json，kind＝"diary-backup"
   //   網頁版備份出來的照片：diary-pwa_＋原檔名.jpg（Scriptable 的照片資料夾只認「日期_…jpg」開頭的檔名，所以不會把它當成自己的照片）
   // 這樣就算網頁版的備份檔或照片不小心存進 Scriptable 的資料夾（diary_backups、diary_photos），Scriptable 也不會列出、不會認得它們。
@@ -113,23 +130,29 @@
     const pe = edits.find(e => !e.del && e.date === preKey(year))
     return { raw, rawPre, pre: pe ? (pe.text || "") : rawPre, days: new Map([...by].filter(([d, t]) => (t || "").trim() !== "")) }
   }
-  function makeBackupBody(year, rows, edits, now, isPre) {
+  function makeBackupBody(year, rows, edits, now, isPre, rems) {
     const { days, pre } = effectiveDays(year, rows, edits)
-    const name = "diary-pwa_backup_" + year + "_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + "_" + days.size + "d.json"
-    const body = { v: 1, kind: BK_KIND, app: "pwa", year, created: now, pre, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text })), reminders: [] }
-    return { name, body, days: days.size }
+    const rl = [...yearRems(year, rems).values()].sort((a, b) => a.date < b.date ? -1 : 1).map(r => ({ id: r.date, date: r.date, due: r.due, repeat: r.repeat || 0, done: !!r.done, t: r.t || 0, txt: r.txt || "" }))
+    const name = "diary-pwa_backup_" + year + "_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + "_" + days.size + "d_" + rl.length + "r.json"
+    const body = { v: 1, kind: BK_KIND, app: "pwa", year, created: now, pre, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text })), reminders: rl }
+    return { name, body, days: days.size, rems: rl.length }
   }
-  function planRestore(year, rows, edits, b, now) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法，只是這個版本沒有提醒
+  function planRestore(year, rows, edits, b, now, rems) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法（日誌＋提醒）
     if (!b || !okKind(b.kind) || !Array.isArray(b.days)) return { ok: false, error: "這不是日誌的備份檔" }
     if (b.year !== year) return { ok: false, error: "這份備份是 " + b.year + " 年的，不能還原到 " + year + " 年。請先切換到 " + b.year + " 年再還原。" }
+    rems = rems || []
     const inYear = d => DATERE.test(d || "") && d.startsWith(year + "-")
     const target = new Map(b.days.filter(x => x && inYear(x.date) && typeof x.text === "string" && x.text.trim() !== "").map(x => [x.date, x.text]))
     const { raw, rawPre, pre: curPre, days: cur } = effectiveDays(year, rows, edits)
     const preChange = typeof b.pre === "string" && b.pre !== curPre   // 舊備份沒有前言欄位，就不動前言
-    let add = 0, chg = 0, del = 0
+    const remTouch = Array.isArray(b.reminders)   // 舊備份沒有提醒欄位，就不動提醒
+    const bRems = new Map(remTouch ? b.reminders.filter(r => validRem(r) && inYear(r.date) && r.due && target.has(r.date)).map(r => [r.date, r]) : [])
+    const curRems = yearRems(year, rems)
+    let add = 0, chg = 0, del = 0, remDiff = 0
     for (const [d, t] of target) { if (!cur.has(d)) add++; else if (cur.get(d) !== t) chg++ }
     for (const d of cur.keys()) if (!target.has(d)) del++
-    const out = { ok: true, target, cur, add, chg, del, preChange, same: !add && !chg && !del && !preChange, reminders: Array.isArray(b.reminders) ? b.reminders.length : 0 }
+    if (remTouch) for (const d of new Set([...curRems.keys(), ...bRems.keys()])) { const x = curRems.get(d), y = bRems.get(d); if (!x || !y || !sameRem(x, y)) remDiff++ }
+    const out = { ok: true, target, cur, add, chg, del, preChange, remTouch, remDiff, remCur: curRems.size, remTarget: bRems.size, same: !add && !chg && !del && !preChange && !remDiff, reminders: bRems.size }
     const by = new Map(edits.map(r => [r.date, r]))
     for (const [d, text] of target) {   // 日誌：只改和備份不同的日子
       if (cur.get(d) === text) continue
@@ -138,14 +161,28 @@
     }
     for (const [d, text] of cur) {
       if (target.has(d)) continue
-      if (raw.has(d)) by.set(d, { date: d, deleted: true, text, orig: raw.get(d), isNew: false, t: now })
-      else by.set(d, { date: d, del: true, t: now })
+      if (raw.has(d)) {
+        const rec = { date: d, deleted: true, text, orig: raw.get(d), isNew: false, t: now }
+        const r = curRems.get(d)
+        if (r) rec.rem = { due: r.due, repeat: r.repeat || 0, done: !!r.done }   // 在「已刪除的日子」還原時，提醒一起回來
+        by.set(d, rec)
+      } else by.set(d, { date: d, del: true, t: now })
     }
     if (preChange) {
       if (b.pre === rawPre) by.set(preKey(year), { date: preKey(year), del: true, t: now })   // 和原稿相同＝清掉修改
       else by.set(preKey(year), { date: preKey(year), text: b.pre, orig: rawPre, pre: true, t: now })
     }
     out.edits = [...by.values()]
+    if (remTouch) {   // 提醒：以備份為準
+      const remBy = new Map(rems.filter(validRem).map(r => [r.date, r]))
+      for (const [d, r] of bRems) {
+        const c = curRems.get(d)
+        if (c && sameRem(c, r)) continue
+        remBy.set(d, { id: d, date: d, due: r.due, repeat: Math.max(0, Math.min(60, Math.round(Number(r.repeat) || 0))), done: !!r.done, t: now, txt: target.get(d) })
+      }
+      for (const d of curRems.keys()) if (!bRems.has(d)) remBy.set(d, { id: d, date: d, del: true, t: now })
+      out.rems = [...remBy.values()]
+    }
     return out
   }
 
@@ -202,7 +239,7 @@
   async function doBackup(yearStr) {
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return false }
     const year = +yearStr, s = getStore()
-    const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false)
+    const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems())
     if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
       const go = await modal("備份前先看一下", "備份檔和備份的照片，會存到你接著選的位置。\n\n建議另外建一個專用資料夾（例如「日誌網頁版備份」），不要存進 Scriptable 的資料夾（diary_backups、diary_photos），免得兩邊的檔案混在一起。\n\n就算不小心存進去，Scriptable 也不會認得網頁版的備份檔和照片。",
         [{ label: "繼續備份", kind: "pri", value: true }, { label: "取消", value: false }])
@@ -210,7 +247,7 @@
       await s.set("hint:backup", 1)
     }
     const how = await deliverFile(r.name, JSON.stringify(r.body))
-    say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份 " + year + " 年：" + r.days + " 天" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
+    say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份 " + year + " 年：" + r.days + " 天、" + r.rems + " 則提醒" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
     const saved = how === "shared" || how === "downloaded"
     if (saved) await offerPhotoBackup(year)
     return saved
@@ -219,7 +256,7 @@
     if (!/^\d{4}$/.test(yearStr || "")) { say("還原失敗：年份不對"); return false }
     const year = +yearStr, s = getStore(), pres = await s.get("pre:" + year) || []
     const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片（.jpg）…", value: "photos" }, { label: "匯入天氣資料（weather.json）…", onclick: done => pickFile(r => done({ wx: r.file })) }]
-    pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + " 天", value: { pre: i } }))
+    pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + " 天" + (Array.isArray(x.body.reminders) ? " · " + x.body.reminders.length + " 則提醒" : ""), value: { pre: i } }))
     buttons.push({ label: "取消", value: null })
     const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片；或按「匯入天氣資料」，把 Scriptable 版 weather.json 裏已經發生的天氣補進卡片（不影響日誌內容）。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
     if (!pick) return false
@@ -227,8 +264,8 @@
     if (pick.wx) { await doImportWeather(pick.wx); return false }
     let b
     try { b = pick.file ? JSON.parse(await pick.file.text()) : pres[pick.pre].body } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
-    const rows = await s.get("rows") || [], edits = await s.get("edits") || [], now = Date.now()
-    const plan = planRestore(year, rows, edits, b, now)
+    const rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), now = Date.now()
+    const plan = planRestore(year, rows, edits, b, now, rems)
     if (!plan.ok) { await modal("沒辦法還原", plan.error, [{ label: "好", value: 1 }]); return false }
     if (plan.same) { await modal("不需要還原", "目前的日誌，與這份備份完全相同。", [{ label: "好", value: 1 }]); return false }
     const parts = []
@@ -237,12 +274,13 @@
     if (plan.del) parts.push("刪除 " + plan.del + " 天")
     if (plan.preChange) parts.push("前言改回備份內容")
     const ok = await modal("確定還原 " + year + " 年？", "備份時間：" + fmtTime(b.created || now) + "\n日誌：目前 " + plan.cur.size + " 天 → " + plan.target.size + " 天（" + parts.join("、") + "）" +
-      (plan.reminders ? "\n（備份裏的 " + plan.reminders + " 則提醒：這個版本還不支援提醒，會略過）" : "") + "\n\n還原前會先自動備份目前的內容（存在這部裝置），之後可以再還原回來。",
+      (plan.remTouch ? "\n提醒：目前 " + plan.remCur + " 則 → " + plan.remTarget + " 則" + (plan.remDiff ? "（" + plan.remDiff + " 則有變動）" : "") : "") + "\n\n還原前會先自動備份目前的內容（存在這部裝置），之後可以再還原回來。",
       [{ label: "還原", kind: "dng", value: true }, { label: "取消", value: false }])
     if (!ok) return false
-    await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true).body })   // 還原前先存一份
+    await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 還原前先存一份
     await s.set("edits", plan.edits)
-    say("已還原 " + year + " 年：日誌 " + plan.target.size + " 天；還原前的內容已自動備份")
+    if (plan.remTouch) { await saveRems(plan.rems); await markFired(plan.rems, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
+    say("已還原 " + year + " 年：日誌 " + plan.target.size + " 天" + (plan.remTouch ? "、提醒 " + plan.remTarget + " 則" : "") + "；還原前的內容已自動備份")
     return true
   }
 
@@ -758,6 +796,170 @@
     }).catch(e => say("天氣匯入失敗：" + (e && e.message || e)))
   }
 
+  // ---------- 提醒：屬於日誌的某一天（一天一個），資料存在這部裝置（IndexedDB 的 reminders）----------
+  // 和 Scriptable 版的差別：Scriptable 能請 iOS 預先排好通知，網頁版沒有伺服器，日誌關閉時沒有辦法自己叫醒，所以改成：
+  //   · 日誌開著：每 30 秒檢查一次，到期就在畫面上跳出提醒（回到日誌時也立刻檢查一次）
+  //   · 日誌沒開著：下次打開時補上（只補兩天內的；更早的不補，在「提醒清單」裏仍看得到「已逾期」）
+  //   · 使用者在「⋯」→「提醒通知」允許通知後：日誌在背景但還活著時，到期改發系統通知
+  //   · 點系統通知：由 sw.js 的 notificationclick 處理（日誌開著就切到提醒清單，沒開著就打開並進提醒清單）
+  // 「哪些到期時間已經提醒過」存在 remfired（日期 → { due, k＝已提醒到第幾天 }），不會重複提醒；設好提醒的當下已經過去的時間，不算漏掉，不補。
+  const REM_TICK_MS = 30000, REM_CATCH_MS = 2 * 864e5
+  const remDays = r => Math.max(1, Math.min(60, r.repeat || 1))
+  const occTime = (r, k) => { const d = new Date(r.due); d.setDate(d.getDate() + k); return d.getTime() }
+  function dueOccurrence(r, now) {   // 到了的最後一天是第幾天（0 起算）；都還沒到回傳 -1
+    let k = -1
+    for (let i = 0; i < remDays(r); i++) { if (occTime(r, i) <= now) k = i; else break }
+    return k
+  }
+  async function readRems() {
+    const l = await getStore().get("reminders")
+    return Array.isArray(l) ? l.filter(validRem) : []
+  }
+  async function saveRems(list) {
+    const cutoff = Date.now() - REM_KEEP_MS
+    await getStore().set("reminders", list.filter(r => validRem(r) && !(r.del && (r.t || 0) < cutoff)))
+  }
+  async function markFired(list, now) {   // 把這些提醒「到現在為止已經過去的時間」記成已提醒過
+    const s = getStore(), f = await s.get("remfired") || {}
+    for (const r of list) {
+      if (!validRem(r)) continue
+      if (r.del || !r.due) { delete f[r.date]; continue }
+      f[r.date] = { due: r.due, k: dueOccurrence(r, now) }
+    }
+    await s.set("remfired", f)
+  }
+  async function pushRems(msg) {   // 把最新的提醒清單交給頁面（頁面的 __remUpdate 只換有變動那幾天的卡片；正在看提醒清單就重畫）
+    const rems = await readRems()
+    if (typeof root.__remUpdate === "function") root.__remUpdate(rems, msg || "")
+  }
+  function remText(date, fb, rows, edits) {   // 通知內文：這一天現在的文字（先看修改，再看原稿，最後用設提醒時存下的），去掉「19. 星期一」那行標題
+    const e = edits.find(r => r.date === date && !r.del)
+    const raw = rows.find(x => x[0] === date && !x[3])
+    const full = e ? (e.deleted ? (fb || "") : (e.text || "")) : (raw ? raw[2] : (fb || ""))
+    const lines = full.split("\n").filter(l => l.trim() !== "")
+    if (raw && lines.length > 1 && new RegExp("^\\s*" + parseInt(date.slice(8)) + "\\s*[.．]").test(lines[0])) lines.shift()
+    return lines.map(l => l.trim()).join(" ").slice(0, 200)
+  }
+  async function showNote(it) {   // 發系統通知；成功回傳 true（沒有權限、瀏覽器不支援、出錯都回傳 false）
+    try {
+      const N = root.Notification
+      if (!N || N.permission !== "granted") return false
+      const sw = root.navigator && root.navigator.serviceWorker, reg = sw && sw.getRegistration ? await sw.getRegistration() : null
+      const opt = { body: it.body, tag: "diaryrem_" + it.date, icon: "icon-180.png", data: { tab: "rem" } }
+      if (reg && reg.showNotification) await reg.showNotification(it.title, opt)
+      else new N(it.title, opt)
+      return true
+    } catch (e) { return false }
+  }
+  async function remModal(items) {   // 日誌開著時到期：在畫面上跳出提醒
+    const one = items.length === 1
+    const text = items.slice(0, 6).map(x => (one ? "" : x.label + "　") + (x.body || "（這一天沒有文字）")).join("\n\n") + (items.length > 6 ? "\n\n…還有 " + (items.length - 6) + " 則" : "")
+    const v = await modal(one ? items[0].title : "日誌提醒（" + items.length + " 則）", text, [
+      { label: "知道了", kind: "pri", value: "ok" },
+      { label: one ? "完成（不再提醒）" : "全部完成（不再提醒）", value: "done" },
+      { label: "看提醒清單", value: "list" }])
+    if (v === "done") {
+      const by = new Map((await readRems()).map(r => [r.date, r]))
+      for (const x of items) { const c = by.get(x.date); if (c && !c.del) by.set(x.date, Object.assign({}, c, { done: true, t: Date.now() })) }
+      await saveRems([...by.values()])
+      await pushRems("已完成")
+    } else if (v === "list" && typeof root.showRem === "function") root.showRem()
+  }
+  async function remCheck() {   // 找出到期、還沒提醒過的：日誌看得到就跳出提醒；在背景就發系統通知（發不出去就先不記，等回到日誌再跳）
+    const s = getStore(), now = Date.now()
+    const rems = await readRems(), fired = await s.get("remfired") || {}, out = {}, alerts = []
+    for (const r of rems) {
+      if (r.del || !r.due) continue
+      const f = fired[r.date], fk = (f && f.due === r.due && Number.isInteger(f.k)) ? f.k : -1
+      out[r.date] = { due: r.due, k: fk }
+      if (r.done) continue
+      const k = dueOccurrence(r, now)
+      if (k <= fk) continue
+      if (now - occTime(r, k) > REM_CATCH_MS) { out[r.date].k = k; continue }   // 太久以前的不補
+      alerts.push({ r, k })
+    }
+    const shown = []
+    if (alerts.length) {
+      const visible = !!(root.document && root.document.visibilityState === "visible")
+      const rows = await s.get("rows") || [], edits = await s.get("edits") || []
+      for (const a of alerts) {
+        const md = parseInt(a.r.date.slice(5, 7)) + "月" + parseInt(a.r.date.slice(8)) + "日", n = remDays(a.r)
+        const it = { date: a.r.date, label: md, title: "日誌提醒 " + md, body: remText(a.r.date, a.r.txt, rows, edits) + (n > 1 ? "\n（第 " + (a.k + 1) + "/" + n + " 天）" : "") }
+        if (visible) { shown.push(it); out[a.r.date].k = a.k }
+        else if (await showNote(it)) out[a.r.date].k = a.k
+      }
+    }
+    if (JSON.stringify(out) !== JSON.stringify(fired)) await s.set("remfired", out)   // 先記下，再跳提醒：提醒開著的時候，別的檢查不會重複跳
+    if (shown.length) await remModal(shown)
+  }
+  let remRunning = null
+  function remCheckSoon() {   // 同一時間只做一次檢查（提醒視窗開著時，後面的定時檢查直接略過）
+    if (!remRunning) remRunning = remCheck().catch(() => {}).then(() => { remRunning = null })
+    return remRunning
+  }
+  function startReminders() {   // 頁面載入後呼叫：開始定時檢查；之後每次回到這個頁面也檢查一次
+    const d = root.document
+    if (d && d.addEventListener) {   // 組頁（document.write）會清掉舊的監聽，所以每次都「先拿掉舊的、再加新的」
+      const onVis = () => { if (d.visibilityState === "visible") remCheckSoon() }
+      if (root.__remOnVis) d.removeEventListener("visibilitychange", root.__remOnVis)
+      root.__remOnVis = onVis; d.addEventListener("visibilitychange", onVis)
+    }
+    const sw = root.navigator && root.navigator.serviceWorker   // 點系統通知（sw.js 的 notificationclick）：日誌已經開著時，切到提醒清單；沒開著時，網址帶 ?tab=rem（見 launch）
+    if (sw && sw.addEventListener) {   // 這個監聽掛在 serviceWorker 上，組頁不會清掉，所以同樣先拿掉舊的
+      if (root.__remOnMsg) sw.removeEventListener("message", root.__remOnMsg)
+      root.__remOnMsg = ev => { if (ev && ev.data && ev.data.type === "diary-open-rem" && typeof root.showRem === "function") root.showRem() }
+      sw.addEventListener("message", root.__remOnMsg)
+    }
+    if (root.__remTimer) root.clearInterval(root.__remTimer)   // 組頁不會清掉舊的計時器
+    root.__remTimer = root.setInterval(remCheckSoon, REM_TICK_MS)
+    root.setTimeout(remCheckSoon, 1500)   // 等頁面畫好再檢查
+  }
+  async function remHint() {   // 第一次設提醒、還沒決定要不要通知：提示一次（只提示一次）
+    try {
+      const N = root.Notification, s = getStore()
+      if (!N || N.permission !== "default" || await s.get("hint:remnotif")) return
+      await s.set("hint:remnotif", 1)
+      say("要在到期時收到系統通知：按「⋯」→「提醒通知」開啟", 8000)
+    } catch (e) {}
+  }
+  async function doRemSave(raw) {   // 提醒（設定、完成、取消）：存好，再把最新的提醒清單推回頁面
+    let rec = null
+    try { rec = cleanRem(JSON.parse(raw)) } catch (e) {}
+    if (!rec) { say("提醒儲存失敗：資料不對"); return }
+    const by = new Map((await readRems()).map(r => [r.date, r]))
+    const ex = by.get(rec.date)
+    if (!ex || rec.t >= (ex.t || 0)) by.set(rec.date, rec)
+    await saveRems([...by.values()])
+    await markFired([rec], Date.now())   // 設定當下已經過去的時間不補提醒
+    await pushRems(rec.del ? "已取消提醒" : rec.done ? "已完成" : "已儲存提醒")
+    if (!rec.del && !rec.done) remHint()
+    remCheckSoon()
+  }
+  function remSettings() {   // 「⋯」→「提醒通知」：要在按下的當下請求權限（瀏覽器的規定）
+    const N = root.Notification
+    if (!N) { modal("提醒通知", "這個瀏覽器不能顯示系統通知。\n\niPhone／iPad：要先用 Safari 把日誌「加入主畫面」，再從主畫面的圖示打開（iOS 16.4 以上）。\n\n沒有通知也能提醒：到期時日誌開著會直接跳出來；沒開著，下次打開時補上（兩天內）。", [{ label: "好", value: 1 }]); return }
+    if (N.permission === "default") { Promise.resolve(N.requestPermission()).then(remStatus, remStatus); return }
+    remStatus()
+  }
+  async function remStatus() {
+    const N = root.Notification, ok = !!N && N.permission === "granted"
+    const v = await modal("提醒通知", (ok ? "通知已開啟。" : "通知沒有開啟。請到系統或瀏覽器的網站設定，把這個網站的通知改成「允許」。") +
+      "\n\n網頁版沒有辦法在日誌關閉時自己叫醒：到期時日誌開著（或還活在背景）才會即時提醒；沒開著，下次打開時補上（兩天內）。",
+      ok ? [{ label: "送出測試通知", kind: "pri", value: "test" }, { label: "好", value: 1 }] : [{ label: "好", value: 1 }])
+    if (v === "test") say(await showNote({ date: "test", title: "日誌提醒", body: "通知正常" }) ? "已送出測試通知" : "測試通知失敗")
+  }
+  function installRemMenu() {   // 頁面載入後呼叫：在「⋯」選單加一個「提醒通知」按鈕（找不到選單，或已經加過，就什麼都不做）
+    try {
+      const d = root.document, menu = d && d.querySelector && d.querySelector("#pd .menu")
+      if (!menu || d.getElementById("remx")) return
+      const b = d.createElement("button")
+      b.className = "mi"; b.id = "remx"; b.type = "button"; b.setAttribute("data-lb", "提醒通知"); b.setAttribute("aria-label", "提醒通知設定"); b.title = "提醒通知"
+      if (typeof root.ico === "function") b.insertAdjacentHTML("afterbegin", root.ico("bell"))
+      b.onclick = () => { remSettings(); if (typeof root.pdClose === "function") root.pdClose() }
+      menu.appendChild(b)
+    } catch (e) {}
+  }
+
   // ---------- 訊息：頁面 hostSend 發來的網址 ----------
   function parse(u) {   // scriptable:///run?scriptName=日誌&k=v&… → { k: v }（編碼方式由頁面的 hostURL 決定，這裏只負責解開）
     const p = {}, q = String(u).split("?")[1] || ""
@@ -768,7 +970,7 @@
     }
     return p
   }
-  const UNSUPPORTED = { loadphotos: "整年照片頁", remsave: "提醒" }
+  const UNSUPPORTED = { loadphotos: "整年照片頁" }
   function actionOf(p) {   // 這個訊息要做什麼：同步（沒有任何動作參數）、打開連結、備份、還原，或還沒開放的動作名
     if (p.openurl) return "open"
     if (p.backup !== undefined) return "backup"
@@ -777,6 +979,7 @@
     if (p.delphoto) return "delphoto"
     if (p.movephoto) return "movephoto"
     if (p.wxcfg !== undefined) return "wxcfg"
+    if (p.remsave !== undefined) return "remsave"
     for (const k of Object.keys(UNSUPPORTED)) if (p[k] !== undefined) return k
     return "sync"
   }
@@ -811,9 +1014,10 @@
     else if (act === "addphoto") await doAddPhotos(p.addphoto)
     else if (act === "delphoto") await doDelPhoto(p.delphoto)
     else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
+    else if (act === "remsave") await doRemSave(p.remsave)
     else if (act === "wxcfg") doWxCfg(p.wxcfg)   // 不等它做完：定位和查天氣可能要幾秒，結果做完會自己推回頁面
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
-    if (restored) await pushCloud()
+    if (restored) { await pushCloud(); await pushRems(); remCheckSoon() }
   }
   let queue = Promise.resolve()   // 一個一個處理，免得連按兩下時互相蓋掉
   function handle(u) { queue = queue.then(() => run(u)).catch(e => say("出錯了：" + (e && e.message || e))); return queue }
@@ -825,16 +1029,19 @@
     const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || []
     let wx = {}, cfg
     try { const wst = await readWeather(); wx = weatherForPage(wst); cfg = { fcDays: W.fcDays, hotC: W.hotC } } catch (e) {}   // 天氣讀不到也照樣打開日誌
-    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg })
+    let tab = ""
+    try { if (new root.URLSearchParams(root.location.search).get("tab") === "rem") tab = "rem" } catch (e) {}   // 點通知進來（網址帶 ?tab=rem）：直接打開提醒清單
+    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg, rems: await readRems(), tab })
     root.document.open(); root.document.write(html); root.document.close()
   }
   async function importFiles(files) {   // 讀 dataXXXX.json（可一次選好幾個）；回傳摘要
-    const s = getStore(), found = [], wxs = []
+    const s = getStore(), found = [], wxs = [], remsIn = []
     for (const f of files) {
       let list
       try { list = JSON.parse(await f.text()) } catch (e) { throw new Error("「" + f.name + "」不是有效的 JSON") }
       if (isWxFile(list)) { wxs.push(list); continue }   // Scriptable 版的天氣檔（weather.json）：日誌資料之外另外收
       if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔也可以直接當資料來源（例如搬到新手機）
+        if (Array.isArray(list.reminders)) for (const x of list.reminders) { const c = cleanRem(x); if (c && !c.del) remsIn.push(c) }   // 備份裏的提醒一起收
         list = list.days.filter(x => x && typeof x.text === "string").map(x => [x.date, "", x.text]).concat(list.pre ? [[list.year + "-00-00", "", list.pre, true]] : [])
       }
       if (!Array.isArray(list)) throw new Error("「" + f.name + "」的格式不對（應該是一列一列的日誌）")
@@ -844,10 +1051,11 @@
     }
     const rows = mergeRows(await s.get("rows") || [], found)
     await s.set("rows", rows)
+    if (remsIn.length) { await saveRems(mergeRems(await readRems(), remsIn)); await markFired(remsIn, Date.now()) }
     const days = rows.filter(r => !r[3]).length, years = [...new Set(rows.map(r => r[0].slice(0, 4)))].sort()
     let wx = 0
     for (const imp of wxs) { const r = await wxTask(() => importWeatherData(imp)); wx += r.add + r.upg }
-    return { days, years, wx }
+    return { days, years, wx, rem: remsIn.length }
   }
   function showImport(el) {
     el.innerHTML = '<h1>生活日誌</h1><p>第一次使用：請選取日誌資料檔（<code>data2025.json</code>、<code>data2026.json</code> …，或之前備份的 <code>backup_…json</code>，可以一次選好幾個）。資料只會存在這部裝置的瀏覽器裏，不會上傳到任何地方。</p>' +
@@ -857,7 +1065,7 @@
       msg.className = ""; msg.textContent = "匯入中…"
       try {
         const r = await importFiles([...e.target.files])
-        msg.textContent = (r.days ? "已匯入 " + r.days + " 天（" + r.years.join("、") + " 年）" : "還沒有日誌資料，請再選取日誌資料檔") + (r.wx ? (r.days ? "；" : "") + "天氣 " + r.wx + " 天" : ""); go.hidden = !r.days
+        msg.textContent = (r.days ? "已匯入 " + r.days + " 天（" + r.years.join("、") + " 年）" : "還沒有日誌資料，請再選取日誌資料檔") + (r.wx ? (r.days ? "；" : "") + "天氣 " + r.wx + " 天" : "") + (r.rem ? "；提醒 " + r.rem + " 則" : ""); go.hidden = !r.days
       } catch (err) { msg.className = "err"; msg.textContent = String(err.message || err) }
     }
     go.onclick = () => launch().catch(err => { msg.className = "err"; msg.textContent = String(err.message || err) })
@@ -872,7 +1080,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
