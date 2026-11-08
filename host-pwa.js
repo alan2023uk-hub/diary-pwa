@@ -497,7 +497,7 @@
   }
 
   // ---------- 天氣：每張日誌卡片的標題欄顯示「地名 溫度範圍 有雨／下雪 大風 酷熱」（判斷規則和 Scriptable 版相同）----------
-  // 聯網：預報用 Open-Meteo（免費、不用金鑰）；位置用瀏覽器的定位（第一次要在瀏覽器裏允許「位置」）；地名用 OpenStreetMap 的 Nominatim 反查（Scriptable 版用的是 iOS 的反查，同一個地點的地名寫法可能略有不同，不喜歡的可以用 alias 改寫）。
+  // 聯網：預報用 Open-Meteo（免費、不用金鑰）；位置用瀏覽器的定位（第一次要在瀏覽器裏允許「位置」）；地名用 OpenStreetMap 的 Nominatim 反查（Scriptable 版現在也用同一個反查和同一套挑選規則，兩邊同一個地點會得到同一個地名；不喜歡的可以用 alias 改寫）。
   // 日誌只存地名；唯一存的位置是「最後一次所在地」（收窄到約 1 公里，用來判斷有沒有換地方）。全部只存在這部裝置的瀏覽器裏（IndexedDB 的 weather），不上傳到別處。
   // 沒網路、不給定位、查不到：什麼都不顯示，不影響日誌；之後離線也看得到上次存的天氣。
   // 和 Scriptable 版的差別：Scriptable 打開時最多等 waitMs 毫秒才組頁；網頁版先用上次存的天氣組頁，查到新的再用頁面的 __wxUpdate 換上去，頁面不用等。
@@ -513,7 +513,9 @@
     stickyKm: 1.5,      // 離上次記錄的位置不到這個距離，沿用上次的地名，不重新判斷（避免在區界附近今天 A 區、明天 B 區）
     fillDays: 14,       // 漏掉的日子最多往回補幾天
     minGapMin: 20,      // 同一天內，離上次更新不到這麼多分鐘就不再聯網
-    netMs: 8000,        // 定位、查天氣、查地名，每一步最多等多久（毫秒）
+    netMs: 8000,        // 查天氣、查地名，每一步最多等多久（毫秒）
+    posMs: 12000,       // 定位第一次（省電、用網路定位）最多等多久（毫秒）；Android 第一次定位常常要十幾秒
+    posHighMs: 20000,   // 第一次拿不到時，改用 GPS（高精度）再試，最多等多久（毫秒）
     alias: {},          // 地名改寫，例如 { "New Malden": "新莫爾登" }
     debugPlace: false,  // 改成 true：每次查地名時，在畫面上顯示反查回來的原始地址（欄位）和選出的地名，方便檢查為什麼選了這個名字
     bigCities: ["greater london", "london", "倫敦", "伦敦", "hong kong", "香港", "guangzhou", "廣州", "广州", "shenzhen", "深圳", "macau", "澳門", "澳门"]   // 這些城市（以及所有以「市」結尾的中文城市）改用更細的「區」；其他地方用「城鎮」
@@ -539,18 +541,28 @@
       return await r.json()
     } finally { if (timer) clearTimeout(timer) }
   }
-  function getPosition() {   // 回傳 { latitude, longitude }；使用者不給定位回傳 "denied"；其他失敗（逾時、瀏覽器沒有定位）回傳 null
-    return new Promise(res => {
+  let posErr = ""   // 最近一次取不到位置的原因：denied／timeout／unavailable／insecure／nosupport
+  function getPosition() {   // 回傳 { latitude, longitude }；使用者不給定位回傳 "denied"；其他失敗回傳 null（原因記在 posErr）
+    const g = root.navigator && root.navigator.geolocation
+    posErr = ""
+    if (!g) { posErr = root.isSecureContext === false ? "insecure" : "nosupport"; return Promise.resolve(null) }
+    const once = (high, ms) => new Promise(res => {   // 試一次：成功回傳座標；失敗回傳 { code }（1＝不給定位、2＝拿不到、3＝逾時）
       let done = false
       function fin(v) { if (!done) { done = true; clearTimeout(guard); res(v) } }
-      const guard = setTimeout(() => fin(null), W.netMs + 7000)   // 「允許位置」的詢問框還沒按時，瀏覽器的 timeout 不計時；這裏另設一個上限，免得後面的天氣工作一直卡住
-      const g = root.navigator && root.navigator.geolocation
-      if (!g) return fin(null)
+      const guard = setTimeout(() => fin({ code: 3 }), ms + 7000)   // 「允許位置」的詢問框還沒按時，瀏覽器的 timeout 不計時；這裏另設一個上限，免得後面的天氣工作一直卡住
       try {
-        g.getCurrentPosition(p => fin(p && p.coords ? { latitude: p.coords.latitude, longitude: p.coords.longitude } : null),
-          e => fin(e && e.code === 1 ? "denied" : null), { enableHighAccuracy: false, timeout: W.netMs, maximumAge: 600000 })
-      } catch (e) { fin(null) }
+        g.getCurrentPosition(p => fin(p && p.coords ? { latitude: p.coords.latitude, longitude: p.coords.longitude } : { code: 2 }),
+          e => fin({ code: (e && e.code) || 2 }), { enableHighAccuracy: high, timeout: ms, maximumAge: high ? 0 : 600000 })
+      } catch (e) { fin({ code: 2 }) }
     })
+    return (async () => {
+      let r = await once(false, W.posMs)
+      if (r.latitude == null && r.code !== 1) r = await once(true, W.posHighMs)   // Android：網路定位逾時或拿不到，再用 GPS 試一次
+      if (r.latitude != null) return r
+      if (r.code === 1) { posErr = "denied"; return "denied" }
+      posErr = r.code === 3 ? "timeout" : "unavailable"
+      return null
+    })()
   }
   // 地名：反查地址，取「最細」的一層——大城市（倫敦、香港、廣州…）用「區」（尖沙咀、荔灣區），其他用「城鎮」（New Malden）
   // 不指定 zoom（用預設的最細一級）才會拿到完整的一串（suburb、town、borough、city…）；指定太粗，只會回傳到「郡／大倫敦」一級。
@@ -612,18 +624,20 @@
     return st
   }
   const saveWeather = st => getStore().set("weather", st)
-  async function wxDeniedHint() {   // 使用者不給定位：只提示一次，之後安靜
-    const s = getStore()
-    if (await s.get("hint:wxdenied")) return
-    await s.set("hint:wxdenied", 1)
-    say("天氣需要「位置」權限：請在瀏覽器的網站設定裏允許位置，之後打開就會顯示天氣", 7000)
+  async function wxHintOnce(key, msg) {   // 同一個提示，每天最多出現一次，免得天天打擾；隔天還是不行會再提醒
+    const s = getStore(), today = ymd(new Date())
+    if (await s.get(key) === today) return
+    await s.set(key, today)
+    say(msg, 9000)
   }
+  const wxDeniedHint = () => wxHintOnce("hint:wxdenied", "天氣需要「位置」權限：請在瀏覽器的網站設定裏把這個網站的位置改成「允許」，再重新打開日誌")
+  const wxFailHint = () => wxHintOnce("hint:wxfail", "天氣：取不到位置（" + ({ timeout: "等太久沒有回應", unavailable: "手機沒有提供位置", insecure: "這個網址不是 https", nosupport: "這個瀏覽器不支援定位" }[posErr] || "原因不明") + "）。請確認手機的「位置」已開啟；之後在選單按「天氣」再按確定，可以重試")
   async function weatherUpdate(st) {   // 回傳 true＝有查到新資料並已存好；false＝什麼都沒改（太近才更新過、沒定位、沒網路…）
     const today = ymd(new Date()), migrate = st.nv !== NAME_V   // migrate＝存下來的地名是舊規則查的：這一次一定重新查，不沿用
     if (!migrate && st.u && Date.now() - st.u < W.minGapMin * 60000 && st.last && st.last.d === today && st.days[today] && st.fc) return false
     const pos = await getPosition()
     if (pos === "denied") { await wxDeniedHint(); return false }
-    if (!pos) return false
+    if (!pos) { await wxFailHint(); return false }
     const cur = { lat: w2(pos.latitude), lon: w2(pos.longitude) }
     const last = st.last, same = !!last && distKm(last, cur) <= W.sameKm
     let name, got = false

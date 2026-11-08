@@ -294,6 +294,7 @@ header .pd-in{max-width:none;margin:0;gap:4px}
   <button class="ib" id="sb" type="button" aria-label="搜尋" title="搜尋"></button>
   <button class="ib" id="ly" type="button" aria-label="當年今日" title="當年今日"></button>
   <span class="cal"><button class="ib" id="nd" type="button" aria-label="跳到某一天" title="跳到某一天" tabindex="-1"></button><input type="date" id="ndi" aria-label="跳到某一天"></span>
+  <button class="ib" id="gt" type="button" aria-label="回到今天" title="回到今天"></button>
   <button class="ib" id="pdb" type="button" aria-label="更多" title="更多" aria-expanded="false"></button>
  </div>
  <div class="srow"><span id="si" aria-hidden="true"></span><input id="q" type="search" placeholder="搜尋，例如 迷你倉、Kingston" enterkeyhint="search" autocomplete="off"><span id="qn"></span><button class="ib" id="sx" type="button" aria-label="清除" title="清除"></button></div>
@@ -1071,7 +1072,7 @@ const rc=document.createElement('span');rc.className='chip';rc.textContent='提�
 
 /* ===== UI v2：頂部圖標列、拉下菜單、搜尋、手勢 ===== */
 const HD=document.querySelector('header'),pdb=document.getElementById('pdb'),sbtn=document.getElementById('sb'),scrim=document.getElementById('scrim');
-[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkp','download'],['rst','undo']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
+[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkp','download'],['rst','undo']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
 function pdOpen(){try{bannerUpdate()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
 function pdClose(){HD.classList.remove('open');document.body.classList.remove('pdo');pdb.setAttribute('aria-expanded','false')}
 function pdToggle(){HD.classList.contains('open')?pdClose():pdOpen()}
@@ -1084,6 +1085,8 @@ sbtn.onclick=()=>HD.classList.contains('srch')?closeSearch():openSearch();
 document.getElementById('sx').onclick=()=>{if(q.value){q.value='';q.dispatchEvent(new Event('input'));q.focus()}else closeSearch()};
 q.addEventListener('keydown',e=>{if(e.key==='Enter')q.blur()});
 document.getElementById('ly').addEventListener('click',()=>{pdClose();if(HD.classList.contains('srch')){HD.classList.remove('srch');sbtn.classList.remove('on')}});
+/* 回到今天（主菜單，日曆按鈕右邊）：和「當年今日」小列裏的「回到今天」同一個動作；順便收起搜尋和當年今日小列 */
+document.getElementById('gt').addEventListener('click',()=>{pdClose();if(HD.classList.contains('srch'))closeSearch();lyHide();landToday()});
 /* 檢視切換：日誌／照片／提醒 */
 /* ===== 假期清單（只看）：從今天起往後，英國和香港分別標記；資料範圍以 HOL 為準 ===== */
 const HOLTAG={uk:'英',hk:'港'},HOLNAME={uk:'英國',hk:'香港'};
