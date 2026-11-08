@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。提醒、整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，網頁版可以讀 Scriptable 的備份；但網頁版的備份檔，Scriptable 不認得）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。提醒、整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -65,17 +65,28 @@
   const PICK_ANCHOR = "再加入照片');return}await saveEdit(d,ta.value,null,true);"
   const PICK_PATCH = "再加入照片');return}window.HOST_PICK_PHOTOS&&window.HOST_PICK_PHOTOS();await saveEdit(d,ta.value,null,true);"
 
+  // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
+  // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
+  // 沒換的：「連不上 iCloud」的離線提示（網頁版不會出現，OFFLINE 固定是 0）。
+  const TEXT_PATCHES = [
+    ["已全部同步到 iCloud", "已全部存到本機"],
+    ["已同步到 iCloud", "已存到本機"],
+    ["請先按「同步到 iCloud」，再試一次", "請先點一下待同步的標記，再試一次"],
+    ["只存在這部裝置，沒有同步到 iCloud", "只存在這部裝置的舊儲存裏"]
+  ]
+
   // ---------- 組頁：模板 + 日誌資料 + 修改 ----------
   function assemble(tpl, rows, edits, opts) {
     opts = opts || {}
     if (!tpl.includes("__DATA__")) throw new Error("模板裏找不到 __DATA__")
     const esc = o => JSON.stringify(o).replace(/</g, "\\u003c")
     if (tpl.includes(PICK_ANCHOR)) tpl = tpl.replace(PICK_ANCHOR, () => PICK_PATCH)   // 找不到那一行（模板改過）就不插，照舊顯示對話框
+    for (const [a, b] of TEXT_PATCHES) if (tpl.includes(a)) tpl = tpl.split(a).join(b)   // 提示文字改寫（見上面的 TEXT_PATCHES）
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
     const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.loadCardPhotos();PwaHost.startWeather()})</script>'
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
@@ -323,6 +334,70 @@
     }
     pushPhotos(await cardMap([date]), ok ? "已加入 " + ok + " 張照片" + (bad ? "，有 " + bad + " 張讀不了" : "") : "")
     if (!ok) say(bad ? "這 " + bad + " 張照片讀不了（可能不是常見的圖片格式）" : "沒有加入任何照片")
+  }
+  // ---------- 先選照片、再選日子（和 Scriptable 版「分享 → Run Script → 選日子」同一個順序）----------
+  // iOS 上的網頁（PWA）沒辦法出現在分享選單裏，所以改在日誌頁「⋯」選單加一個「匯入照片」：先選照片，再選日子，照片就放進那一天的卡片。
+  // 照片的處理和卡片上的「加入照片」完全一樣（縮小後存在這部裝置）。按鈕由宿主在頁面載入後自己加到選單（installPhotoImport），模板不用改；找不到選單就不加，其他功能不受影響。
+  async function dayHasText(date) {   // 這一天現在有沒有日誌文字（沒有文字就沒有卡片，照片放進去也看不到）
+    try { const s = getStore(); return effectiveDays(date.slice(0, 4), await s.get("rows") || [], await s.get("edits") || []).days.has(date) } catch (e) { return true }   // 查不到就不亂提醒
+  }
+  const okImportDate = v => DATERE.test(v || "") && ymd(noon(v)) === v && +v.slice(0, 4) >= 2000 && +v.slice(0, 4) <= 2100   // 年份範圍和頁面新增日子的規則一樣
+  function askDate(count, def) {   // 問要放到哪一天；回傳 "YYYY-MM-DD"，取消回傳 null
+    return new Promise(res => {
+      const d = root.document
+      if (!d.getElementById("hu-css")) { const st = d.createElement("style"); st.id = "hu-css"; st.textContent = CSS; d.head.appendChild(st) }
+      const o = d.createElement("div"), b = d.createElement("div"), h = d.createElement("h3"), m = d.createElement("p"), inp = d.createElement("input"), hint = d.createElement("p"), go = d.createElement("button"), no = d.createElement("button")
+      o.className = "hu-ov"; b.className = "hu-box"; b.setAttribute("role", "dialog")
+      h.textContent = "把 " + count + " 張照片放到哪一天？"; m.textContent = "選好日期，按「放進這一天」。"
+      inp.type = "date"; inp.value = def; inp.min = "2000-01-01"; inp.max = "2100-12-31"
+      inp.style.cssText = "display:block;width:100%;box-sizing:border-box;margin:0 0 .6rem;padding:.6rem;font:inherit;border:1px solid #888;border-radius:10px;background:transparent;color:inherit"
+      hint.style.cssText = "min-height:1.3em;margin:0 0 .6rem;font-size:.92em"
+      go.type = "button"; go.className = "hu-btn pri"; go.textContent = "放進這一天"
+      no.type = "button"; no.className = "hu-btn"; no.textContent = "取消"
+      let tok = 0
+      const check = async () => {   // 日期不對就不能按；這一天沒有文字就提醒（照片還是會存起來）
+        const v = inp.value, my = ++tok
+        go.disabled = !okImportDate(v)
+        if (go.disabled) { hint.textContent = "請選一個日期（2000–2100 年）"; return }
+        const has = await dayHasText(v)
+        if (my === tok) hint.textContent = has ? "" : "這一天還沒有日誌文字：照片會先存起來，等你寫了文字，才會在卡片裏出現。"
+      }
+      const done = v => { o.remove(); res(v) }
+      inp.addEventListener("input", check); inp.addEventListener("change", check)
+      go.onclick = () => { if (okImportDate(inp.value)) done(inp.value) }
+      no.onclick = () => done(null)
+      b.append(h, m, inp, hint, go, no); o.appendChild(b); d.body.appendChild(o)
+      check()
+    })
+  }
+  function startPhotoImport() {   // 「匯入照片」按鈕按下的當下呼叫：先打開相簿（瀏覽器只准許在剛按下時打開），選完再問日期
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.hidden = true
+    inp.onchange = async () => {
+      const fs = [...(inp.files || [])]; inp.remove()
+      if (!fs.length) return
+      try {
+        const date = await askDate(fs.length, ymd(new Date()))   // 問日期不放進訊息佇列：對話框開著的時候，頁面的同步、備份照常進行
+        if (!date) { say("已取消，照片沒有加入"); return }
+        queue = queue.then(() => addPhotoFiles(date, fs)).then(() => {   // 加完跳到那一天（那一天沒有卡片就不跳）
+          const el = typeof root.goDay === "function" ? root.goDay(date) : null
+          if (el && el.classList) { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 2500) }
+        }).catch(e => say("出錯了：" + (e && e.message || e)))
+      } catch (e) { say("出錯了：" + (e && e.message || e)) }
+    }
+    inp.addEventListener("cancel", () => inp.remove())
+    d.body.appendChild(inp); inp.click()
+  }
+  function installPhotoImport() {   // 頁面載入後呼叫：在「⋯」選單裏加一個「匯入照片」按鈕（找不到選單，或已經加過，就什麼都不做）
+    try {
+      const d = root.document, menu = d && d.querySelector && d.querySelector("#pd .menu")
+      if (!menu || d.getElementById("phx")) return
+      const b = d.createElement("button")
+      b.className = "mi"; b.id = "phx"; b.type = "button"; b.setAttribute("data-lb", "匯入照片"); b.setAttribute("aria-label", "匯入照片：先選照片，再選日子"); b.title = "先選照片，再選日子"
+      if (typeof root.ico === "function") b.insertAdjacentHTML("afterbegin", root.ico("imagePlus"))
+      b.onclick = () => { startPhotoImport(); if (typeof root.pdClose === "function") root.pdClose() }   // 先打開相簿（要在按下的當下），再收起選單
+      menu.appendChild(b)
+    } catch (e) {}
   }
   async function doDelPhoto(name) {
     if (!okName(name)) { say("刪除失敗：檔名不對"); return }
@@ -777,7 +852,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, startWeather, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
