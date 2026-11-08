@@ -624,7 +624,7 @@
     const big = !!loc && (/市$/.test(loc) || W.bigCities.includes(loc.replace(/市$/, "").toLowerCase()))
     const fine = s1 || (city && town && town !== city ? town : "") || s2   // 大城市裏的順序：最細一層 → 城鎮名（例如倫敦的 New Malden）→ 行政區；城鎮名比「Royal Borough of …」更貼近 iOS 的結果
     const n = (big && fine) ? fine : (loc || sub || wide)
-    if (W.debugPlace) { const q = u => fetchJson(u).catch(e => ({ err: String(e) })); Promise.all([q("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + w3(lat) + "&longitude=" + w3(lon) + "&localityLanguage=en"), q("https://photon.komoot.io/reverse?lat=" + w3(lat) + "&lon=" + w3(lon) + "&lang=en")]).then(([b, p]) => { const pr = (p.features && p.features[0] && p.features[0].properties) || p; say("Nominatim→" + n + "\nBDC：" + JSON.stringify({ locality: b.locality, city: b.city, admin: ((b.localityInfo && b.localityInfo.administrative) || []).map(x => x.name), err: b.err }) + "\nPhoton：" + JSON.stringify({ name: pr.name, district: pr.district, locality: pr.locality, city: pr.city, err: pr.err }), 30000) }) }
+    if (W.debugPlace) { const dd = (x, y) => Math.round(distKm({ lat, lon }, { lat: x, lon: y }) * 1000); fetchJson("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent("[out:json][timeout:10];node(around:2000," + w3(lat) + "," + w3(lon) + ")[place][name];out 40;")).then(j => { const l = (j.elements || []).map(e => ({ n: e.tags.name, p: e.tags.place, m: dd(e.lat, e.lon) })).sort((a, b) => a.m - b.m).slice(0, 8); say("Nominatim→" + n + "\n最近的地名：" + l.map(x => x.n + "(" + x.p + " " + x.m + "m)").join("、"), 30000) }).catch(e => say("Overpass 失敗：" + e, 15000)) }
     return W.alias[n] || n
   }
   async function fetchDaily(lat, lon, past) {
