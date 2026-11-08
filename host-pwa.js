@@ -915,6 +915,8 @@
   //   · 點系統通知：由 sw.js 的 notificationclick 處理（日誌開著就切到提醒清單，沒開著就打開並進提醒清單）
   // 「哪些到期時間已經提醒過」存在 remfired（日期 → { due, k＝已提醒到第幾天 }），不會重複提醒；設好提醒的當下已經過去的時間，不算漏掉，不補。
   const REM_TICK_MS = 30000, REM_CATCH_MS = 2 * 864e5
+  // 推播（日誌關閉也會響）：設好伺服器後，把 PUSH_URL（register 函式的網址）和 PUSH_KEY（推播公鑰）填進來；留空＝不啟用，行為和以前完全一樣（已填：Cloud Dictionary 專案的 register）
+  const PUSH_URL = "https://rdxtwzyebyllsuqajwcp.supabase.co/functions/v1/register", PUSH_KEY = "BP0EWH8YwrAFs5rro1XxOtlaTZ1yvRJyu8kCcA8Z8QSneOAHrPegfCkfqahruiMdZLwubxr9__uUvjrg9olhQto"
   const remDays = r => Math.max(1, Math.min(60, r.repeat || 1))
   const occTime = (r, k) => { const d = new Date(r.due); d.setDate(d.getDate() + k); return d.getTime() }
   function dueOccurrence(r, now) {   // 到了的最後一天是第幾天（0 起算）；都還沒到回傳 -1
@@ -929,6 +931,7 @@
   async function saveRems(list) {
     const cutoff = Date.now() - REM_KEEP_MS
     await getStore().set("reminders", list.filter(r => validRem(r) && !(r.del && (r.t || 0) < cutoff)))
+    pushSoon()   // 提醒有變動：把最新的到期時間交給伺服器（沒啟用推播就什麼都不做）
   }
   async function markFired(list, now) {   // 把這些提醒「到現在為止已經過去的時間」記成已提醒過
     const s = getStore(), f = await s.get("remfired") || {}
@@ -1024,6 +1027,7 @@
     if (root.__remTimer) root.clearInterval(root.__remTimer)   // 組頁不會清掉舊的計時器
     root.__remTimer = root.setInterval(remCheckSoon, REM_TICK_MS)
     root.setTimeout(remCheckSoon, 1500)   // 等頁面畫好再檢查
+    pushSoon()   // 每次打開日誌也同步一次，伺服器的資料才不會過期
   }
   async function remHint() {   // 第一次設提醒、還沒決定要不要通知：提示一次（只提示一次）
     try {
@@ -1032,6 +1036,37 @@
       await s.set("hint:remnotif", 1)
       say("要在到期時收到系統通知：按「⋯」→「提醒通知」開啟", 8000)
     } catch (e) {}
+  }
+  // ---------- 推播：日誌關閉時由伺服器叫醒 ----------
+  // 手機把「每則提醒還沒到的具體時間」交給伺服器（只有日期和時間，沒有日誌文字）；到點時伺服器發推播，sw.js 的 push 從本機讀出文字、顯示通知。
+  // 伺服器那邊以「整份未來時間」為準：每次都送完整清單，完成、取消、改時間都靠這個清單更新。
+  const b64ToU8 = s => { const p = "=".repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)) }
+  async function pushSub() {   // 取得這部裝置的推播訂閱；沒啟用、還沒允許通知、瀏覽器不支援都回傳 null
+    const N = root.Notification, sw = root.navigator && root.navigator.serviceWorker
+    if (!PUSH_URL || !PUSH_KEY || !N || N.permission !== "granted" || !sw || !sw.ready) return null
+    const reg = await sw.ready
+    if (!reg || !reg.pushManager) return null
+    return (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(PUSH_KEY) })
+  }
+  async function syncPush() {
+    try {
+      const sub = await pushSub()
+      if (!sub) return false
+      const now = Date.now(), items = []
+      for (const r of await readRems()) {
+        if (r.del || !r.due || r.done) continue
+        const occ = []
+        for (let k = 0; k < remDays(r); k++) { const t = occTime(r, k); if (t > now) occ.push(t) }   // 只送還沒到的；已經過去的不再補
+        if (occ.length) items.push({ date: r.date, occ })
+      }
+      const res = await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), items }) })
+      return res.ok
+    } catch (e) { return false }
+  }
+  let pushTimer = 0
+  function pushSoon() {   // 連續幾次變動合併成一次送出
+    if (!PUSH_URL || !root.setTimeout) return
+    root.clearTimeout(pushTimer); pushTimer = root.setTimeout(syncPush, 1500)
   }
   async function doRemSave(raw) {   // 提醒（設定、完成、取消）：存好，再把最新的提醒清單推回頁面
     let rec = null
@@ -1054,8 +1089,9 @@
   }
   async function remStatus() {
     const N = root.Notification, ok = !!N && N.permission === "granted"
+    if (ok) pushSoon()   // 剛允許通知：馬上訂閱推播並同步
     const v = await modal("提醒通知", (ok ? "通知已開啟。" : "通知沒有開啟。請到系統或瀏覽器的網站設定，把這個網站的通知改成「允許」。") +
-      "\n\n網頁版沒有辦法在日誌關閉時自己叫醒：到期時日誌開著（或還活在背景）才會即時提醒；沒開著，下次打開時補上（兩天內）。",
+      (PUSH_URL ? "\n\n日誌關閉時，由伺服器推播叫醒（到期後約 1 分鐘內）。" : "\n\n網頁版沒有辦法在日誌關閉時自己叫醒：到期時日誌開著（或還活在背景）才會即時提醒；沒開著，下次打開時補上（兩天內）。"),
       ok ? [{ label: "送出測試通知", kind: "pri", value: "test" }, { label: "好", value: 1 }] : [{ label: "好", value: 1 }])
     if (v === "test") say(await showNote({ date: "test", title: "日誌提醒", body: "通知正常" }) ? "已送出測試通知" : "測試通知失敗")
   }
@@ -1191,7 +1227,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
