@@ -548,7 +548,7 @@
     snowMinCm: 0.5,     // 全日降雪量達這個數（cm）就顯示「下雪」（有下雪就顯示「下雪」，不顯示「有雨」）
     stormKmh: 62,       // 一天裏最大風速達這個數（km/h）就顯示「大風」；62 約是蒲福風級 8 級，想更嚴格可改 89（10 級）
     sameKm: 30,         // 和上次的位置相距不超過這個距離（公里），視為同一個地方：漏掉的日子用上次的地名和這裏的天氣補上；超過就留空白，不猜
-    stickyKm: 0,      // 離上次記錄的位置不到這個距離，沿用上次的地名，不重新判斷（避免在區界附近今天 A 區、明天 B 區）
+    stickyKm: 1.5,      // 離上次記錄的位置不到這個距離，沿用上次的地名，不重新判斷（避免在區界附近今天 A 區、明天 B 區）
     fillDays: 14,       // 漏掉的日子最多往回補幾天
     minGapMin: 20,      // 同一天內，離上次更新不到這麼多分鐘就不再聯網
     netMs: 8000,        // 查天氣、查地名，每一步最多等多久（毫秒）
@@ -556,11 +556,11 @@
     posHighMs: 20000,   // 第一次拿不到時，改用 GPS（高精度）再試，最多等多久（毫秒）
     alias: {},          // 地名改寫，例如 { "New Malden": "新莫爾登" }
     moves: [{ date: "2026-11-01", from: "New Malden", also: ["Merton"], to: "West Barnes", until: "2026-11-07" }],   // 搬家修正：搬家日「以前」的日子用 from（舊家地名）、「當天起」用 to（新家地名）；also＝也要改成 to 的其他錯誤地名；until＝「當天起改成 to」只作用到這一天（含），之後的日子完全以定位結果為準，真的去了舊家那一區才不會被改掉。每次讀天氣檔都會把兩邊放回正確的地名，重複執行結果不變；搬家日期不對就改 date（格式 年-月-日）
-    debugPlace: true,  // 改成 true：每次查地名時，在畫面上顯示反查回來的原始地址（欄位）和選出的地名，方便檢查為什麼選了這個名字
+    debugPlace: false,  // 改成 true：每次查地名時，在畫面上顯示反查回來的原始地址（欄位）和選出的地名，方便檢查為什麼選了這個名字
     bigCities: ["greater london", "london", "倫敦", "伦敦", "hong kong", "香港", "guangzhou", "廣州", "广州", "shenzhen", "深圳", "macau", "澳門", "澳门"]   // 這些城市（以及所有以「市」結尾的中文城市）改用更細的「區」；其他地方用「城鎮」
   }
   const w2 = n => Math.round(n * 100) / 100
-  const NAME_V = 2   // 地名挑選規則的版本；改了規則就把這個數字加一，舊規則存下的地名會重新查一次
+  const NAME_V = 3   // 地名挑選規則的版本；改了規則就把這個數字加一，舊規則存下的地名會重新查一次
   const ymd = d => d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate())
   const noon = s => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8), 12)
   const shiftDay = (s, n) => { const d = noon(s); d.setDate(d.getDate() + n); return ymd(d) }
@@ -603,17 +603,36 @@
       return null
     })()
   }
+  // 地名補強：Nominatim 是看「這一點落在哪個區域範圍內」，靠區界的地方可能歸給隔壁（Wimbledon 站旁邊會變成 Merton Park）。
+  // 這裏改問 Photon（同樣是 OpenStreetMap 的資料，免金鑰）：找離這一點最近的「地名點」（suburb、town、neighbourhood…），最近的優先。
+  // 只用在中文地名以外的地方（Photon 沒有中文）；查不到、逾時就回傳空字串，由 Nominatim 的結果墊底。同樣只送出約 100 米精度的位置。
+  const NEAR_OK = ["suburb", "neighbourhood", "quarter", "town", "village", "hamlet", "city_district"]
+  async function nearPlace(lat, lon) {
+    const w3 = n => Math.round(n * 1000) / 1000
+    try {
+      const j = await fetchJson("https://photon.komoot.io/reverse?lat=" + w3(lat) + "&lon=" + w3(lon) + "&radius=2&limit=15&lang=en&layer=district&layer=locality&layer=city")
+      let best = "", bd = 1e9
+      for (const f of (j && j.features) || []) {
+        const p = f.properties || {}, c = f.geometry && f.geometry.coordinates
+        if (!NEAR_OK.includes(p.osm_value) || !p.name || !c) continue
+        const d = distKm({ lat, lon }, { lat: c[1], lon: c[0] })
+        if (d < bd) { bd = d; best = String(p.name).trim() }
+      }
+      return best
+    } catch (e) { return "" }
+  }
   // 地名：反查地址，取「最細」的一層——大城市（倫敦、香港、廣州…）用「區」（尖沙咀、荔灣區），其他用「城鎮」（New Malden）
   // 不指定 zoom（用預設的最細一級）才會拿到完整的一串（suburb、town、borough、city…）；指定太粗，只會回傳到「郡／大倫敦」一級。
   // 只送出約 100 米精度的位置（小數 3 位）；地名只要到區、城鎮，不需要更準。
   async function placeName(lat, lon) {
     const zh = inZh(lat, lon), w3 = n => Math.round(n * 1000) / 1000
+    const nearP = zh ? Promise.resolve("") : nearPlace(lat, lon)   // 和 Nominatim 同時查，不增加等待
     let a = null
     try {
       const j = await fetchJson("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=" + w3(lat) + "&lon=" + w3(lon) + "&accept-language=" + (zh ? "zh-HK,zh" : "en-GB,en"))
       a = j && j.address
     } catch (e) {}
-    if (!a) return ""
+    if (!a) { const nb = await nearP; return W.alias[nb] || nb }
     const t = x => String(x || "").trim()
     const city = t(a.city), town = t(a.town || a.village || a.municipality)
     const loc = city || town                                                                              // 城市／城鎮
@@ -624,8 +643,9 @@
     const big = !!loc && (/市$/.test(loc) || W.bigCities.includes(loc.replace(/市$/, "").toLowerCase()))
     const fine = s1 || (city && town && town !== city ? town : "") || s2   // 大城市裏的順序：最細一層 → 城鎮名（例如倫敦的 New Malden）→ 行政區；城鎮名比「Royal Borough of …」更貼近 iOS 的結果
     const n = (big && fine) ? fine : (loc || sub || wide)
-    if (W.debugPlace) { const dd = c => Math.round(distKm({ lat, lon }, { lat: c[1], lon: c[0] }) * 1000); fetchJson("https://photon.komoot.io/reverse?lat=" + w3(lat) + "&lon=" + w3(lon) + "&radius=2&limit=15&lang=en&layer=district&layer=locality&layer=city").then(j => { const l = ((j && j.features) || []).map(f => ({ n: f.properties.name, v: f.properties.osm_value, m: dd(f.geometry.coordinates) })).sort((a, b) => a.m - b.m).slice(0, 8); say("測試版3\nNominatim→" + n + "\n最近的地名：" + (l.length ? l.map(x => x.n + "(" + x.v + " " + x.m + "m)").join("、") : "（沒有結果）"), 30000) }).catch(e => say("測試版3 Photon 失敗：" + e, 15000)) }
-    return W.alias[n] || n
+    if (W.debugPlace) say("地名查詢：" + JSON.stringify(a) + " → " + n, 15000)
+    const nb = await nearP, out = nb || n
+    return W.alias[out] || out
   }
   async function fetchDaily(lat, lon, past) {
     const url = "https://api.open-meteo.com/v1/forecast?latitude=" + w2(lat) + "&longitude=" + w2(lon) +
