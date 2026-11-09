@@ -1014,7 +1014,7 @@
   function startReminders() {   // 頁面載入後呼叫：開始定時檢查；之後每次回到這個頁面也檢查一次
     const d = root.document
     if (d && d.addEventListener) {   // 組頁（document.write）會清掉舊的監聽，所以每次都「先拿掉舊的、再加新的」
-      const onVis = () => { if (d.visibilityState === "visible") remCheckSoon() }
+      const onVis = () => { if (d.visibilityState === "visible") { remCheckSoon(); pushRetry(true) } }   // 回到日誌：順便把沒寄成功的補寄
       if (root.__remOnVis) d.removeEventListener("visibilitychange", root.__remOnVis)
       root.__remOnVis = onVis; d.addEventListener("visibilitychange", onVis)
     }
@@ -1025,9 +1025,13 @@
       sw.addEventListener("message", root.__remOnMsg)
     }
     if (root.__remTimer) root.clearInterval(root.__remTimer)   // 組頁不會清掉舊的計時器
-    root.__remTimer = root.setInterval(remCheckSoon, REM_TICK_MS)
+    root.__remTimer = root.setInterval(() => { remCheckSoon(); pushRetry(false) }, REM_TICK_MS)
     root.setTimeout(remCheckSoon, 1500)   // 等頁面畫好再檢查
-    pushSoon()   // 每次打開日誌也同步一次，伺服器的資料才不會過期
+    if (root.addEventListener) {   // 剛連上網路：馬上補寄（監聽掛在 window 上，同樣先拿掉舊的再加新的）
+      if (root.__pushOnline) root.removeEventListener("online", root.__pushOnline)
+      root.__pushOnline = () => pushRetry(true); root.addEventListener("online", root.__pushOnline)
+    }
+    pushSoon(false)   // 每次打開日誌也同步一次，伺服器的資料才不會過期（沒有變動，所以不記成「還沒寄出」；寄失敗才會記）
   }
   async function remHint() {   // 第一次設提醒、還沒決定要不要通知：提示一次（只提示一次）
     try {
@@ -1048,25 +1052,62 @@
     if (!reg || !reg.pushManager) return null
     return (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(PUSH_KEY) })
   }
-  async function syncPush() {
+  // 同步狀態（存在 IndexedDB 的 pushsync）：{ dirty＝有變動、還沒確認寄給伺服器；last＝上次成功寄出的時間；tried＝上次嘗試的時間；err＝上次失敗的原因 }
+  // 失敗不會悄悄放掉：dirty 一直留著，等有網路、或回到日誌、或定時（每 30 秒檢查一次、同一則最少隔 60 秒）自動補寄。
+  // 編者按 / Editor's note：每次都要送「完整清單」，連空清單也要送——完成、取消、改時間都是靠這份清單傳到伺服器；伺服器沒收到取消，到點還是會響。不要改成只送有變動的那幾則，也不要在清單是空的時就略過。
+  //   Always POST the FULL list, even when it is empty: that is how done/cancelled/rescheduled reminders reach the server. Skipping an empty list would leave cancelled reminders ringing.
+  const PUSH_TIMEOUT_MS = 8000, PUSH_RETRY_MS = 60000
+  let pushRev = 0, pushRun = null, pushAgain = false, stateQ = Promise.resolve()   // pushRev：每有變動加一，用來判斷「送的途中又有變動」
+  async function readPushState() { const v = await getStore().get("pushsync"); return v && typeof v === "object" ? v : {} }
+  function patchPushState(patch) {   // 狀態的讀改寫排成一條隊，免得兩邊同時寫、舊的蓋掉新的
+    stateQ = stateQ.then(async () => { await getStore().set("pushsync", Object.assign(await readPushState(), patch)) }).catch(() => {})
+    return stateQ
+  }
+  async function syncPushOnce() {
+    let sub = null
+    try { sub = await pushSub() } catch (e) { await patchPushState({ tried: Date.now(), err: "訂閱失敗：" + (e && e.message || e), dirty: true }); return false }
+    if (!sub) return false   // 沒啟用、還沒允許通知：不算失敗，什麼都不記（允許通知時會立刻同步）
+    const rev = pushRev, now = Date.now(), items = []
+    for (const r of await readRems()) {
+      if (r.del || !r.due || r.done) continue
+      const occ = []
+      for (let k = 0; k < remDays(r); k++) { const t = occTime(r, k); if (t > now) occ.push(t) }   // 只送還沒到的；已經過去的不再補
+      if (occ.length) items.push({ date: r.date, occ })
+    }
+    const ac = root.AbortController ? new root.AbortController() : null, timer = ac ? root.setTimeout(() => ac.abort(), PUSH_TIMEOUT_MS) : 0
     try {
-      const sub = await pushSub()
-      if (!sub) return false
-      const now = Date.now(), items = []
-      for (const r of await readRems()) {
-        if (r.del || !r.due || r.done) continue
-        const occ = []
-        for (let k = 0; k < remDays(r); k++) { const t = occTime(r, k); if (t > now) occ.push(t) }   // 只送還沒到的；已經過去的不再補
-        if (occ.length) items.push({ date: r.date, occ })
-      }
-      const res = await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), items }) })
-      return res.ok
-    } catch (e) { return false }
+      const res = await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), items }), signal: ac ? ac.signal : undefined })
+      if (res.ok) { await patchPushState({ last: Date.now(), tried: Date.now(), err: "", dirty: rev !== pushRev }); return true }   // 送的途中又有變動：dirty 留著，下一輪再送
+      await patchPushState({ tried: Date.now(), err: "伺服器回應 " + res.status, dirty: true }); return false
+    } catch (e) {
+      await patchPushState({ tried: Date.now(), err: ac && ac.signal.aborted ? "連線逾時" : "沒有網路，或連不上伺服器", dirty: true }); return false
+    } finally { if (timer) root.clearTimeout(timer) }
+  }
+  function syncPush() {   // 同一時間只送一個；送的途中又有變動，就在這個送完之後再送一次
+    if (pushRun) { pushAgain = true; return pushRun }
+    pushRun = syncPushOnce().catch(() => false).then(ok => { pushRun = null; if (pushAgain) { pushAgain = false; pushSoon(false) } return ok })
+    return pushRun
   }
   let pushTimer = 0
-  function pushSoon() {   // 連續幾次變動合併成一次送出
+  function pushSoon(changed) {   // 連續幾次變動合併成一次送出；changed 不是 false＝提醒有變動：先記下「還沒確認寄出」，萬一寄不出去才不會忘記
     if (!PUSH_URL || !root.setTimeout) return
+    if (changed !== false) { pushRev++; patchPushState({ dirty: true }) }
     root.clearTimeout(pushTimer); pushTimer = root.setTimeout(syncPush, 1500)
+  }
+  async function pushRetry(force) {   // 有變動還沒寄成功的話補寄；force（剛有網路、剛回到日誌）不受「同一則最少隔 60 秒」限制
+    if (!PUSH_URL) return
+    const st = await readPushState()
+    if (!st.dirty) return
+    if (!force && Date.now() - (st.tried || 0) < PUSH_RETRY_MS) return
+    syncPush()
+  }
+  async function pushStatusText() {   // 「提醒通知」視窗用：讓使用者確認伺服器有沒有收到
+    const st = await readPushState(), p = n => String(n).padStart(2, "0")
+    const when = t => { const d = new Date(t); return (d.toDateString() === new Date().toDateString() ? "今天 " : (d.getMonth() + 1) + "月" + d.getDate() + "日 ") + p(d.getHours()) + ":" + p(d.getMinutes()) }
+    const lines = [st.last ? "上次成功寄給伺服器：" + when(st.last) : "還沒有成功寄給伺服器過。"]
+    if (st.dirty) lines.push("有變動還沒寄出去，有網路時會自動補寄" + (st.err ? "（上次失敗：" + st.err + "）" : "") + "。")
+    else if (st.last) lines.push("提醒時間已經同步到伺服器。")
+    return lines.join("\n")
   }
   async function doRemSave(raw) {   // 提醒（設定、完成、取消）：存好，再把最新的提醒清單推回頁面
     let rec = null
@@ -1089,9 +1130,10 @@
   }
   async function remStatus() {
     const N = root.Notification, ok = !!N && N.permission === "granted"
-    if (ok) pushSoon()   // 剛允許通知：馬上訂閱推播並同步
+    let sync = ""
+    if (ok && PUSH_URL) { await syncPush(); sync = "\n\n" + await pushStatusText() }   // 剛允許通知也在這裏馬上訂閱並同步（最多等 8 秒），顯示的才是最新狀況
     const v = await modal("提醒通知", (ok ? "通知已開啟。" : "通知沒有開啟。請到系統或瀏覽器的網站設定，把這個網站的通知改成「允許」。") +
-      (PUSH_URL ? "\n\n日誌關閉時，由伺服器推播叫醒（到期後約 1 分鐘內）。" : "\n\n網頁版沒有辦法在日誌關閉時自己叫醒：到期時日誌開著（或還活在背景）才會即時提醒；沒開著，下次打開時補上（兩天內）。"),
+      (PUSH_URL ? "\n\n日誌關閉時，由伺服器推播叫醒（到期後約 1 分鐘內）。" : "\n\n網頁版沒有辦法在日誌關閉時自己叫醒：到期時日誌開著（或還活在背景）才會即時提醒；沒開著，下次打開時補上（兩天內）。") + sync,
       ok ? [{ label: "送出測試通知", kind: "pri", value: "test" }, { label: "好", value: 1 }] : [{ label: "好", value: 1 }])
     if (v === "test") say(await showNote({ date: "test", title: "日誌提醒", body: "通知正常" }) ? "已送出測試通知" : "測試通知失敗")
   }
@@ -1304,7 +1346,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
