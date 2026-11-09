@@ -3,7 +3,7 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -103,7 +103,7 @@
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
     const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.startReminders()})</script>'
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
 
@@ -1204,6 +1204,83 @@
     for (const imp of wxs) { const r = await wxTask(() => importWeatherData(imp)); wx += r.add + r.upg }
     return { days, years, wx, rem: remsIn.length }
   }
+  // ---------- 匯入資料檔：補進「目前沒有」的日子（日誌頁「⋯」選單）----------
+  // 編者按 / Editor's note：這個功能只「加」不「蓋」——日誌裏已經有的日子（包括改過、刪除過的）一律不動。不要改成和 importFiles 一樣「後來的蓋掉現有的」，那會蓋掉使用者已經改好的內容。
+  //   This only ADDS days that are missing; it never overwrites an existing day (edited or deleted days included). Do not "simplify" it to importFiles' last-one-wins merge: that would clobber the user's existing edits.
+  // 為什麼需要：還原只能還原「目前正在看的那一年」，而年份選單是依已匯入的資料產生的。改用主畫面 App 之後（它的儲存和 Safari 是分開的）如果只匯入了今年，就選不到其他年份；
+  // 「第一次使用」的匯入畫面又只在完全沒有資料時才出現。所以在日誌頁補一個入口，把 data2025.json 或 2025 年的備份檔補進來。
+  // 可選：dataXXXX.json（Scriptable 版的資料檔）、備份檔（.json，網頁版和 Scriptable 版的都行）；天氣檔（weather.json）略過，請用「還原」視窗的「匯入天氣資料」。照片不在這些檔案裏。
+  async function planDataAdd(files) {   // 讀檔、算出「會加入什麼」；這一步不寫入任何東西。回傳 { add（要加的列）, rems（要加的提醒）, skip（已經有、略過的天數）, wxSkipped, years（年 → 天數）}
+    const s = getStore(), found = new Map(), remsIn = []; let wxSkipped = 0
+    for (const f of files) {   // 讀檔的規則和 importFiles 相同
+      let list
+      try { list = JSON.parse(await f.text()) } catch (e) { throw new Error("「" + f.name + "」不是有效的 JSON") }
+      if (isWxFile(list)) { wxSkipped++; continue }
+      if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔
+        if (Array.isArray(list.reminders)) for (const x of list.reminders) { const c = cleanRem(x); if (c && !c.del) remsIn.push(c) }
+        list = list.days.filter(x => x && typeof x.text === "string").map(x => [x.date, "", x.text]).concat(list.pre ? [[list.year + "-00-00", "", list.pre, true]] : [])
+      }
+      if (!Array.isArray(list)) throw new Error("「" + f.name + "」的格式不對（應該是一列一列的日誌）")
+      const ok = list.filter(validRow)
+      if (!ok.length) throw new Error("「" + f.name + "」裏找不到日誌")
+      for (const r of ok) found.set(rowKey(r), r)   // 同一天出現在好幾個檔案：後選的為準
+    }
+    const rows = await s.get("rows") || [], edits = await s.get("edits") || []
+    const have = new Set(rows.map(rowKey)), touched = new Set(edits.map(e => e && e.date))   // touched＝改過或刪除過的日子（edits 裏有紀錄），也不碰
+    const add = [], years = {}; let skip = 0
+    for (const [k, r] of found) {
+      if (have.has(k) || touched.has(r[0])) { if (!r[3]) skip++; continue }
+      add.push(r)
+      if (!r[3]) { const y = r[0].slice(0, 4); years[y] = (years[y] || 0) + 1 }
+    }
+    const addDates = new Set(add.map(r => r[0])), haveRem = new Set((await readRems()).map(r => r.date))
+    const rems = mergeRems([], remsIn.filter(r => addDates.has(r.date) && !haveRem.has(r.date)))   // 只收「新加進來的那幾天」的提醒；那一天現有的提醒不動
+    return { add, rems, skip, wxSkipped, years }
+  }
+  async function commitDataAdd(p) {   // 把 planDataAdd 算好的寫進去：加日子；加提醒（已經過去的時間記成已提醒過，不補響）
+    const s = getStore(), rows = await s.get("rows") || [], have = new Set(rows.map(rowKey))
+    const add = p.add.filter(r => !have.has(rowKey(r)))   // 寫入前再檢查一次：這中間如果已經有了，就不蓋
+    await s.set("rows", mergeRows(rows, add))
+    if (p.rems.length) { await saveRems(mergeRems(await readRems(), p.rems)); await markFired(p.rems, Date.now()) }
+    return add.length
+  }
+  function startDataImport() {   // 「匯入資料檔」按鈕按下的當下呼叫：先打開檔案選單（瀏覽器只准許在剛按下時打開），選完再算、再問
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = ".json,application/json"; inp.multiple = true; inp.hidden = true
+    inp.onchange = async () => {
+      const fs = [...(inp.files || [])]; inp.remove()
+      if (!fs.length) return
+      try {
+        const p = await planDataAdd(fs)   // 問答不放進訊息佇列：對話框開著的時候，頁面的同步、備份照常進行
+        const yrs = Object.keys(p.years).sort().map(y => y + " 年 " + p.years[y] + " 天").join("、")
+        const notes = (p.skip ? "\n已經有的 " + p.skip + " 天不會動。" : "") + (p.wxSkipped ? "\n天氣檔已略過（請用「還原」視窗的「匯入天氣資料」）。" : "")
+        if (!p.add.length) {
+          await modal("沒有需要加入的日子", "這些檔案裏沒有目前還沒有的日子，所以沒有動任何東西。" + notes, [{ label: "好", value: 1 }])
+          return
+        }
+        const ok = await modal("加入這些日子？", "會加入：" + (yrs || "只有前言") + (p.rems.length ? "；提醒 " + p.rems.length + " 則" : "") + "。" + notes +
+          "\n加入後頁面會重新載入一次，請先確認沒有編輯到一半的卡片。", [{ label: "加入", kind: "pri", value: true }, { label: "取消", value: false }])
+        if (!ok) { say("已取消，沒有加入任何東西"); return }
+        await commitDataAdd(p)
+        await modal("已加入", (yrs || "前言") + "已經加進日誌。照片不在資料檔裏，有 .jpg 備份的話請到「還原」視窗按「還原照片」。\n按「好」會重新載入頁面。", [{ label: "好", kind: "pri", value: 1 }])
+        await launch()   // 年份選單是組頁時依資料產生的，要重新組頁才看得到新的年份
+      } catch (e) { say("匯入失敗：" + (e && e.message || e), 7000) }
+    }
+    inp.addEventListener("cancel", () => inp.remove())
+    d.body.appendChild(inp); inp.click()
+  }
+  function installDataImport() {   // 頁面載入後呼叫：在「⋯」選單裏加一個「匯入資料檔」按鈕（找不到選單，或已經加過，就什麼都不做）
+    try {
+      const d = root.document, menu = d && d.querySelector && d.querySelector("#pd .menu")
+      if (!menu || d.getElementById("dix")) return
+      const b = d.createElement("button")
+      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("data-lb", "匯入資料檔"); b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子（已有的不會動）"); b.title = "補進缺的年份或日子（已有的不會動）"
+      const ref = menu.querySelector("svg")   // 借用選單裏現有圖示的外框（class、大小），只換圖案；找不到（模板改過）就沒有圖示
+      if (ref) { const ic = ref.cloneNode(false); ic.innerHTML = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></g>'; b.appendChild(ic) }
+      b.onclick = () => { startDataImport(); if (typeof root.pdClose === "function") root.pdClose() }   // 先打開檔案選單（要在按下的當下），再收起選單
+      menu.appendChild(b)
+    } catch (e) {}
+  }
   function showImport(el) {
     el.innerHTML = '<h1>生活日誌</h1><p>第一次使用：請選取日誌資料檔（<code>data2025.json</code>、<code>data2026.json</code> …，或之前備份的 <code>backup_…json</code>，可以一次選好幾個）。資料只會存在這部裝置的瀏覽器裏，不會上傳到任何地方。</p>' +
       '<label class="btn">選取資料檔<input id="pick" type="file" accept=".json,application/json" multiple hidden></label><p id="msg"></p><button id="go" class="btn pri" hidden>開始使用</button>'
@@ -1227,7 +1304,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, importFiles, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
