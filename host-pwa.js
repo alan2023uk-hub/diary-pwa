@@ -121,17 +121,18 @@
   // 內容的格式和 Scriptable 版一樣（v、year、created、pre、preT、days:[{date,text,t}]、gone:[{date,t}]、reminders、remGone）。
   // v2（現在的格式）：每一天帶修改時間 t（0＝原稿沒改過）；刪除的日子記在 gone；提醒也帶 t，取消的提醒記在 remGone。還原時靠這些時間做「合併」。
   // 兩邊的備份檔互通（都是日誌的備份，兩邊都認得）；檔名和類型（kind）仍然不同，只是用來分辨是哪一邊備份的：
-  //   網頁版的備份：pwa_日誌年_月日_時分_N d N r.json（例：pwa_2026_1109_1901_120d3r.json），kind＝"diary-pwa-backup"
-  //   Scriptable 的備份：bk_日誌年_月日_時分_N d N r.json，kind＝"diary-backup"（放在 iCloud 的 diary_backups 資料夾）
-  //   備份建立的年份和日誌年份不同時，日期寫成 yymmdd（例如 pwa_2026_270105_2230_…），Scriptable 版排序要用
-  //   （舊格式 diary-pwa_backup_… / backup_… 兩邊都還認得；網頁版靠檔案內容的 kind 判斷，不看檔名）
-  //   網頁版備份出來的照片：diary-pwa_＋原檔名.jpg（Scriptable 的照片資料夾只認「日期_…jpg」開頭的檔名，所以不會把它當成自己的照片）
-  // 想在 Scriptable 版還原網頁版的日誌備份：把 .json 存進 iCloud 的 diary_backups 資料夾（Scriptable 版認 pwa_ 開頭的新檔名，也認舊的 diary-pwa_ 開頭）。
+  //   網頁版的備份：pwa_yymmdd_hhmm.json（建立日期；例：pwa_261109_1901.json），kind＝"diary-pwa-backup"
+  //   Scriptable 的備份：bk_yymmdd_hhmm.json，kind＝"diary-backup"（放在 iCloud 的 diary_backups 資料夾）
+  //   日誌年份預設＝建立年份；不同年才在後面加 _y25（例：pwa_270105_2230_y26.json）；還原前自動備份加 _pre（放在 _y 之前）
+  //   天數和提醒數不再寫進檔名（檔名太長，檔案App顯示不完整）；Scriptable 的還原選單會讀檔案內容補上
+  //   （舊格式 pwa_2026_1109_1901_120d3r.json、diary-pwa_backup_…、backup_… 兩邊都還認得；網頁版靠檔案內容的 kind 判斷，不看檔名）
+  //   網頁版備份出來的照片：日期_時間碼_序號.jpg（時間碼＝原檔名裡的 13 位毫秒數轉成 8 位 36 進位，還原時換回來；舊的 diary-pwa_… 前綴照樣認得）
+  // 想在 Scriptable 版還原網頁版的日誌備份：把 .json 存進 iCloud 的 diary_backups 資料夾（Scriptable 版認 pwa_ 開頭的檔名）。
   // 舊格式（v1，沒有 gone）的備份也認得：每一天的時間一律當作備份建立的時間，也不含刪除記錄。
   const BK_KIND = "diary-pwa-backup", SCRIPTABLE_KIND = "diary-backup", PWA_PHOTO_PREFIX = "diary-pwa_"
   const okKind = k => k === BK_KIND || k === SCRIPTABLE_KIND
   const p2 = n => String(n).padStart(2, "0")
-  const stampOf = (t, year) => (t.getFullYear() === year ? "" : String(t.getFullYear()).slice(2)) + p2(t.getMonth() + 1) + p2(t.getDate()) + "_" + p2(t.getHours()) + p2(t.getMinutes())   // 檔名用：mmdd_hhmm（建立年份和日誌年份不同時，前面加 yy）
+  const stampOf = t => String(t.getFullYear()).slice(2) + p2(t.getMonth() + 1) + p2(t.getDate()) + "_" + p2(t.getHours()) + p2(t.getMinutes())   // 檔名用：yymmdd_hhmm（建立日期）
   const fmtShort = ms => { const t = new Date(ms); return p2(t.getMonth() + 1) + "-" + p2(t.getDate()) + " " + p2(t.getHours()) + ":" + p2(t.getMinutes()) }   // 按鈕上用的短格式（月-日 時:分）
   const fmtTime = ms => { const t = new Date(ms); return (t.getFullYear() === new Date().getFullYear() ? "" : String(t.getFullYear()).slice(2) + "-") + fmtShort(ms) }   // 短格式「11-09 19:01」；不是今年的前面加兩位數年份
   const preKey = year => year + "-00-00", isPreKey = d => /-00-00$/.test(d)   // 前言（開頭未標日期的文字）的修改，用「年-00-00」當日期鍵
@@ -150,7 +151,7 @@
     const rl = [...yearRems(year, rems).values()].sort((a, b) => a.date < b.date ? -1 : 1).map(r => ({ id: r.date, date: r.date, due: r.due, repeat: r.repeat || 0, done: !!r.done, t: r.t || 0, txt: r.txt || "" }))
     const remGone = (rems || []).filter(r => validRem(r) && r.del && r.date.startsWith(year + "-")).map(r => ({ date: r.date, t: r.t || 0 }))   // 取消的提醒：合併時讓另一邊也取消
     const gone = (edits || []).filter(e => e && typeof e.date === "string" && e.date.startsWith(year + "-") && !isPreKey(e.date) && !days.has(e.date)).map(e => ({ date: e.date, t: Number(e.t) || 0 }))   // 已刪除（或清空）的日子
-    const name = "pwa_" + year + "_" + stampOf(new Date(now), year) + (isPre ? "_pre" : "") + "_" + days.size + "d" + rl.length + "r.json"   // 例：pwa_2026_1109_1901_120d3r.json
+    const made = new Date(now), name = "pwa_" + stampOf(made) + (isPre ? "_pre" : "") + (made.getFullYear() === year ? "" : "_y" + String(year).slice(2)) + ".json"   // 例：pwa_261109_1901.json；日誌年份和建立年份不同才加 _y25
     const body = { v: 2, kind: BK_KIND, app: "pwa", year, created: now, pre, preT: tOf.get(preKey(year)) || 0, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text, t: tOf.get(date) || 0 })), gone, reminders: rl, remGone }
     return { name, body, days: days.size, rems: rl.length }
   }
@@ -567,12 +568,16 @@
 
   // ---------- 照片備份與還原：備份檔（.json）不含照片，所以照片另外存成一張張 .jpg（檔名不變），還原時依檔名放回原來的卡片 ----------
   const PHOTO_BATCH = 40   // 一次分享的張數上限（太多張時分享選單可能開不起來，所以分批）
+  // 備份出來的照片檔名：「日期_毫秒數_序號.jpg」的 13 位毫秒數轉成 8 位 36 進位（例：2026-11-05_mhjk3f2x_6.jpg），檔案App才顯示得完整；還原時換回原名，所以和已有的照片比對不會重複
+  const PH_LONG = /^(\d{4}(?:-\d{2}-\d{2})?)_(\d{13})_(\d+)\.jpg$/, PH_SHORT = /^(\d{4}(?:-\d{2}-\d{2})?)_([0-9a-z]{8})_(\d+)\.jpg$/
+  const photoExportName = f => { const m = PH_LONG.exec(f); return m ? m[1] + "_" + Number(m[2]).toString(36).padStart(8, "0") + "_" + m[3] + ".jpg" : f }
+  const photoInternalName = nm => { const m = PH_SHORT.exec(nm); if (!m) return nm; const ms = parseInt(m[2], 36); return String(ms).length === 13 && ms.toString(36).padStart(8, "0") === m[2] ? m[1] + "_" + ms + "_" + m[3] + ".jpg" : nm }
   const yearPhotoNames = (idx, year) => idx.filter(x => okName(x.f) && x.f.slice(0, 4) === String(year)).map(x => x.f).sort()
   async function photoFilesOf(year) {
     const s = getStore(), out = []
     for (const f of yearPhotoNames(await photoIndex(), year)) {
       const blob = await s.get("photo:" + f)
-      if (blob) out.push(new root.File([blob], PWA_PHOTO_PREFIX + f, { type: "image/jpeg" }))
+      if (blob) out.push(new root.File([blob], photoExportName(f), { type: "image/jpeg" }))
     }
     return out
   }
@@ -615,14 +620,14 @@
     d.body.appendChild(inp); inp.click()
   }
   async function doRestorePhotos() {   // 把備份的 .jpg 放回來（各年份可以一次選）：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮
-    const pick = await modal("還原照片", "選取備份的照片（檔名像 diary-pwa_2026-03-05_….jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
+    const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_mhjk3f2x_0.jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     const s = getStore(), dates = new Set()
     let idx = await photoIndex(), ok = 0, dup = 0, skip = 0
     say("處理 " + pick.files.length + " 張照片…")
     for (const f of pick.files) {
       try {
-        const nm = f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name   // 備份時加的前綴，還原時拿掉
+        const nm = photoInternalName(f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name)   // 舊版備份加的前綴要拿掉；新版的短檔名換回原來的長檔名
         if (!okName(nm)) { skip++; continue }
         if (idx.some(x => x.f === nm)) { dup++; continue }
         const buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 2))
