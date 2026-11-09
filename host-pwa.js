@@ -4,7 +4,7 @@
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
    目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
-   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單或下載存成檔案），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
+   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單或下載存成檔案），還原日誌之後會接著問要不要還原這一年的照片（也可以在還原視窗按「還原照片」），依檔名放回原來的卡片；網頁版讀不到資料夾，照片檔要自己選取。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -145,7 +145,7 @@
     const pe = edits.find(e => !e.del && e.date === preKey(year))
     return { raw, rawPre, pre: pe ? (pe.text || "") : rawPre, days: new Map([...by].filter(([d, t]) => (t || "").trim() !== "")) }
   }
-  function makeBackupBody(year, rows, edits, now, isPre, rems) {
+  function makeBackupBody(year, rows, edits, now, isPre, rems, photoNames) {   // photoNames＝這一年的照片檔名清單（只有手動備份才附上；還原時用來檢查照片齊不齊）
     const { days, pre } = effectiveDays(year, rows, edits)
     const tOf = new Map((edits || []).map(e => [e.date, Number(e.t) || 0]))   // 每一天最後修改的時間（沒有修改紀錄＝0＝原稿沒改過）
     const rl = [...yearRems(year, rems).values()].sort((a, b) => a.date < b.date ? -1 : 1).map(r => ({ id: r.date, date: r.date, due: r.due, repeat: r.repeat || 0, done: !!r.done, t: r.t || 0, txt: r.txt || "" }))
@@ -153,6 +153,7 @@
     const gone = (edits || []).filter(e => e && typeof e.date === "string" && e.date.startsWith(year + "-") && !isPreKey(e.date) && !days.has(e.date)).map(e => ({ date: e.date, t: Number(e.t) || 0 }))   // 已刪除（或清空）的日子
     const made = new Date(now), name = "pwa_" + stampOf(made) + (isPre ? "_pre" : "") + (made.getFullYear() === year ? "" : "_y" + String(year).slice(2)) + ".json"   // 例：pwa_261109_1901.json；日誌年份和建立年份不同才加 _y25
     const body = { v: 2, kind: BK_KIND, app: "pwa", year, created: now, pre, preT: tOf.get(preKey(year)) || 0, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text, t: tOf.get(date) || 0 })), gone, reminders: rl, remGone }
+    if (Array.isArray(photoNames)) body.photos = photoNames
     return { name, body, days: days.size, rems: rl.length }
   }
   function planRestore(year, rows, edits, b, now, rems) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法（日誌＋提醒）
@@ -323,6 +324,7 @@
     }
     download(name, text); return "downloaded"
   }
+  let photoOffer = null   // 日誌還原做完（頁面更新後）要不要接著問照片：{ year, b, onlyIfKnown }；由 run() 取用
   const PRE_KEEP = 5
   async function savePre(year, item) {   // 還原前的自動備份：存在這部裝置，最多留 5 份
     const s = getStore(), list = await s.get("pre:" + year) || []
@@ -331,7 +333,7 @@
   async function doBackup(yearStr) {
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return false }
     const year = +yearStr, s = getStore()
-    const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems())
+    const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems(), yearPhotoNames(await photoIndex(), year))
     if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
       const go = await modal("備份前先看一下", "備份會存到你接著選的位置。" + (isIOS()
         ? "\n\n日誌（.json）：兩邊通用，想在 Scriptable 版還原，就存進 iCloud 的 diary_backups。\n照片（.jpg）：請另建專用資料夾，不要放進 diary_photos。"
@@ -361,7 +363,7 @@
     const rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), now = Date.now()
     const plan = planRestore(year, rows, edits, b, now, rems)
     if (!plan.ok) { await modal("沒辦法還原", plan.error, [{ label: "好", value: 1 }]); return false }
-    if (plan.same) { await modal("不需要還原", "目前的日誌，與這份備份完全相同。", [{ label: "好", value: 1 }]); return false }
+    if (plan.same) { await modal("不需要還原", "目前的日誌，與這份備份完全相同。", [{ label: "好", value: 1 }]); if (pick.file) photoOffer = { year, b, onlyIfKnown: true }; return false }   // 文字一樣，但備份附了照片清單、這裡又缺照片時，還是問一下
     const parts = []
     if (plan.add) parts.push("新增 " + plan.add + " 天")
     if (plan.chg) parts.push("改回備份內容 " + plan.chg + " 天")
@@ -376,17 +378,19 @@
       [{ label: "合併（留較新的）", kind: "pri", value: "merge" }, { label: "完全還原（以備份為準）", kind: "dng", value: "full" }, { label: "取消", value: null }])
     if (!choice) return false
     if (choice === "merge") {
-      if (mp.same) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); return false }
+      if (mp.same) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); if (pick.file) photoOffer = { year, b, onlyIfKnown: true }; return false }
       await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 合併前先存一份
       await s.set("edits", mp.edits)
       if (mp.remDiff) { await saveRems(mp.rems); await markFired(mp.remChanged, now) }   // 備份裏已經過去的提醒時間，不要合併完馬上又響
       say("已合併 " + year + " 年：" + mp.days + " 天、" + mp.remCount + " 則提醒（合併前已自動備份）")
+      if (pick.file) photoOffer = { year, b, onlyIfKnown: b.kind !== BK_KIND }
       return true
     }
     await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 還原前先存一份
     await s.set("edits", plan.edits)
     if (plan.remTouch) { await saveRems(plan.rems); await markFired(plan.rems, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
     say("已還原 " + year + " 年：" + plan.target.size + " 天" + (plan.remTouch ? "、" + plan.remTarget + " 則提醒" : "") + "（還原前已自動備份）")
+    if (pick.file) photoOffer = { year, b, onlyIfKnown: b.kind !== BK_KIND }   // 照片只補不刪：備份裏沒有的照片，不會因為「完全還原」被刪掉
     return true
   }
 
@@ -619,16 +623,21 @@
     inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
     d.body.appendChild(inp); inp.click()
   }
-  async function doRestorePhotos() {   // 把備份的 .jpg 放回來（各年份可以一次選）：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮
-    const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_mhjk3f2x_0.jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
-    if (!pick) return
+  function pickPhotoFolder(done) {   // 在按鈕被按下的當下呼叫：直接選一個資料夾，裡面的 .jpg 全部收進來（其他檔案不管）。iOS 18.4 以上的 Safari 才有這個功能；舊的系統會變成選單一個檔案，所以另外留「改選照片檔」
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.setAttribute("webkitdirectory", ""); inp.hidden = true
+    inp.onchange = () => { const fs = [...(inp.files || [])].filter(f => /\.jpe?g$/i.test(f.name)); inp.remove(); if (fs.length) done({ files: fs }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  async function importPhotoFiles(files, year) {   // 把選到的 .jpg 放回來：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮。year＝只收這一年的，其他年份略過；不給＝各年份都收。回傳張數
     const s = getStore(), dates = new Set()
-    let idx = await photoIndex(), ok = 0, dup = 0, skip = 0
-    say("處理 " + pick.files.length + " 張照片…")
-    for (const f of pick.files) {
+    let idx = await photoIndex(), ok = 0, dup = 0, skip = 0, other = 0
+    say("處理 " + files.length + " 張照片…")
+    for (const f of files) {
       try {
         const nm = photoInternalName(f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name)   // 舊版備份加的前綴要拿掉；新版的短檔名換回原來的長檔名
         if (!okName(nm)) { skip++; continue }
+        if (year && nm.slice(0, 4) !== String(year)) { other++; continue }
         if (idx.some(x => x.f === nm)) { dup++; continue }
         const buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 2))
         if (head[0] !== 0xFF || head[1] !== 0xD8) { skip++; continue }   // 不是 JPEG
@@ -639,9 +648,35 @@
         if (dateOf(nm)) dates.add(dateOf(nm))
       } catch (e) { skip++ }
     }
-    const msg = "已還原 " + ok + " 張照片" + (dup ? "，略過 " + dup + " 張已有的" : "") + (skip ? "，" + skip + " 張不能用（檔名不對或不是 JPEG）" : "")
+    const msg = "已還原 " + ok + " 張照片" + (dup ? "，略過 " + dup + " 張已有的" : "") + (other ? "，略過 " + other + " 張不是 " + year + " 年的" : "") + (skip ? "，" + skip + " 張不能用（檔名不對或不是 JPEG）" : "")
     pushPhotos(await cardMap([...dates]), ok ? msg : "")
     if (!ok) say(msg)
+    return { ok, dup, skip, other, msg }
+  }
+  async function doRestorePhotos() {   // 還原視窗的「還原照片…」：不限年份，自己選
+    const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_mhjk3f2x_0.jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n可以直接選放備份照片的資料夾（需要 iOS 18.4 以上），或改選照片檔；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "取消", value: null }])
+    if (!pick) return
+    await importPhotoFiles(pick.files, null)
+  }
+  async function offerPhotoRestore(year, b, onlyIfKnown) {   // 日誌還原完成後：這一年的照片也一起還原。備份附了照片清單就核對還缺幾張，缺的才問；沒有清單（舊備份）就直接問
+    const listed = Array.isArray(b && b.photos) ? b.photos.filter(n => okName(n) && n.slice(0, 4) === String(year)) : null
+    if (onlyIfKnown && !listed) return
+    const missingOf = async () => { const have = new Set((await photoIndex()).map(x => x.f)); return listed.filter(n => !have.has(n)) }
+    let missing = listed ? await missingOf() : null
+    if (listed && !missing.length) return   // 備份記錄的照片，這部裝置都有了
+    let note = ""
+    for (;;) {
+      const pick = await modal("連 " + year + " 年照片一起還原？",
+        (listed ? "備份記錄了 " + listed.length + " 張 " + year + " 年的照片，這部裝置還缺 " + missing.length + " 張。" : "這份備份沒有照片清單，不知道原本有幾張。") +
+        "\n\n請選放備份照片的資料夾（需要 iOS 18.4 以上；選不了資料夾，就改選照片檔並全選）。資料夾裡不是 " + year + " 年的、已經有的、不是 .jpg 的，都會自動略過。" + note,
+        [{ label: "選取照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "不用了", value: null }])
+      if (!pick) return
+      const r = await importPhotoFiles(pick.files, year)
+      if (!listed) return
+      missing = await missingOf()
+      if (!missing.length) { say("已還原 " + year + " 年的照片，齊全了"); return }
+      note = "\n\n剛才" + (r.ok ? "還原了 " + r.ok + " 張" : "沒有還原到新的照片") + "，還缺 " + missing.length + " 張，可以再選一次補上。"
+    }
   }
 
   // ---------- 天氣：每張日誌卡片的標題欄顯示「地名 溫度範圍 有雨／下雪 大風 酷熱」（判斷規則和 Scriptable 版相同）----------
@@ -1226,6 +1261,7 @@
     else if (act === "wxcfg") doWxCfg(p.wxcfg)   // 不等它做完：定位和查天氣可能要幾秒，結果做完會自己推回頁面
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
     if (restored) { await pushCloud(); await pushRems(); remCheckSoon() }
+    if (photoOffer) { const o = photoOffer; photoOffer = null; await offerPhotoRestore(o.year, o.b, o.onlyIfKnown) }   // 頁面已經更新、新卡片都在了，再問照片
   }
   let queue = Promise.resolve()   // 一個一個處理，免得連按兩下時互相蓋掉
   function handle(u) { queue = queue.then(() => run(u)).catch(e => say("出錯了：" + (e && e.message || e))); return queue }
