@@ -4,11 +4,19 @@
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
    目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
-   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單存到「檔案」），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
+   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單或下載存成檔案），還原時在還原視窗按「還原照片」，依檔名放回原來的卡片。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
   const DB_NAME = "diary-host", KV = "kv"
+
+  // ---------- 平台判斷：iCloud、Scriptable 的說明只有 iPhone／iPad 的使用者用得到，其他裝置不顯示 ----------
+  function isIOS() {
+    try {
+      const n = root.navigator || {}, ua = n.userAgent || ""
+      return /iPhone|iPad|iPod/.test(ua) || (n.platform === "MacIntel" && n.maxTouchPoints > 1)   // iPadOS 的 Safari 預設自稱 Mac，靠觸控點數分辨
+    } catch (e) { return false }
+  }
 
   // ---------- 儲存：IndexedDB（正式）／記憶體（測試用）----------
   function idbStore() {
@@ -84,12 +92,14 @@
 
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
   // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
-  // 沒換的：「連不上 iCloud」的離線提示（網頁版不會出現，OFFLINE 固定是 0）。
+  // 沒換的：「連不上 iCloud」的離線提示（網頁版不會出現，OFFLINE 固定是 0）；「請用『日誌』腳本打開日誌」的提示（網頁版一定帶提醒資料，REMOK 恆為真，不會出現）。
+  // 換過之後，網頁版畫面上不會再有 iCloud／Scriptable 字樣；這兩個詞只出現在 iPhone／iPad 才顯示的宿主對話框（見 isIOS）。
   const TEXT_PATCHES = [
     ["已全部同步到 iCloud", "已全部存到本機"],
     ["已同步到 iCloud", "已存到本機"],
     ["請先按「同步到 iCloud」，再試一次", "請先點一下待同步的標記，再試一次"],
-    ["只存在這部裝置，沒有同步到 iCloud", "只存在這部裝置的舊儲存裏"]
+    ["只存在這部裝置，沒有同步到 iCloud", "只存在這部裝置的舊儲存裏"],
+    ["自動（跟隨手機）", "自動（跟隨裝置）"]   // 顯示模式選單：「手機」統一說「裝置」
   ]
 
   // ---------- 組頁：模板 + 日誌資料 + 修改 ----------
@@ -296,12 +306,12 @@
     const d = root.document, a = d.createElement("a"), u = root.URL.createObjectURL(new root.Blob([text], { type: "application/json" }))
     a.href = u; a.download = name; d.body.appendChild(a); a.click(); a.remove(); setTimeout(() => root.URL.revokeObjectURL(u), 10000)
   }
-  async function deliverFile(name, text) {   // 手機：開分享選單（可「儲存到檔案」）；電腦：直接下載。回傳 "shared" | "downloaded" | "cancelled" | "failed"
+  async function deliverFile(name, text) {   // 支援分享選單的裝置：開分享選單（可存成檔案）；其他：直接下載。回傳 "shared" | "downloaded" | "cancelled" | "failed"
     const nav = root.navigator, file = new root.File([text], name, { type: "application/json" })
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
       try { await nav.share({ files: [file], title: name }); return "shared" } catch (e) {
         if (e && e.name === "AbortError") return "cancelled"
-        if (e && e.name !== "NotAllowedError") { download(name, text); return "downloaded" }   // 分享本身失敗（例如這部手機的分享選單收不了這種檔案）：直接改用下載，不再報失敗
+        if (e && e.name !== "NotAllowedError") { download(name, text); return "downloaded" }   // 分享本身失敗（例如這部裝置的分享選單收不了這種檔案）：直接改用下載，不再報失敗
         // 分享選單要在「剛按下」時才能打開；時間過了就請使用者再按一次
         return await modal("備份已準備好", name, [
           { label: "儲存備份檔", kind: "pri", onclick: done => nav.share({ files: [file], title: name }).then(() => done("shared"), err => { if (err && err.name === "AbortError") done("cancelled"); else { download(name, text); done("downloaded") } }) },   // 分享失敗就改用下載
@@ -320,7 +330,9 @@
     const year = +yearStr, s = getStore()
     const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems())
     if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
-      const go = await modal("備份前先看一下", "備份檔和備份的照片，會存到你接著選的位置。\n\n日誌備份（.json）兩邊通用：想在 Scriptable 版還原，就把它存進 iCloud 的 diary_backups 資料夾。\n\n照片（.jpg）Scriptable 版不認得，建議另外建一個專用資料夾（例如「日誌網頁版備份」），不要存進 diary_photos。",
+      const go = await modal("備份前先看一下", "備份檔和備份的照片，會存到你接著選的位置。" + (isIOS()
+        ? "\n\n日誌備份（.json）兩邊通用：想在 Scriptable 版還原，就把它存進 iCloud 的 diary_backups 資料夾。\n\n照片（.jpg）Scriptable 版不認得，建議另外建一個專用資料夾（例如「日誌網頁版備份」），不要存進 diary_photos。"
+        : "\n\n照片（.jpg）建議另外建一個專用資料夾（例如「日誌網頁版備份」），之後還原比較好找。"),
         [{ label: "繼續備份", kind: "pri", value: true }, { label: "取消", value: false }])
       if (!go) { say("已取消備份"); return false }
       await s.set("hint:backup", 1)
@@ -337,7 +349,7 @@
     const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片（.jpg）…", value: "photos" }, { label: "匯入天氣資料（weather.json）…", onclick: done => pickFile(r => done({ wx: r.file })) }]
     pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + " 天" + (Array.isArray(x.body.reminders) ? " · " + x.body.reminders.length + " 則提醒" : ""), value: { pre: i } }))
     buttons.push({ label: "取消", value: null })
-    const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片；或按「匯入天氣資料」，把 Scriptable 版 weather.json 裏已經發生的天氣補進卡片（不影響日誌內容）。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
+    const pick = await modal("還原 " + year + " 年日誌", "選取一份備份檔（.json）；或按「還原照片」把備份的照片放回卡片；或按「匯入天氣資料」，把 " + (isIOS() ? "Scriptable 版 weather.json" : "天氣檔（weather.json）") + " 裏已經發生的天氣補進卡片（不影響日誌內容）。" + (pres.length ? "\n也可以選一份還原前自動留下的備份：" : ""), buttons)
     if (!pick) return false
     if (pick === "photos") { await doRestorePhotos(); return false }
     if (pick.wx) { await doImportWeather(pick.wx); return false }
@@ -418,7 +430,7 @@
       return blob
     } finally { root.URL.revokeObjectURL(url) }
   }
-  function pickImages(done) {   // 在按鈕被按下的當下呼叫（手機：相片圖庫／拍照／檔案）
+  function pickImages(done) {   // 在按鈕被按下的當下呼叫（相片圖庫／拍照／檔案，依裝置而定）
     const d = root.document, inp = d.createElement("input")
     inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.hidden = true
     inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
@@ -577,7 +589,7 @@
         const buttons = []
         if (nav && nav.share) buttons.push({ label: "儲存照片", kind: "pri", onclick: done => nav.share({ files: batch, title: year + " 年照片" }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
         buttons.push({ label: "改用下載", value: "download" }, { label: "停止", value: "stop" })
-        const r = await modal(title, "這一批 " + batch.length + " 張。按「儲存照片」後，選「儲存到檔案」，並選一個資料夾" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。" + note, buttons)
+        const r = await modal(title, "這一批 " + batch.length + " 張。按「儲存照片」後，選擇儲存成檔案，並選一個資料夾" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。" + note, buttons)
         if (r === "shared") { saved += batch.length; break }
         if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; break }
         if (r === "stop") return saved
@@ -589,7 +601,7 @@
   async function offerPhotoBackup(year) {   // 文字備份完成後呼叫：這一年有照片，就問要不要另外備份
     const n = yearPhotoNames(await photoIndex(), year).length
     if (!n) return
-    const go = await modal("要連照片一起備份嗎？", year + " 年有 " + n + " 張照片。日誌文字的備份檔不含照片，要另外把照片存到「檔案」App 嗎？", [{ label: "備份照片", kind: "pri", value: true }, { label: "不用了", value: false }])
+    const go = await modal("要連照片一起備份嗎？", year + " 年有 " + n + " 張照片。日誌文字的備份檔不含照片，要另外把照片存成檔案嗎？", [{ label: "備份照片", kind: "pri", value: true }, { label: "不用了", value: false }])
     if (!go) return
     const files = await photoFilesOf(year), saved = files.length ? await backupPhotos(year, files) : 0
     say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
@@ -601,7 +613,7 @@
     d.body.appendChild(inp); inp.click()
   }
   async function doRestorePhotos() {   // 把備份的 .jpg 放回來（各年份可以一次選）：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮
-    const pick = await modal("還原照片", "選取備份的照片（檔名像 diary-pwa_2026-03-05_….jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」，從「檔案」App 選取；從「照片」圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
+    const pick = await modal("還原照片", "選取備份的照片（檔名像 diary-pwa_2026-03-05_….jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n在選單裏請選「選擇檔案」；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片…", kind: "pri", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     const s = getStore(), dates = new Set()
     let idx = await photoIndex(), ok = 0, dup = 0, skip = 0
@@ -790,7 +802,7 @@
     say(msg, 9000)
   }
   const wxDeniedHint = () => wxHintOnce("hint:wxdenied", "天氣需要「位置」權限：請在瀏覽器的網站設定裏把這個網站的位置改成「允許」，再重新打開日誌")
-  const wxFailHint = () => wxHintOnce("hint:wxfail", "天氣：取不到位置（" + ({ timeout: "等太久沒有回應", unavailable: "手機沒有提供位置", insecure: "這個網址不是 https", nosupport: "這個瀏覽器不支援定位" }[posErr] || "原因不明") + "）。請確認手機的「位置」已開啟；之後在選單按「天氣」再按確定，可以重試")
+  const wxFailHint = () => wxHintOnce("hint:wxfail", "天氣：取不到位置（" + ({ timeout: "等太久沒有回應", unavailable: "裝置沒有提供位置", insecure: "這個網址不是 https", nosupport: "這個瀏覽器不支援定位" }[posErr] || "原因不明") + "）。請確認裝置的「位置」已開啟；之後在選單按「天氣」再按確定，可以重試")
   async function weatherUpdate(st) {   // 回傳 true＝有查到新資料並已存好；false＝什麼都沒改（太近才更新過、沒定位、沒網路…）
     const today = ymd(new Date()), migrate = st.nv !== NAME_V   // migrate＝存下來的地名是舊規則查的：這一次一定重新查，不沿用
     if (!migrate && st.u && Date.now() - st.u < W.minGapMin * 60000 && st.last && st.last.d === today && st.days[today] && st.fc) return false
@@ -898,7 +910,7 @@
   async function doImportWeather(file) {   // 「還原」視窗裏按了「匯入天氣資料」並選好檔案
     let imp
     try { imp = JSON.parse(await file.text()) } catch (e) { await modal("天氣檔讀取失敗", "「" + (file.name || "") + "」不是有效的 JSON。", [{ label: "好", value: 1 }]); return }
-    if (!isWxFile(imp)) { await modal("這不是天氣檔", "「" + (file.name || "") + "」裏找不到天氣資料。請選 Scriptable 版存在 iCloud 資料夾裏的 weather.json。", [{ label: "好", value: 1 }]); return }
+    if (!isWxFile(imp)) { await modal("這不是天氣檔", "「" + (file.name || "") + "」裏找不到天氣資料。" + (isIOS() ? "請選 Scriptable 版存在 iCloud 資料夾裏的 weather.json。" : "請選天氣檔（weather.json）。"), [{ label: "好", value: 1 }]); return }
     say("匯入天氣中…")
     wxTask(async () => {   // 不等它做完（可能要排在背景更新後面）：做完會自己更新畫面並顯示結果
       const r = await importWeatherData(imp)
@@ -1042,7 +1054,7 @@
     } catch (e) {}
   }
   // ---------- 推播：日誌關閉時由伺服器叫醒 ----------
-  // 手機把「每則提醒還沒到的具體時間」交給伺服器（只有日期和時間，沒有日誌文字）；到點時伺服器發推播，sw.js 的 push 從本機讀出文字、顯示通知。
+  // 裝置把「每則提醒還沒到的具體時間」交給伺服器（只有日期和時間，沒有日誌文字）；到點時伺服器發推播，sw.js 的 push 從本機讀出文字、顯示通知。
   // 伺服器那邊以「整份未來時間」為準：每次都送完整清單，完成、取消、改時間都靠這個清單更新。
   const b64ToU8 = s => { const p = "=".repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)) }
   async function pushSub() {   // 取得這部裝置的推播訂閱；沒啟用、還沒允許通知、瀏覽器不支援都回傳 null
@@ -1124,7 +1136,7 @@
   }
   function remSettings() {   // 「⋯」→「提醒通知」：要在按下的當下請求權限（瀏覽器的規定）
     const N = root.Notification
-    if (!N) { modal("提醒通知", "這個瀏覽器不能顯示系統通知。\n\niPhone／iPad：要先用 Safari 把日誌「加入主畫面」，再從主畫面的圖示打開（iOS 16.4 以上）。\n\n沒有通知也能提醒：到期時日誌開著會直接跳出來；沒開著，下次打開時補上（兩天內）。", [{ label: "好", value: 1 }]); return }
+    if (!N) { modal("提醒通知", "這個瀏覽器不能顯示系統通知。" + (isIOS() ? "\n\niPhone／iPad：要先用 Safari 把日誌「加入主畫面」，再從主畫面的圖示打開（iOS 16.4 以上）。" : "") + "\n\n沒有通知也能提醒：到期時日誌開著會直接跳出來；沒開著，下次打開時補上（兩天內）。", [{ label: "好", value: 1 }]); return }
     if (N.permission === "default") { Promise.resolve(N.requestPermission()).then(remStatus, remStatus); return }
     remStatus()
   }
@@ -1229,7 +1241,7 @@
       let list
       try { list = JSON.parse(await f.text()) } catch (e) { throw new Error("「" + f.name + "」不是有效的 JSON") }
       if (isWxFile(list)) { wxs.push(list); continue }   // Scriptable 版的天氣檔（weather.json）：日誌資料之外另外收
-      if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔也可以直接當資料來源（例如搬到新手機）
+      if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔也可以直接當資料來源（例如搬到新裝置）
         if (Array.isArray(list.reminders)) for (const x of list.reminders) { const c = cleanRem(x); if (c && !c.del) remsIn.push(c) }   // 備份裏的提醒一起收
         list = list.days.filter(x => x && typeof x.text === "string").map(x => [x.date, "", x.text]).concat(list.pre ? [[list.year + "-00-00", "", list.pre, true]] : [])
       }
@@ -1323,15 +1335,22 @@
       menu.appendChild(b)
     } catch (e) {}
   }
+  async function hasLocalData() {   // 啟動檢查：舊日誌、本機新寫的日子、提醒，有任何一項就直接進日誌
+    const s = getStore(), rows = await s.get("rows")
+    if (rows && rows.length) return true   // 舊日誌
+    const edits = await s.get("edits")
+    if (Array.isArray(edits) && edits.some(e => e && DATERE.test(e.date || "") && !e.del && !e.deleted && typeof e.text === "string" && e.text.trim() !== "")) return true   // 本機新寫的日子
+    return (await readRems()).some(r => !r.del)   // 提醒
+  }
   function showImport(el) {
-    el.innerHTML = '<h1>生活日誌</h1><p>第一次使用：請選取日誌資料檔（<code>data2025.json</code>、<code>data2026.json</code> …，或之前備份的 <code>backup_…json</code>，可以一次選好幾個）。資料只會存在這部裝置的瀏覽器裏，不會上傳到任何地方。</p>' +
-      '<label class="btn">選取資料檔<input id="pick" type="file" accept=".json,application/json" multiple hidden></label><p id="msg"></p><button id="go" class="btn pri" hidden>開始使用</button>'
+    el.innerHTML = '<h1>生活日誌</h1><p>第一次使用：請選取日誌資料檔（<code>data2025.json</code>、<code>data2026.json</code> …，或之前備份的 <code>backup_…json</code>，可以一次選好幾個）；沒有資料檔就直接按「從空白開始」。資料只會存在這部裝置的瀏覽器裏，不會上傳到任何地方。</p>' +
+      '<label class="btn">選取資料檔<input id="pick" type="file" accept=".json,application/json" multiple hidden></label><p id="msg"></p><button id="go" class="btn pri">從空白開始</button>'
     const msg = el.querySelector("#msg"), go = el.querySelector("#go")
     el.querySelector("#pick").onchange = async e => {
       msg.className = ""; msg.textContent = "匯入中…"
       try {
         const r = await importFiles([...e.target.files])
-        msg.textContent = (r.days ? "已匯入 " + r.days + " 天（" + r.years.join("、") + " 年）" : "還沒有日誌資料，請再選取日誌資料檔") + (r.wx ? (r.days ? "；" : "") + "天氣 " + r.wx + " 天" : "") + (r.rem ? "；提醒 " + r.rem + " 則" : ""); go.hidden = !r.days
+        msg.textContent = (r.days ? "已匯入 " + r.days + " 天（" + r.years.join("、") + " 年）" : "還沒有匯入日誌資料") + (r.wx ? "；天氣 " + r.wx + " 天" : "") + (r.rem ? "；提醒 " + r.rem + " 則" : ""); go.textContent = r.days ? "開始使用" : "從空白開始"
       } catch (err) { msg.className = "err"; msg.textContent = String(err.message || err) }
     }
     go.onclick = () => launch().catch(err => { msg.className = "err"; msg.textContent = String(err.message || err) })
@@ -1341,12 +1360,11 @@
     try { if ("serviceWorker" in root.navigator) root.navigator.serviceWorker.register("sw.js") } catch (e) {}
     const el = root.document.getElementById("boot")
     try {
-      const rows = await getStore().get("rows")
-      if (rows && rows.length) await launch(); else showImport(el)
+      if (await hasLocalData()) await launch(); else showImport(el)
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
