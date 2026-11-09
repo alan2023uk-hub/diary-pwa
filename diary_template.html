@@ -254,6 +254,11 @@ header .tools #bkp,header .tools #rst{--c:var(--k5)}
 #pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
 #pn .qs.cf{gap:12px}
 #pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
+/* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
+#pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
+#pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+#pn .tr .tx{flex:1;min-width:0}#pn .tr .tx b{display:block;font-size:16px}
+#pn .tr .tx span{display:block;font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style><style id="ui6">
 /* ===== UI v6：頂部欄——5 個圖標平均排開、沒有下拉菜單；「⋯」開小菜單；搜尋欄蓋住整條頂欄 ===== */
 html{scroll-padding-top:12px}
@@ -669,8 +674,8 @@ function bannerUpdate(){
  const bk=document.getElementById('bk'),pn=pendingList().length;
  if(pn>0){bk.hidden=false;bk.innerHTML=ico('cloud')+'<b>'+pn+'</b>';bk.title=bk.ariaLabel=pn+' 筆待同步（點一下同步）';bk.onclick=doSync}else bk.hidden=true;
  const of=document.getElementById('off');if(window.OFFLINE){of.hidden=false;of.innerHTML=ico('cloudOff');of.title=of.ariaLabel=offMsg()}else of.hidden=true;
- const dl=document.getElementById('dl'),gn=EDITS.filter(e=>e.deleted).length;
- if(gn>0){dl.hidden=false;dl.innerHTML=ico('trash')+'<b>'+gn+'</b>';dl.title=dl.ariaLabel='已刪除的日子（點一下還原）'}else dl.hidden=true;
+ const dl=document.getElementById('dl'),gn=EDITS.filter(e=>e.deleted&&!e.purged).length;
+ if(gn>0){dl.hidden=false;dl.innerHTML=ico('trash')+'<b>'+gn+'</b>';dl.title=dl.ariaLabel='垃圾桶（點一下管理：還原、永久刪除、清空）'}else dl.hidden=true;
  uiPend(pn)}
 async function copyText(t){
  try{await navigator.clipboard.writeText(t);return true}catch(e){}
@@ -756,7 +761,24 @@ async function deleteDay(d){
  const tomb={date:d,deleted:true,text:full,orig:o,isNew:o===null,t:Date.now()};if(r)tomb.rem={due:r.due,repeat:r.repeat||0,done:!!r.done};await putEdit(tomb);
  await applyEdits();refresh();hdrShow();
  if(r){toast(window.LIVE_ACT?'已刪除，並取消這一天的提醒…':'已刪除，並取消這一天的提醒…畫面會短暫離開再回來');remSend({id:d,date:d,del:true,t:Date.now()});return}
- toast('已刪除 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日（可在「⋯」→「已刪除的日子」還原）');doSync()}
+ toast('已刪除 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日（可在「⋯」→ 垃圾桶 還原或永久刪除）');doSync()}
+/* 永久刪除垃圾桶裏的一天：自己新增的日子整筆拿掉；來自原稿的日子要留著「已刪除」記號（否則原稿會重新冒出來），只是標成 purged＝不再列進垃圾桶、也不能還原 */
+async function purgeDay(d,noSync){
+ const e=EDITS.find(x=>x.date===d&&x.deleted);if(!e)return;
+ if(e.isNew&&e.orig===null)await delEdit(d);
+ else{const c=Object.assign({},e);delete c.rem;c.purged=true;c.t=Date.now();await putEdit(c)}
+ if(noSync)return;
+ await applyEdits();refresh();doSync();toast('已永久刪除 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日')}
+async function purgeAllDays(){
+ const all=EDITS.filter(e=>e.deleted&&!e.purged);
+ for(const e of all)await purgeDay(e.date,1);
+ await applyEdits();refresh();doSync();toast('已清空垃圾桶（'+all.length+' 天）')}
+/* 全部還原：沒有提醒的日子一次還原；有提醒的日子要逐天還原（還原提醒會短暫離開畫面，無法一次做多天），所以留在垃圾桶裏 */
+async function restoreAllDays(){
+ const all=EDITS.filter(e=>e.deleted&&!e.purged),ok=all.filter(e=>!e.rem),keep=all.length-ok.length;
+ for(const e of ok)await restoreDay(e.date,1);
+ if(ok.length)doSync();
+ toast(ok.length?'已還原 '+ok.length+' 天'+(keep?'；另有 '+keep+' 天帶提醒，請逐天還原':''):'這些日子都帶提醒，請逐天還原')}
 async function restoreDay(d,noSync){
  const e=EDITS.find(x=>x.date===d);if(!e)return;const rm=e.rem;
  if((e.isNew&&e.orig===null)||(typeof e.text==='string'&&e.text.trim()!==''&&e.text!==e.orig)){const c=Object.assign({},e);delete c.deleted;delete c.rem;c.t=Date.now();await putEdit(c)}else await delEdit(d);
@@ -784,25 +806,43 @@ function openDay(d){
  newDay(d)}
 async function newDay(d,view){   // view＝true：只跳到那一天、不進編輯模式（日曆按鈕用）；點卡片才編輯
  const stay=()=>{const el=goDay(d);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(d)}};
- if(EDITS.some(x=>x.date===d&&x.deleted)){await restoreDay(d,1);if(view)stay();else{goDay(d);startEdit(d)};return}
+ const tb=EDITS.find(x=>x.date===d&&x.deleted);
+ if(tb&&!tb.purged){await restoreDay(d,1);if(view)stay();else{goDay(d);startEdit(d)};return}
+ if(tb){const o2=RAWBY.has(d)?RAWBY.get(d):null;await putEdit({date:d,text:'',orig:o2,isNew:o2===null,t:Date.now(),init:''});await applyEdits();if(view)stay();else{goDay(d);startEdit(d)};return}   // 已永久刪除的日子：重新開一張空白卡，不把舊內容帶回來
  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||+d.slice(0,4)<2000||+d.slice(0,4)>2100){toast('日期不正確：年份要在 2000 到 2100 之間');return}
  if(!DATA.some(x=>x[0]===d&&!x[3])){
   await dropDrafts(d);await putEdit({date:d,text:'',orig:null,isNew:true,t:Date.now(),init:''});await applyEdits()}   // 卡片標題已有日期和星期，新卡片不再預填「18. 星期日」
  if(view)stay();else{goDay(d);startEdit(d)}}
 /* ===== 「更多」選單：新增某一天、同步到 iCloud ===== */
-function openPanel(){   // 只剩「已刪除的日子」清單；備份／還原已改成菜單上的兩個直接按鈕
+function openPanel(){   // 垃圾桶：單日還原／永久刪除、全部還原、清空垃圾桶；每次操作後留在清單裏，清空了才自動關閉
  const o=document.createElement('div');o.id='pn';const box=document.createElement('div');box.className='box';o.appendChild(box);
  o.onclick=e=>{if(e.target===o)o.remove()};
  const close=()=>o.remove();
  const mk=(t,fn,cls,ic,only)=>{const b=document.createElement('button');b.type='button';b.className='ib2'+(cls?' '+cls:'');if(ic){b.innerHTML=ico(ic)+(only?'':'<span>'+esc(t)+'</span>');b.title=t;b.setAttribute('aria-label',t)}else b.textContent=t;b.onclick=fn;return b};
  const hdr=(ic,t,tip)=>{const x=document.createElement('div');x.className='pnh';x.innerHTML=ico(ic)+((t===''||t==null)?'':'<b>'+esc(String(t))+'</b>');x.title=tip||'';x.setAttribute('aria-label',tip||'');return x};
- const hd=document.createElement('div');hd.className='shd';const gr=document.createElement('i');gr.className='grab';hd.append(gr,mk('關閉',close,'','x',1));box.append(hd);
- const col=document.createElement('div');col.className='row2';
- const gone=EDITS.filter(e=>e.deleted).sort((a,b)=>a.date<b.date?1:-1);
- col.append(hdr('trash',gone.length,'已刪除的日子（點一下還原）'));
- const r=document.createElement('div');r.className='qs';
- gone.slice(0,10).forEach(e=>r.append(mk(dayLabel(e.date),async()=>{close();await restoreDay(e.date)},'','undo')));col.append(r);
- box.append(col);
+ const twice=(b,fn,warn)=>{let a=0,tm=0;b.onclick=async()=>{if(!a){a=1;tm=armBtn(b,3500);setTimeout(()=>{a=0},3500);if(warn)toast(warn,3200);return}clearTimeout(tm);a=0;await fn()}};   // 危險動作：按兩下才執行
+ const peek=e=>{const l=String(e.text||'').split('\n').map(x=>x.trim()).find(x=>x!=='');return l?l.slice(0,40):'（空白）'};
+ const draw=()=>{
+  const gone=EDITS.filter(e=>e.deleted&&!e.purged).sort((a,b)=>a.date<b.date?1:-1);
+  if(!gone.length){close();return}
+  const st=box.scrollTop;box.innerHTML='';
+  const hd=document.createElement('div');hd.className='shd';const gr=document.createElement('i');gr.className='grab';hd.append(gr,mk('關閉',close,'','x',1));box.append(hd);
+  const col=document.createElement('div');col.className='row2';
+  col.append(hdr('trash',gone.length,'垃圾桶：已刪除的日子'));
+  const tb=document.createElement('div');tb.className='tb';
+  const ra=mk('全部還原',null,'','undo'),pa=mk('清空垃圾桶',null,'dng','trash');
+  ra.onclick=async()=>{await restoreAllDays();draw()};
+  twice(pa,async()=>{await purgeAllDays();draw()},'再按一次：永久刪除這 '+gone.length+' 天（無法還原）');
+  tb.append(ra,pa);col.append(tb);
+  gone.forEach(e=>{
+   const r=document.createElement('div');r.className='tr';
+   const tx=document.createElement('div');tx.className='tx';const bd=document.createElement('b');bd.textContent=dayLabel(e.date);const sp=document.createElement('span');sp.textContent=peek(e);tx.append(bd,sp);
+   const u=mk('還原這一天',async()=>{await restoreDay(e.date);draw()},'','undo',1);
+   const p=mk('永久刪除這一天',null,'dng','trash',1);twice(p,async()=>{await purgeDay(e.date);draw()},'再按一次：永久刪除這一天（無法還原）');
+   r.append(tx,u,p);col.append(r)});
+  box.append(col);box.scrollTop=st};
+ draw();
+ if(document.getElementById('pn'))document.getElementById('pn').remove();
  document.body.appendChild(o);
 }
 
@@ -895,6 +935,13 @@ function landToday(){
  let hit=real.find(x=>x[0]===td);
  if(!hit){const past=real.filter(x=>x[0]<td);hit=past.length?past[past.length-1]:real[real.length-1]}
  setTimeout(()=>{const el=goDay(hit[0]);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(hit[0])}},60)}
+/* 新用戶：原稿一天都沒有、也沒刪過任何日子時，自動準備一張「今天的空白日誌」，打開就有地方寫。
+   它只是空白草稿：沒寫內容就離開不算修改、不會同步，下次打開會再準備一張；寫了按「儲存」才變成真正的日誌。刪光日子的老用戶（有刪除記號）不會被自動新增 */
+async function ensureFirstDay(){
+ if(DATA.some(x=>!x[3]))return;
+ if(EDITS.some(e=>e.deleted))return;
+ const t=new Date(),td=t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());
+ await putEdit({date:td,text:'',orig:null,isNew:true,t:Date.now(),init:''});await applyEdits();refresh()}
 async function initEdits(){await loadEdits();applyFont();if(window.OFFLINE)setTimeout(()=>toast(offMsg(),7000),1600);if(!canE)setTimeout(()=>toast('這個環境不保存網頁資料，修改只留到關閉為止'),1800);if(!META.hint1){META.hint1=1;saveMeta();setTimeout(()=>toast('提示：點任何一張卡片就可以編輯；長按可以選取文字來拷貝'),1200)}await mergeICloud();await dropDrafts();
  if(ICL){const have=new Set(window.ICLOUD_EDITS.map(r=>r.date));const dead=TOMBS.filter(r=>!have.has(r.date));
   if(dead.length){TOMBS=TOMBS.filter(r=>!dead.includes(r));if(canE)for(const r of dead){try{await eDel(r.date)}catch(e){canE=false}}}}
@@ -902,7 +949,7 @@ async function initEdits(){await loadEdits();applyFont();if(window.OFFLINE)setTi
  if(window.GOTAB==='rem')showRem();
  else if(window.GOPHOTOS&&window.UNDATED>0){const gy=+window.GOYEAR||0;if(gy&&YEARS.includes(gy))setYear(gy);showPhotos()}
  else if(window.GOTO&&DATA.some(x=>x[0]===window.GOTO&&!x[3]))setTimeout(()=>{goDay(window.GOTO);holdLanding(window.GOTO)},60)
- else landToday()}
+ else{await ensureFirstDay();landToday()}}
 /* 活腳本（階段 1）：腳本在原地把「同步後的 iCloud 修改」推回頁面，頁面不重載。
    有變動才重畫；正在編輯（有打開的編輯框）時只更新資料、不重畫，免得打到一半的字消失 */
 window.__cloudUpdate=async function(edits,off){
