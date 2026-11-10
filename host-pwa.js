@@ -1267,6 +1267,20 @@
   function handle(u) { queue = queue.then(() => run(u)).catch(e => say("出錯了：" + (e && e.message || e))); return queue }
 
   // ---------- 啟動：有資料就組頁；沒有就先請使用者匯入 ----------
+  // ---------- 假期自動更新：讀同一個網站上的 holidays.json，交給頁面的 __holUpdate 補進假期表 ----------
+  // holidays.json 由 GitHub Actions（.github/workflows/update-holidays.yml）定期從英國 GOV.UK 和香港 1823 抓回來；放在自己的網站上，不用跨網站抓（沒有跨網域的問題）。
+  // 離線時 sw.js 會給上次存下來的那份；抓不到、格式不對都不理它，照用程式裡內建的假期表。
+  async function holidaysUpdate() {
+    try {
+      if (typeof root.__holUpdate !== "function") return false
+      const r = await root.fetch("holidays.json", { cache: "no-cache" })
+      if (!r.ok) return false
+      const j = await r.json()
+      if (!j || typeof j !== "object" || j.v !== 1) return false
+      root.__holUpdate(j)
+      return true
+    } catch (e) { return false }
+  }
   async function launch() {
     const r = await fetch("diary_template.html", { cache: "no-cache" })
     if (!r.ok) throw new Error("讀不到 diary_template.html（" + r.status + "）")
@@ -1277,6 +1291,7 @@
     try { if (new root.URLSearchParams(root.location.search).get("tab") === "rem") tab = "rem" } catch (e) {}   // 點通知進來（網址帶 ?tab=rem）：直接打開提醒清單
     const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg, rems: await readRems(), tab })
     root.document.open(); root.document.write(html); root.document.close()
+    holidaysUpdate()   // 不等它：頁面先用內建的假期表打開，讀到新的再換上去
   }
   async function importFiles(files) {   // 讀 dataXXXX.json（可一次選好幾個）；回傳摘要
     const s = getStore(), found = [], wxs = [], remsIn = []

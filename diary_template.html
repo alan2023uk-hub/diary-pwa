@@ -1011,6 +1011,28 @@ window.__wxUpdate=function(w,c,msg){
 };
 
 
+/* 假期自動更新：宿主讀到 holidays.json（GitHub Actions 定期從 GOV.UK、香港 1823 抓回來存的）後交給這裏，補進 HOL。
+   只新增、更新，不刪：今天往前 60 天以後的日子以新資料為準（官方改了名稱或日期就跟著改）；更早的日子只補「原本沒有的」，舊名稱不動。
+   有變動才重畫日誌卡片和假期清單（正在編輯卡片時不重畫，編輯完下次重畫就會顯示）；「資料範圍」那行是從 HOL 算的，會自動跟著延長 */
+window.__holUpdate=function(h){
+ try{
+  if(!h||typeof h!=='object')return;
+  const t=new Date();t.setDate(t.getDate()-60);const cut=t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());
+  let n=0;
+  for(const k of HOLIDAY_SETS){
+   const src=h[k];if(!src||typeof src!=='object')continue;
+   const dst=HOL[k]||(HOL[k]={});
+   for(const d in src){
+    const nm=src[d];
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||typeof nm!=='string'||!nm||nm.length>40||dst[d]===nm)continue;
+    if(d>=cut||!dst[d]){dst[d]=nm;n++}
+   }
+  }
+  if(!n)return;
+  if(!document.querySelector('.ed'))refresh();
+  if(inHol)renderHol();
+ }catch(e){}
+};
 /* 活腳本（階段 4a）：腳本在原地做完備份後，只在頁面上顯示一則提示（頁面不重載）。腳本靠這個函式存在與否，決定要不要攔截備份網址 */
 window.__bkUpdate=function(msg){
  try{if(msg)toast(msg,4200)}catch(e){}
