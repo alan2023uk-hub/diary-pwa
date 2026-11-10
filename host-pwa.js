@@ -113,7 +113,7 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_BKCHECK=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
       '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
@@ -123,12 +123,12 @@
   // v2（現在的格式）：每一天帶修改時間 t（0＝原稿沒改過）；刪除的日子記在 gone；提醒也帶 t，取消的提醒記在 remGone。還原時靠這些時間做「合併」。
   // 兩邊的備份檔互通（都是日誌的備份，兩邊都認得）；檔名和類型（kind）仍然不同，只是用來分辨是哪一邊備份的：
   //   網頁版的備份：pwa_yymmdd_hhmm.json（建立日期；例：pwa_261109_1901.json），kind＝"diary-pwa-backup"
-  //   Scriptable 的備份：bk_yymmdd_hhmm.json，kind＝"diary-backup"（放在 iCloud 的 diary_backups 資料夾）
+  //   Scriptable 的備份：bk_yymmdd_hhmm.json，kind＝"diary-backup"（放在 iCloud 的 manual_backup 資料夾；以前叫 diary_backups）
   //   日誌年份預設＝建立年份；不同年才在後面加 _y25（例：pwa_270105_2230_y26.json）；還原前自動備份加 _pre（放在 _y 之前）
   //   天數和提醒數不再寫進檔名（檔名太長，檔案App顯示不完整）；Scriptable 的還原選單會讀檔案內容補上
   //   （舊格式 pwa_2026_1109_1901_120d3r.json、diary-pwa_backup_…、backup_… 兩邊都還認得；網頁版靠檔案內容的 kind 判斷，不看檔名）
   //   網頁版備份出來的照片：日期_時間碼_序號.jpg（時間碼＝原檔名裡的 13 位毫秒數轉成 8 位 36 進位，還原時換回來；舊的 diary-pwa_… 前綴照樣認得）
-  // 想在 Scriptable 版還原網頁版的日誌備份：把 .json 存進 iCloud 的 diary_backups 資料夾（Scriptable 版認 pwa_ 開頭的檔名）。
+  // 想在 Scriptable 版還原網頁版的日誌備份：把 .json 存進 iCloud 的 manual_backup 資料夾（Scriptable 版認 pwa_ 開頭的檔名）。
   // 舊格式（v1，沒有 gone）的備份也認得：每一天的時間一律當作備份建立的時間，也不含刪除記錄。
   const BK_KIND = "diary-pwa-backup", SCRIPTABLE_KIND = "diary-backup", PWA_PHOTO_PREFIX = "diary-pwa_"
   const okKind = k => k === BK_KIND || k === SCRIPTABLE_KIND
@@ -314,12 +314,12 @@
   async function deliverFile(name, text) {   // 支援分享選單的裝置：開分享選單（可存成檔案）；其他：直接下載。回傳 "shared" | "downloaded" | "cancelled" | "failed"
     const nav = root.navigator, file = new root.File([text], name, { type: "application/json" })
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-      try { await nav.share({ files: [file], title: name }); return "shared" } catch (e) {
+      try { await nav.share({ files: [file] }); return "shared" } catch (e) {   // 不帶 title／text：iOS 存到「檔案」時會把標題另存成「文字.txt」
         if (e && e.name === "AbortError") return "cancelled"
         if (e && e.name !== "NotAllowedError") { download(name, text); return "downloaded" }   // 分享本身失敗（例如這部裝置的分享選單收不了這種檔案）：直接改用下載，不再報失敗
         // 分享選單要在「剛按下」時才能打開；時間過了就請使用者再按一次
         return await modal("備份已準備好", name, [
-          { label: "儲存備份檔", kind: "pri", onclick: done => nav.share({ files: [file], title: name }).then(() => done("shared"), err => { if (err && err.name === "AbortError") done("cancelled"); else { download(name, text); done("downloaded") } }) },   // 分享失敗就改用下載
+          { label: "儲存備份檔", kind: "pri", onclick: done => nav.share({ files: [file] }).then(() => done("shared"), err => { if (err && err.name === "AbortError") done("cancelled"); else { download(name, text); done("downloaded") } }) },   // 分享失敗就改用下載
           { label: "改用下載", value: "download" }, { label: "取消", value: "cancelled" }]).then(v => { if (v === "download") { download(name, text); return "downloaded" } return v })
       }
     }
@@ -337,7 +337,7 @@
     const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems(), yearPhotoNames(await photoIndex(), year))
     if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
       const go = await modal("備份前先看一下", "備份會存到你接著選的位置。" + (isIOS()
-        ? "\n\n日誌（.json）：兩邊通用，想在 Scriptable 版還原，就存進 iCloud 的 diary_backups。\n照片（.jpg）：請另建專用資料夾，不要放進 diary_photos。"
+        ? "\n\n日誌（.json）：兩邊通用，請存進 iCloud Drive › Scriptable › manual_backup（Scriptable 版的還原選單認得），第一次選好之後 iOS 會記住這個位置。\n照片（.jpg）：請存進 iCloud Drive › Scriptable › pwa_photos（和 Scriptable 版的 diary_photos 分開，不要混在一起）。"
         : "\n\n照片（.jpg）建議另建專用資料夾（例如「日誌網頁版備份」），之後比較好找。"),
         [{ label: "繼續備份", kind: "pri", value: true }, { label: "取消", value: false }])
       if (!go) { say("已取消備份"); return false }
@@ -346,8 +346,7 @@
     const how = await deliverFile(r.name, JSON.stringify(r.body))
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份 " + year + " 年：" + r.days + " 天、" + r.rems + " 則提醒" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
     const saved = how === "shared" || how === "downloaded"
-    if (saved) await offerPhotoBackup(year)
-    return saved
+    return saved   // 照片不在這裏問了：用選單的「備份照片」按鈕另外備份
   }
   // ---------- 自動備份（提示式）----------
   // 網頁版沒辦法自己把檔案寫進 iCloud 資料夾（瀏覽器只能在使用者按一下的當下，經分享選單存檔）。所以：打開日誌後，某一年「上次存自動備份已超過設定的天數、而且之後有修改」（或從來沒存過）→ 跳出提示，按「儲存」打開分享選單，
@@ -400,7 +399,7 @@
         "\n\n按「儲存」會打開分享選單：選「儲存到檔案」，存進 iCloud Drive › Scriptable › autobackup（第一次選好之後，iOS 會記住這個位置）。", [
         { label: "儲存", kind: "pri", onclick: done => {   // 分享選單要在「按下的當下」打開
           const files = items.map(i => new root.File([i.text], i.name, { type: "application/json" }))
-          if (nav.share && nav.canShare && nav.canShare({ files })) nav.share({ files, title: "日誌自動備份" }).then(() => done("saved"), err => { if (err && err.name === "AbortError") done("later"); else { saveAll(); done("saved") } })
+          if (nav.share && nav.canShare && nav.canShare({ files })) nav.share({ files }).then(() => done("saved"), err => { if (err && err.name === "AbortError") done("later"); else { saveAll(); done("saved") } })
           else { saveAll(); done("saved") }
         } },
         { label: "稍後再問", value: "later" }])
@@ -414,6 +413,43 @@
       await s.set("autobk:snooze", now + AUTO_BK_SNOOZE_MS)
       return false
     } finally { autoBusy = false }
+  }
+  // ---------- 核對自動備份：網頁版看不到資料夾，所以請使用者選 autobackup 資料夾，依檔名重算每一年「上次自動備份」的時間 ----------
+  // 備份檔被刪掉、或換過資料夾時，記錄會和實際不符；核對之後記錄就以資料夾裡實際有的為準，該備份的年份馬上提示。只認 pwa_…_auto 開頭的檔名（網頁版自己的自動備份）。
+  const AUTO_NAME = /^pwa_(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})_auto(?:_y(\d{2}))?\.json$/
+  function pickBackupFolder(done) {   // 在按鈕被按下的當下呼叫；只收檔名，不讀內容。iOS 18.4 以上
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.setAttribute("webkitdirectory", ""); inp.hidden = true
+    inp.onchange = () => { const names = [...(inp.files || [])].map(f => f.name); inp.remove(); done({ names }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  async function doBkVerify() {
+    const pick = await modal("核對自動備份", "網頁版看不到資料夾，所以請選 iCloud Drive › Scriptable › autobackup，程式會依檔名看每一年最新的自動備份是哪天（需要 iOS 18.4 以上）。\n\n如果裡面的備份已經刪光，資料夾是空的、選不了，請按「資料夾是空的」。",
+      [{ label: "選取 autobackup 資料夾…", kind: "pri", onclick: pickBackupFolder }, { label: "資料夾是空的", value: { names: [] } }, { label: "取消", value: null }])
+    if (!pick) return
+    const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || []
+    const years = new Set(rows.map(r => +String(r[0]).slice(0, 4)).filter(y => y > 1999))
+    for (const e of edits) { const m = /^(\d{4})-/.exec(e && e.date || ""); if (m) years.add(+m[1]) }
+    const found = {}   // 年 → 資料夾裡最新一份自動備份的時間（毫秒）
+    for (const n of pick.names) {
+      const m = AUTO_NAME.exec(n)
+      if (!m) continue
+      const y = 2000 + (m[6] ? +m[6] : +m[1]), ms = new Date(2000 + +m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime()
+      if (!(found[y] >= ms)) found[y] = ms
+    }
+    const last = await readBkLast(), lines = []
+    for (const y of [...years].filter(y => effectiveDays(y, rows, edits).days.size).sort()) {
+      if (found[y]) { last[y] = found[y]; lines.push(y + " 年：資料夾裡最新的是 " + fmtTime(found[y])) }
+      else { delete last[y]; lines.push(y + " 年：資料夾裡沒有自動備份") }
+    }
+    await s.set("autobk:last", last); await s.set("autobk:snooze", 0)
+    try { if (root.BKCFG) root.BKCFG.last = (await bkCfgForPage()).last } catch (e) {}   // 頁面「自動備份」那一行的「上次」換成實際的
+    if (!lines.length) { say("沒有可核對的日誌"); return }
+    if (await readBkDays() <= 0) { say(lines.join("；") + "。記錄已更新；自動備份目前是關閉的", 6000); return }
+    const items = await autoBackupItems(Date.now())
+    if (!items.length) { say(lines.join("；") + "。記錄已更新，目前不用備份", 6000); return }
+    say(lines.join("；") + "。記錄已更新", 3000)
+    await autoBackupCheck()
   }
   function startAutoBackup() {   // 頁面載入後呼叫：稍等一下檢查一次；之後每次回到日誌（隔了六小時以上）再檢查
     const d = root.document
@@ -651,9 +687,27 @@
   const photoExportName = f => { const m = PH_LONG.exec(f); return m ? m[1] + "_" + Number(m[2]).toString(36).padStart(8, "0") + "_" + m[3] + ".jpg" : f }
   const photoInternalName = nm => { const m = PH_SHORT.exec(nm); if (!m) return nm; const ms = parseInt(m[2], 36); return String(ms).length === 13 && ms.toString(36).padStart(8, "0") === m[2] ? m[1] + "_" + ms + "_" + m[3] + ".jpg" : nm }
   const yearPhotoNames = (idx, year) => idx.filter(x => okName(x.f) && x.f.slice(0, 4) === String(year)).map(x => x.f).sort()
-  async function photoFilesOf(year) {
+  // 已經備份過的照片記錄：{ 內部檔名: 備份時間 }，存在這部裝置的 IndexedDB（photobk:done）。只記「分享成功」的；從備份資料夾還原回來的照片也算已備份。
+  // 記錄清掉了（或換了備份資料夾）也沒關係：下次會當成都沒備份過，或在提示裏選「全部重新備份」。
+  const PHOTO_DONE_KEY = "photobk:done"
+  async function readPhotoDone() { const v = await getStore().get(PHOTO_DONE_KEY); return v && typeof v === "object" && !Array.isArray(v) ? v : {} }
+  async function markPhotoDone(names) {
+    if (!names.length) return
+    const cur = await readPhotoDone(), now = Date.now()
+    for (const n of names) cur[n] = now
+    await getStore().set(PHOTO_DONE_KEY, cur)
+  }
+  async function syncPhotoDone(have, missing) {   // 核對過備份資料夾之後：資料夾裡有的記成已備份，缺的從記錄拿掉
+    const cur = await readPhotoDone(), now = Date.now()
+    for (const n of have) if (!cur[n]) cur[n] = now
+    for (const n of missing) delete cur[n]
+    await getStore().set(PHOTO_DONE_KEY, cur)
+  }
+  const folderPhotoNames = files => new Set(files.map(f => photoInternalName(f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name)))
+  async function photoFilesOf(year, only) {   // only＝只要這些內部檔名（Set）；不給＝全部
     const s = getStore(), out = []
     for (const f of yearPhotoNames(await photoIndex(), year)) {
+      if (only && !only.has(f)) continue
       const blob = await s.get("photo:" + f)
       if (blob) out.push(new root.File([blob], photoExportName(f), { type: "image/jpeg" }))
     }
@@ -672,23 +726,41 @@
       let note = ""
       for (;;) {
         const buttons = []
-        if (nav && nav.share) buttons.push({ label: "儲存照片", kind: "pri", onclick: done => nav.share({ files: batch, title: year + " 年照片" }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
+        if (nav && nav.share) buttons.push({ label: "儲存照片", kind: "pri", onclick: done => nav.share({ files: batch }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
         buttons.push({ label: "改用下載", value: "download" }, { label: "停止", value: "stop" })
-        const r = await modal(title, "這一批 " + batch.length + " 張。按「儲存照片」後，選擇儲存成檔案，並選一個資料夾" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。" + note, buttons)
-        if (r === "shared") { saved += batch.length; break }
-        if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; break }
+        const r = await modal(title, "這一批 " + batch.length + " 張。按「儲存照片」後，選擇儲存成檔案，並選 iCloud Drive › Scriptable › pwa_photos" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。" + note, buttons)
+        if (r === "shared") { saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); break }
+        if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); break }
         if (r === "stop") return saved
         note = r === "failed" ? "\n\n剛才分享失敗了，請再按一次，或改用下載。" : ""
       }
     }
     return saved
   }
-  async function offerPhotoBackup(year) {   // 文字備份完成後呼叫：這一年有照片，就問要不要另外備份
-    const n = yearPhotoNames(await photoIndex(), year).length
-    if (!n) return
-    const go = await modal("要連照片一起備份嗎？", year + " 年有 " + n + " 張照片。日誌文字的備份檔不含照片，要另外把照片存成檔案嗎？", [{ label: "備份照片", kind: "pri", value: true }, { label: "不用了", value: false }])
-    if (!go) return
-    const files = await photoFilesOf(year), saved = files.length ? await backupPhotos(year, files) : 0
+  async function doBackupPhotos(yearStr) {   // 選單的「備份照片」按鈕：和文字備份分開。已備份的不重複匯出：可以「核對備份資料夾」（以資料夾裡實際有的為準），或只看記錄
+    if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return }
+    const year = +yearStr
+    const names = yearPhotoNames(await photoIndex(), year)
+    if (!names.length) { say(year + " 年沒有照片可備份"); return }
+    const done = await readPhotoDone(), fresh = names.filter(n => !done[n]), hasRecord = names.some(n => done[n])
+    const buttons = [{ label: "核對備份資料夾再備份", kind: "pri", onclick: pickPhotoFolder }]
+    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 張）", value: "new" })
+    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", value: "all" }, { label: "不用了", value: "" })
+    const msg = year + " 年有 " + names.length + " 張照片。\n\n" +
+      (hasRecord ? "記錄上" + (fresh.length ? "有 " + fresh.length + " 張是上次備份後新增的" : "都備份過了") + "，但記錄只代表「分享成功過」。" : "") +
+      "選「核對備份資料夾」：請選 iCloud Drive › Scriptable › pwa_photos，程式會看資料夾裡實際有哪些照片，只補缺的（需要 iOS 18.4 以上；資料夾裡一張照片都沒有時選不了，請選「全部備份」）。"
+    const pick = await modal("備份 " + year + " 年照片", msg, buttons)
+    if (!pick) return
+    let only = null   // null＝全部；Set＝只備份這些
+    if (pick === "new") only = new Set(fresh)
+    else if (pick.files) {   // 核對資料夾
+      const have = folderPhotoNames(pick.files), missing = names.filter(n => !have.has(n))
+      await syncPhotoDone(names.filter(n => have.has(n)), missing)
+      if (!missing.length) { say("資料夾裡已經有 " + year + " 年全部 " + names.length + " 張照片，不用再備份"); return }
+      say("資料夾裡缺 " + missing.length + " 張，只備份缺的")
+      only = new Set(missing)
+    }
+    const files = await photoFilesOf(year, only), saved = files.length ? await backupPhotos(year, files) : 0
     say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
   }
   function pickPhotoFiles(done) {   // 在按鈕被按下的當下呼叫
@@ -706,22 +778,24 @@
   async function importPhotoFiles(files, year) {   // 把選到的 .jpg 放回來：檔名要是「日期_….jpg」，依日期放回對應的卡片；已經有的略過；原檔直接存，不再壓縮。year＝只收這一年的，其他年份略過；不給＝各年份都收。回傳張數
     const s = getStore(), dates = new Set()
     let idx = await photoIndex(), ok = 0, dup = 0, skip = 0, other = 0
+    const onDisk = []   // 這次從備份資料夾選到的、檔名正確的照片：都算「已備份」
     say("處理 " + files.length + " 張照片…")
     for (const f of files) {
       try {
         const nm = photoInternalName(f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name)   // 舊版備份加的前綴要拿掉；新版的短檔名換回原來的長檔名
         if (!okName(nm)) { skip++; continue }
         if (year && nm.slice(0, 4) !== String(year)) { other++; continue }
-        if (idx.some(x => x.f === nm)) { dup++; continue }
+        if (idx.some(x => x.f === nm)) { dup++; onDisk.push(nm); continue }
         const buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 2))
         if (head[0] !== 0xFF || head[1] !== 0xD8) { skip++; continue }   // 不是 JPEG
         const blob = new root.Blob([buf], { type: "image/jpeg" })
         await s.set("photo:" + nm, blob)
         idx = [...idx, { f: nm, size: blob.size, created: Date.now() }]
-        await s.set("photoIndex", idx); ok++
+        await s.set("photoIndex", idx); ok++; onDisk.push(nm)
         if (dateOf(nm)) dates.add(dateOf(nm))
       } catch (e) { skip++ }
     }
+    try { await markPhotoDone(onDisk) } catch (e) {}
     const msg = "已還原 " + ok + " 張照片" + (dup ? "，略過 " + dup + " 張已有的" : "") + (other ? "，略過 " + other + " 張不是 " + year + " 年的" : "") + (skip ? "，" + skip + " 張不能用（檔名不對或不是 JPEG）" : "")
     pushPhotos(await cardMap([...dates]), ok ? msg : "")
     if (!ok) say(msg)
@@ -1291,12 +1365,14 @@
   function actionOf(p) {   // 這個訊息要做什麼：同步（沒有任何動作參數）、打開連結、備份、還原，或還沒開放的動作名
     if (p.openurl) return "open"
     if (p.backup !== undefined) return "backup"
+    if (p.backupphotos !== undefined) return "backupphotos"
     if (p.restore !== undefined) return "restore"
     if (p.addphoto) return "addphoto"
     if (p.delphoto) return "delphoto"
     if (p.movephoto) return "movephoto"
     if (p.wxcfg !== undefined) return "wxcfg"
     if (p.bkcfg !== undefined) return "bkcfg"
+    if (p.bkverify !== undefined) return "bkverify"
     if (p.remsave !== undefined) return "remsave"
     for (const k of Object.keys(UNSUPPORTED)) if (p[k] !== undefined) return k
     return "sync"
@@ -1328,12 +1404,14 @@
     let restored = false
     if (act === "open") openUrl(p.openurl)
     else if (act === "backup") await doBackup(p.backup)
+    else if (act === "backupphotos") await doBackupPhotos(p.backupphotos)
     else if (act === "restore") restored = await doRestore(p.restore)
     else if (act === "addphoto") await doAddPhotos(p.addphoto)
     else if (act === "delphoto") await doDelPhoto(p.delphoto)
     else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
     else if (act === "remsave") await doRemSave(p.remsave)
     else if (act === "bkcfg") await doBkCfg(p.bkcfg)
+    else if (act === "bkverify") await doBkVerify()
     else if (act === "wxcfg") doWxCfg(p.wxcfg)   // 不等它做完：定位和查天氣可能要幾秒，結果做完會自己推回頁面
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
     if (restored) { await pushCloud(); await pushRems(); remCheckSoon() }

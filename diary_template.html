@@ -882,13 +882,14 @@ function openPanel(){   // 垃圾桶：單日還原／永久刪除、全部還�
  document.body.appendChild(o);
 }
 
-/* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 diary_backups 資料夾存取（內容＋提醒）；還原前會自動先備份目前內容 ===== */
+/* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 manual_backup 資料夾存取（以前叫 diary_backups）（內容＋提醒）；還原前會自動先備份目前內容 ===== */
 function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
 function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toast(window.LIVE_BK?y+' 年備份中…':y+' 年備份中…畫面會短暫離開再回來');scriptRun('backup',y)}
+function backupPhotoYear(y){toast(y+' 年照片：準備中…');hostSend({backupphotos:y},{go:lastDate||'',pend:'skip'})}   /* 只有網頁版（宿主設了 PWA_PHOTOBK）才有「備份照片」按鈕 */
 function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
 /* 備份／還原：直接作用在「目前正在看的那一年」（不再先彈出「更多」選單選年份） */
 function curYear(){const y=year||(+(lastDate||'').slice(0,4))||0;return YEARS.includes(y)?y:YEARS[YEARS.length-1]}
-/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
+/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕（網頁版多一個「備份照片」）。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
 function yearDays(y){return DATA.filter(x=>!x[3]&&+x[0].slice(0,4)===y&&String(x[2]).trim()!=='').length}
 function bkxClose(){const bx=document.getElementById('bkx');if(!bx)return;bx.hidden=true;bx.replaceChildren();document.getElementById('bkp').setAttribute('aria-expanded','false')}
 function yearDialog(){
@@ -908,14 +909,17 @@ function yearDialog(){
  bkB.append('備份');
  const rsB=mkb('還原','undo','',()=>{const y=ys[i];pdClose();restoreYear(y)});
  rsB.append('還原…');
+ const phB=window.PWA_PHOTOBK?mkb('備份照片','image','',()=>{const y=ys[i];pdClose();backupPhotoYear(y)}):null;
+ if(phB)phB.append('備份照片');
  const draw=()=>{const y=ys[i],n=yearDays(y);yb.textContent=y+' 年';sp.textContent=n?n+' 天':'沒有日誌';prev.disabled=i===0;next.disabled=i===ys.length-1;bkB.disabled=!n};draw();
- const row=document.createElement('div');row.className='cf';row.append(bkB,rsB);
+ const row=document.createElement('div');row.className='cf';row.append(...[bkB,phB,rsB].filter(Boolean));
  const kids=[yp,row];
  if(window.BKCFG){   // 自動備份的間隔：點一下輪流切換（只有 Scriptable 宿主會注入 BKCFG；其他宿主沒有這一行）
   const MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
   const ar=document.createElement('div');ar.className='bka';
   const l=document.createElement('div');l.className='bkl';const t1=document.createElement('span'),t2=document.createElement('small');t1.textContent='自動備份';l.append(t1,t2);
-  const pill=document.createElement('button');pill.type='button';pill.className='ib2';ar.append(l,pill);
+  const pill=document.createElement('button');pill.type='button';pill.className='ib2';
+  if(window.PWA_BKCHECK){const ck=document.createElement('button');ck.type='button';ck.className='ib2';ck.style.cssText='min-width:64px;padding:0 12px';ck.textContent='核對';ck.title='核對自動備份：選 autobackup 資料夾，看備份檔還在不在';ck.setAttribute('aria-label','核對自動備份');ck.onclick=()=>{pdClose();hostSend({bkverify:'1'},{go:lastDate||'',pend:'skip'})};const bt=document.createElement('div');bt.style.cssText='display:flex;gap:8px;flex:none';bt.append(ck,pill);ar.append(l,bt)}else ar.append(l,pill);
   const info=()=>{const c=window.BKCFG,m=MODES.find(x=>x[0]===c.days);pill.textContent=m?m[1]:'每 '+c.days+' 天';pill.classList.toggle('pri',c.days>0);pill.setAttribute('aria-label','自動備份：'+pill.textContent+'（點一下切換）');t2.textContent=c.days===0?'已關閉':(c.last?'上次 '+c.last:'尚未自動備份')};info();
   pill.onclick=()=>{const c=window.BKCFG,i=MODES.findIndex(x=>x[0]===c.days);c.days=MODES[(i+1)%MODES.length][0];info();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
   kids.push(ar)}
