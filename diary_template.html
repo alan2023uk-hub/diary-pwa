@@ -243,7 +243,7 @@ header .tools #palb.ib{width:auto;margin:0;padding:0;--c:var(--k1)}
 #pn .pnh svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 #pn .yr .yl b{font-size:18px}
 #pn .yr .yl .n{margin-left:10px;color:var(--sub);font-size:13px}
-header .tools #bkp,header .tools #rst{--c:var(--k5)}
+header .tools #bkp{--c:var(--k5)}
 .pills{display:flex;justify-content:center;gap:10px}
 .pills:not(:has(>:not([hidden]))){display:none}
 #dl,#off{display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 22px;border-radius:12px;font:inherit;font-size:17px;font-weight:700;color:var(--sub);background:var(--chip);background:color-mix(in srgb,var(--sub) 12%,var(--pd-bg));border:1.5px solid var(--line)}
@@ -254,6 +254,18 @@ header .tools #bkp,header .tools #rst{--c:var(--k5)}
 #pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
 #pn .qs.cf{gap:12px}
 #pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
+/* 備份與還原：在選單裡原地展開（年份選擇器＋備份／還原兩個按鈕） */
+#bkx{padding:4px 4px 8px}#bkx[hidden]{display:none}
+#bkx .yp{display:flex;align-items:center;gap:6px;margin:2px 0 12px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+#bkx .yp .ib2{flex:none;width:44px;padding:0}
+#bkx .yc{flex:1;text-align:center}
+#bkx .yc b{display:block;font-size:24px;line-height:1.2}
+#bkx .yc span{display:block;font-size:13px;color:var(--sub);margin-top:2px}
+#bkx .cf{display:flex;gap:8px}
+#bkx .cf .ib2{flex:1;height:48px;padding:0 8px;justify-content:center}
+#bkx .ib2:disabled{opacity:.35}
+.menu #bkp .cv{order:2;margin-left:auto;display:flex;transition:transform .18s}
+.menu #bkp[aria-expanded=true] .cv{transform:rotate(180deg)}
 /* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
 #pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
 #pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
@@ -313,8 +325,8 @@ header .pd-in{max-width:none;margin:0;gap:4px}
    <button class="mi" id="th" data-lb="自動" type="button" aria-label="切換 自動／白天／夜間" title="顯示模式"></button>
    <button class="mi" id="fz" data-lb="文字" type="button" aria-label="切換文字大小" title="切換文字大小"></button>
    <button class="mi" id="fw" data-lb="粗細" type="button" aria-label="切換字體粗細" title="切換字體粗細"></button>
-   <button class="mi" id="bkp" data-lb="備份" type="button" aria-label="備份（可選年份）" title="備份（可選年份）"></button>
-   <button class="mi" id="rst" data-lb="還原" type="button" aria-label="還原（可選年份）" title="還原（可選年份）"></button>
+   <button class="mi" id="bkp" data-lb="備份與還原" type="button" aria-label="備份與還原" title="備份與還原" aria-expanded="false"></button>
+   <div id="bkx" hidden></div>
   </div>
   <div class="pills"><div id="bk" hidden></div><button id="off" type="button" hidden></button><button id="dl" type="button" hidden></button></div>
  </div></div>
@@ -331,6 +343,8 @@ const RAW=__DATA__;let DATA=RAW;
 /* ===== UI v2：圖標 ===== */
 const IP={
 chevDown:'<path d="m6 9 6 6 6-6"/>',
+chevL:'<path d="m15 18-6-6 6-6"/>',
+chevR:'<path d="m9 18 6-6-6-6"/>',
 chevDbl:'<path d="m6 5 6 6 6-6"/><path d="m6 13 6 6 6-6"/>',
 search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
 history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
@@ -870,26 +884,32 @@ function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toas
 function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
 /* 備份／還原：直接作用在「目前正在看的那一年」（不再先彈出「更多」選單選年份） */
 function curYear(){const y=year||(+(lastDate||'').slice(0,4))||0;return YEARS.includes(y)?y:YEARS[YEARS.length-1]}
-/* 備份／還原：彈窗內先選年份（只列有日誌的年份），✕ 取消／✓ 確定。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
+/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
 function yearDays(y){return DATA.filter(x=>!x[3]&&+x[0].slice(0,4)===y&&String(x[2]).trim()!=='').length}
-function yearDialog(mode){
- const bk=mode==='backup',ys=YEARS.filter(y=>bk?yearDays(y)>0:true);
+function bkxClose(){const bx=document.getElementById('bkx');if(!bx)return;bx.hidden=true;bx.replaceChildren();document.getElementById('bkp').setAttribute('aria-expanded','false')}
+function yearDialog(){
+ const bx=document.getElementById('bkx');
+ if(!bx.hidden){bkxClose();return}
+ const ys=YEARS.slice();
  if(!ys.length){toast('沒有日誌可備份');return}
- let sel=ys.includes(curYear())?curYear():ys[ys.length-1];
- const o=document.createElement('div');o.id='pn';const box=document.createElement('div');box.className='box';o.appendChild(box);
- o.onclick=e=>{if(e.target===o)o.remove()};
+ let i=Math.max(0,ys.indexOf(curYear()));
  const mkb=(t,ic,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className='ib2'+(cls?' '+cls:'');b.innerHTML=ic?ico(ic):'';b.title=t;b.setAttribute('aria-label',t);b.onclick=fn;return b};
- const hd=document.createElement('div');hd.className='pnh big';
- const setHd=()=>{hd.innerHTML=ico(bk?'download':'undo')+'<b>'+sel+' 年'+(bk?' · '+yearDays(sel)+' 天':'')+'</b>'};setHd();
- box.append(hd);
- if(ys.length>1){const yr=document.createElement('div');yr.className='qs';yr.style.marginBottom='14px';
-  ys.forEach(y=>{const b=mkb(y+' 年','','',()=>{sel=y;setHd();[...yr.children].forEach(c=>c.classList.toggle('on',c===b))});b.textContent=y;if(y===sel)b.classList.add('on');yr.append(b)});
-  box.append(yr)}
- const row=document.createElement('div');row.className='qs cf';
- row.append(mkb('取消','x','',()=>o.remove()),mkb(bk?'確定備份':'確定還原','check','pri',()=>{o.remove();pdClose();bk?backupYear(sel,yearDays(sel)):restoreYear(sel)}));
- box.append(row);document.body.appendChild(o)}
-document.getElementById('bkp').onclick=()=>yearDialog('backup');
-document.getElementById('rst').onclick=()=>yearDialog('restore');
+ const go=d=>{const n=i+d;if(n<0||n>=ys.length)return;i=n;draw()};
+ const prev=mkb('前一年','chevL','',()=>go(-1)),next=mkb('後一年','chevR','',()=>go(1));
+ const yc=document.createElement('div');yc.className='yc';const yb=document.createElement('b'),sp=document.createElement('span');yc.append(yb,sp);
+ const yp=document.createElement('div');yp.className='yp';yp.append(prev,yc,next);
+ let x0=null;yp.onpointerdown=e=>{x0=e.clientX};yp.onpointercancel=()=>{x0=null};
+ yp.onpointerup=e=>{if(x0==null)return;const dx=e.clientX-x0;x0=null;if(Math.abs(dx)>40)go(dx<0?1:-1)};
+ const bkB=mkb('備份','download','pri',()=>{const y=ys[i];pdClose();backupYear(y,yearDays(y))});
+ bkB.append('備份');
+ const rsB=mkb('還原','undo','',()=>{const y=ys[i];pdClose();restoreYear(y)});
+ rsB.append('還原…');
+ const draw=()=>{const y=ys[i],n=yearDays(y);yb.textContent=y+' 年';sp.textContent=n?n+' 天':'沒有日誌';prev.disabled=i===0;next.disabled=i===ys.length-1;bkB.disabled=!n};draw();
+ const row=document.createElement('div');row.className='cf';row.append(bkB,rsB);
+ bx.replaceChildren(yp,row);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
+ try{bx.scrollIntoView({block:'nearest'})}catch(e){}}
+document.getElementById('bkp').insertAdjacentHTML('beforeend','<i class="cv">'+ico('chevDown')+'</i>');
+document.getElementById('bkp').onclick=()=>yearDialog();
 document.getElementById('wxs').onclick=()=>{pdClose();wxDialog()};
 /* 天氣設定：預報天數（0–16）、酷熱溫度（25–50°C）；按確定後交給「日誌」腳本存進 weather.json 並重查預報 */
 function wxDialog(){
@@ -1147,8 +1167,8 @@ const rc=document.createElement('span');rc.className='chip';rc.textContent='提�
 
 /* ===== UI v2：頂部圖標列、拉下菜單、搜尋、手勢 ===== */
 const HD=document.querySelector('header'),pdb=document.getElementById('pdb'),sbtn=document.getElementById('sb'),scrim=document.getElementById('scrim');
-[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkp','download'],['rst','undo']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
-function pdOpen(){try{bannerUpdate()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
+[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkp','download']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
+function pdOpen(){try{bannerUpdate()}catch(e){}try{bkxClose()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
 function pdClose(){HD.classList.remove('open');document.body.classList.remove('pdo');pdb.setAttribute('aria-expanded','false')}
 function pdToggle(){HD.classList.contains('open')?pdClose():pdOpen()}
 /* 跳到某一天之後收起頂欄（往回滑一下就再出現） */
