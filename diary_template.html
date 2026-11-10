@@ -267,6 +267,19 @@ header .tools #bkp{--c:var(--k5)}
 #bkx .rt{margin:2px 4px 6px;font-size:13px;color:var(--sub)}
 #bkx .cf+.rt{margin-top:14px}
 #bkx .cf .ib2{min-width:0;white-space:nowrap}
+/* 網頁版（#bkx.wk）：按鈕和間距縮小，整個選單不那麼擠（Scriptable 母版沒有 .wk，維持原樣） */
+#bkx.wk .yp{margin:0 0 6px}
+#bkx.wk .yp .ib2{width:40px;height:38px}
+#bkx.wk .yc b{font-size:15px}
+#bkx.wk .yc span{font-size:12.5px;margin-top:0}
+#bkx.wk .rt{margin:0 4px 4px;font-size:12.5px}
+#bkx.wk .cf+.rt{margin-top:8px}
+#bkx.wk .cf{gap:6px}
+#bkx.wk .cf .ib2{height:38px;font-size:14px;gap:5px;border-radius:10px}
+#bkx.wk .ib2 svg{width:18px;height:18px}
+#bkx.wk .bka{margin-top:8px;padding-top:6px}
+#bkx.wk .bka .ib2{height:36px;min-width:76px;padding:0 14px;font-size:14px;border-radius:10px}
+#bkx.wk .bka.bkw .bks{margin-top:0}
 #bkx .ib2:disabled{opacity:.35}
 .menu #bkp .cv{order:2;margin-left:auto;display:flex;transition:transform .18s}
 .menu #bkp[aria-expanded=true] .cv{transform:rotate(180deg)}
@@ -943,7 +956,7 @@ function yearDialog(){
   const info=()=>{const c=window.BKCFG,m=MODES.find(x=>x[0]===c.days);pill.textContent=m?m[1]:'每 '+c.days+' 天';pill.classList.toggle('pri',c.days>0);pill.setAttribute('aria-label','自動備份：'+pill.textContent+'（點一下切換）');t2.textContent=c.days===0?'已關閉':(c.last?'上次 '+c.last:'尚未自動備份')};info();
   pill.onclick=()=>{const c=window.BKCFG,i=MODES.findIndex(x=>x[0]===c.days);c.days=MODES[(i+1)%MODES.length][0];info();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
   kids.push(ar)}
- bx.replaceChildren(...kids);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
+ bx.classList.toggle('wk',!!phB);bx.replaceChildren(...kids);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
  try{bx.scrollIntoView({block:'nearest'})}catch(e){}}
 document.getElementById('bkp').insertAdjacentHTML('beforeend','<i class="cv">'+ico('chevDown')+'</i>');
 document.getElementById('bkp').onclick=()=>yearDialog();
