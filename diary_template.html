@@ -259,13 +259,17 @@ header .tools #bkp{--c:var(--k5)}
 #bkx .yp{display:flex;align-items:center;gap:6px;margin:2px 0 12px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 #bkx .yp .ib2{flex:none;width:44px;padding:0}
 #bkx .yc{flex:1;text-align:center}
-#bkx .yc b{display:block;font-size:19px;font-weight:600;line-height:1.3}
+#bkx .yc b{display:block;font-size:16px;font-weight:600;line-height:1.3}   /* 和上面選單項目同一個字級 */
 #bkx .yc span{display:block;font-size:13px;color:var(--sub);margin-top:2px}
 #bkx .cf{display:flex;gap:8px}
 #bkx .cf .ib2{flex:1;height:48px;padding:0 8px;justify-content:center}
 #bkx .ib2:disabled{opacity:.35}
 .menu #bkp .cv{order:2;margin-left:auto;display:flex;transition:transform .18s}
 .menu #bkp[aria-expanded=true] .cv{transform:rotate(180deg)}
+#bkx .bka{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 4px 0;border-top:1px solid var(--line)}
+#bkx .bka .bkl{min-width:0;display:flex;flex-direction:column;gap:2px;font-size:16px;font-weight:600;color:var(--text)}
+#bkx .bka small{font-size:12.5px;font-weight:400;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bkx .bka .ib2{flex:none;min-width:84px;padding:0 16px}
 /* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
 #pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
 #pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
@@ -906,7 +910,16 @@ function yearDialog(){
  rsB.append('還原…');
  const draw=()=>{const y=ys[i],n=yearDays(y);yb.textContent=y+' 年';sp.textContent=n?n+' 天':'沒有日誌';prev.disabled=i===0;next.disabled=i===ys.length-1;bkB.disabled=!n};draw();
  const row=document.createElement('div');row.className='cf';row.append(bkB,rsB);
- bx.replaceChildren(yp,row);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
+ const kids=[yp,row];
+ if(window.BKCFG){   // 自動備份的間隔：點一下輪流切換（只有 Scriptable 宿主會注入 BKCFG；其他宿主沒有這一行）
+  const MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
+  const ar=document.createElement('div');ar.className='bka';
+  const l=document.createElement('div');l.className='bkl';const t1=document.createElement('span'),t2=document.createElement('small');t1.textContent='自動備份';l.append(t1,t2);
+  const pill=document.createElement('button');pill.type='button';pill.className='ib2';ar.append(l,pill);
+  const info=()=>{const c=window.BKCFG,m=MODES.find(x=>x[0]===c.days);pill.textContent=m?m[1]:'每 '+c.days+' 天';pill.classList.toggle('pri',c.days>0);pill.setAttribute('aria-label','自動備份：'+pill.textContent+'（點一下切換）');t2.textContent=c.days===0?'已關閉':(c.last?'上次 '+c.last:'尚未自動備份')};info();
+  pill.onclick=()=>{const c=window.BKCFG,i=MODES.findIndex(x=>x[0]===c.days);c.days=MODES[(i+1)%MODES.length][0];info();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
+  kids.push(ar)}
+ bx.replaceChildren(...kids);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
  try{bx.scrollIntoView({block:'nearest'})}catch(e){}}
 document.getElementById('bkp').insertAdjacentHTML('beforeend','<i class="cv">'+ico('chevDown')+'</i>');
 document.getElementById('bkp').onclick=()=>yearDialog();
