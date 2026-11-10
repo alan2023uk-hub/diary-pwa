@@ -263,6 +263,10 @@ header .tools #bkp{--c:var(--k5)}
 #bkx .yc span{display:block;font-size:13px;color:var(--sub);margin-top:2px}
 #bkx .cf{display:flex;gap:8px}
 #bkx .cf .ib2{flex:1;height:48px;padding:0 8px;justify-content:center}
+/* 網頁版的備份與還原面板：「文字」「照片」各一排（每排只有兩顆按鈕，放得下大字體）；小標題在按鈕上面，不佔橫向空間。Scriptable 母版沒有照片那排，也就沒有小標題 */
+#bkx .rt{margin:2px 4px 6px;font-size:13px;color:var(--sub)}
+#bkx .cf+.rt{margin-top:14px}
+#bkx .cf .ib2{min-width:0;white-space:nowrap}
 #bkx .ib2:disabled{opacity:.35}
 .menu #bkp .cv{order:2;margin-left:auto;display:flex;transition:transform .18s}
 .menu #bkp[aria-expanded=true] .cv{transform:rotate(180deg)}
@@ -270,6 +274,12 @@ header .tools #bkp{--c:var(--k5)}
 #bkx .bka .bkl{min-width:0;display:flex;flex-direction:column;gap:2px;font-size:16px;font-weight:600;color:var(--text)}
 #bkx .bka small{font-size:12.5px;font-weight:400;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #bkx .bka .ib2{flex:none;min-width:84px;padding:0 16px}
+/* 網頁版的「自動備份」：第一行＝名字＋切換按鈕；第二行＝整行的「上次…」（以前被兩顆按鈕擠成「上次 10/1…」）＋小字的「核對資料夾」 */
+#bkx .bka.bkw{display:block}
+#bkx .bka.bkw .bkt{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:16px;font-weight:600;color:var(--text)}
+#bkx .bka.bkw .bks{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;margin-top:6px}
+#bkx .bka.bkw small{white-space:normal;overflow:visible}
+#bkx .bka.bkw .lkb{border:0;background:none;padding:8px 2px;font:inherit;font-size:12.5px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
 /* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
 #pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
 #pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
@@ -886,10 +896,11 @@ function openPanel(){   // 垃圾桶：單日還原／永久刪除、全部還�
 function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
 function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toast(window.LIVE_BK?y+' 年備份中…':y+' 年備份中…畫面會短暫離開再回來');scriptRun('backup',y)}
 function backupPhotoYear(y){toast(y+' 年照片：準備中…');hostSend({backupphotos:y},{go:lastDate||'',pend:'skip'})}   /* 只有網頁版（宿主設了 PWA_PHOTOBK）才有「備份照片」按鈕 */
+function restorePhotos(){hostSend({restorephotos:'1'},{go:lastDate||'',pend:'skip'})}   /* 網頁版「照片」那排的「還原」：直接開選照片的視窗（不分年份，依檔名放回原來的日子） */
 function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
 /* 備份／還原：直接作用在「目前正在看的那一年」（不再先彈出「更多」選單選年份） */
 function curYear(){const y=year||(+(lastDate||'').slice(0,4))||0;return YEARS.includes(y)?y:YEARS[YEARS.length-1]}
-/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕（網頁版多一個「備份照片」）。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
+/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕（網頁版分成「文字」「照片」兩排，各有備份／還原）。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
 function yearDays(y){return DATA.filter(x=>!x[3]&&+x[0].slice(0,4)===y&&String(x[2]).trim()!=='').length}
 function bkxClose(){const bx=document.getElementById('bkx');if(!bx)return;bx.hidden=true;bx.replaceChildren();document.getElementById('bkp').setAttribute('aria-expanded','false')}
 function yearDialog(){
@@ -910,16 +921,25 @@ function yearDialog(){
  const rsB=mkb('還原','undo','',()=>{const y=ys[i];pdClose();restoreYear(y)});
  rsB.append('還原…');
  const phB=window.PWA_PHOTOBK?mkb('備份照片','image','',()=>{const y=ys[i];pdClose();backupPhotoYear(y)}):null;
- if(phB)phB.append('備份照片');
+ if(phB)phB.append('備份');
+ const phR=window.PWA_PHOTOBK?mkb('還原照片','undo','',()=>{pdClose();restorePhotos()}):null;
+ if(phR)phR.append('還原…');
  const draw=()=>{const y=ys[i],n=yearDays(y);yb.textContent=y+' 年';sp.textContent=n?n+' 天':'沒有日誌';prev.disabled=i===0;next.disabled=i===ys.length-1;bkB.disabled=!n};draw();
- const row=document.createElement('div');row.className='cf';row.append(...[bkB,phB,rsB].filter(Boolean));
- const kids=[yp,row];
+ const mkrow=(...bs)=>{const r=document.createElement('div');r.className='cf';r.append(...bs);return r};
+ const mkrt=t=>{const d=document.createElement('div');d.className='rt';d.textContent=t;return d};
+ /* 網頁版：「文字」「照片」各一排（每排兩顆按鈕）；Scriptable 母版沒有照片，維持原來一排 */
+ const kids=phB?[yp,mkrt('文字'),mkrow(bkB,rsB),mkrt('照片'),mkrow(phB,phR)]:[yp,mkrow(bkB,rsB)];
  if(window.BKCFG){   // 自動備份的間隔：點一下輪流切換（只有 Scriptable 宿主會注入 BKCFG；其他宿主沒有這一行）
   const MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
   const ar=document.createElement('div');ar.className='bka';
   const l=document.createElement('div');l.className='bkl';const t1=document.createElement('span'),t2=document.createElement('small');t1.textContent='自動備份';l.append(t1,t2);
   const pill=document.createElement('button');pill.type='button';pill.className='ib2';
-  if(window.PWA_BKCHECK){const ck=document.createElement('button');ck.type='button';ck.className='ib2';ck.style.cssText='min-width:64px;padding:0 12px';ck.textContent='核對';ck.title='核對自動備份：選 autobackup 資料夾，看備份檔還在不在';ck.setAttribute('aria-label','核對自動備份');ck.onclick=()=>{pdClose();hostSend({bkverify:'1'},{go:lastDate||'',pend:'skip'})};const bt=document.createElement('div');bt.style.cssText='display:flex;gap:8px;flex:none';bt.append(ck,pill);ar.append(l,bt)}else ar.append(l,pill);
+  if(window.PWA_BKCHECK){   // 網頁版：第一行＝名字＋切換按鈕，第二行＝整行的「上次…」＋小字「核對資料夾」（核對不再佔主排）
+   ar.classList.add('bkw');
+   const top=document.createElement('div');top.className='bkt';top.append(t1,pill);
+   const sub=document.createElement('div');sub.className='bks';
+   const ck=document.createElement('button');ck.type='button';ck.className='lkb';ck.textContent='核對資料夾';ck.title='核對自動備份：選 autobackup 資料夾，看備份檔還在不在';ck.setAttribute('aria-label','核對自動備份');ck.onclick=()=>{pdClose();hostSend({bkverify:'1'},{go:lastDate||'',pend:'skip'})};
+   sub.append(t2,ck);ar.append(top,sub)}else ar.append(l,pill);
   const info=()=>{const c=window.BKCFG,m=MODES.find(x=>x[0]===c.days);pill.textContent=m?m[1]:'每 '+c.days+' 天';pill.classList.toggle('pri',c.days>0);pill.setAttribute('aria-label','自動備份：'+pill.textContent+'（點一下切換）');t2.textContent=c.days===0?'已關閉':(c.last?'上次 '+c.last:'尚未自動備份')};info();
   pill.onclick=()=>{const c=window.BKCFG,i=MODES.findIndex(x=>x[0]===c.days);c.days=MODES[(i+1)%MODES.length][0];info();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
   kids.push(ar)}

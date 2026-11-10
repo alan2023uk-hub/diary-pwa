@@ -801,7 +801,7 @@
     if (!ok) say(msg)
     return { ok, dup, skip, other, msg }
   }
-  async function doRestorePhotos() {   // 還原視窗的「還原照片…」：不限年份，自己選
+  async function doRestorePhotos() {   // 面板「照片」那排的「還原」（還原視窗裏也還有「還原照片…」，之後會拿掉）：不限年份，自己選
     const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_mhjk3f2x_0.jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n可以直接選放備份照片的資料夾（需要 iOS 18.4 以上），或改選照片檔；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     await importPhotoFiles(pick.files, null)
@@ -1366,6 +1366,7 @@
     if (p.openurl) return "open"
     if (p.backup !== undefined) return "backup"
     if (p.backupphotos !== undefined) return "backupphotos"
+    if (p.restorephotos !== undefined) return "restorephotos"   // 面板「照片」那排的「還原」：直接開選照片的視窗
     if (p.restore !== undefined) return "restore"
     if (p.addphoto) return "addphoto"
     if (p.delphoto) return "delphoto"
@@ -1405,6 +1406,7 @@
     if (act === "open") openUrl(p.openurl)
     else if (act === "backup") await doBackup(p.backup)
     else if (act === "backupphotos") await doBackupPhotos(p.backupphotos)
+    else if (act === "restorephotos") await doRestorePhotos()
     else if (act === "restore") restored = await doRestore(p.restore)
     else if (act === "addphoto") await doAddPhotos(p.addphoto)
     else if (act === "delphoto") await doDelPhoto(p.delphoto)
