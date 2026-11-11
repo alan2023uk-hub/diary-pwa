@@ -1,7 +1,11 @@
 /* 離線快取：程式檔先問網路（有更新就用新的；no-cache＝每次都向伺服器確認，不吃瀏覽器自己的暫存，所以上傳新檔後重開就是新版），連不上才用快取，所以沒有網路也能打開。日誌資料不在這裏，存在 IndexedDB。 */
-const CACHE = "diary-pwa-v4"
+const CACHE = "diary-pwa-v5"
 const FILES = ["./", "index.html", "host-pwa.js", "diary_template.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"]
-self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())) })
+/* 編者按 / Editor's note：PDF 閱讀工具（pdf.js）的兩個檔案另外放在「選用」清單，用逐個 add 並吞掉錯誤；不要併進上面的 FILES。
+   FILES 用 addAll：只要有一個檔案抓不到，整個安裝就失敗，日誌會一直停在舊版、也沒有離線快取。（使用者還沒上傳 pdf 工具檔時，不能因此壞掉整個日誌。）
+   The two pdf.js files are OPTIONAL and added one by one with errors swallowed; do not merge them into FILES. addAll fails the whole install if any single file is missing, which would freeze the diary on the old version with no offline cache. */
+const OPTIONAL = ["pdf.min.mjs", "pdf.worker.min.mjs"]
+self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).then(() => Promise.all(OPTIONAL.map(f => c.add(f).catch(() => {}))))).then(() => self.skipWaiting())) })
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())) })
 self.addEventListener("fetch", e => {
   const r = e.request

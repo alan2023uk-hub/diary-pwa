@@ -91,6 +91,16 @@
   const PICK_ANCHOR = "再加入照片');return}await saveEdit(d,ta.value,null,true);"
   const PICK_PATCH = "再加入照片');return}window.HOST_PICK_PHOTOS&&window.HOST_PICK_PHOTOS();await saveEdit(d,ta.value,null,true);"
 
+  // ---------- PDF 入口：卡片編輯列加一顆「加入 PDF」；卡片相片區塊的後面接 PDF 區塊 ----------
+  // 和上面一樣，組頁時從宿主這邊改模板（母版和模板檔都不動）；找不到那一行（模板改過）就不改，其他功能不受影響。
+  // 編者按 / Editor's note：這兩處是「改字串」，不是改模板檔：模板檔和 Scriptable 母版共用，PDF 只有網頁版有。
+  //   These two are string patches applied at assembly time, not edits to the template file: the template is shared with the Scriptable master and only the web version has PDFs.
+  const PDF_BTN_ANCHOR = "hostSend({addphoto:d},{go:d,pend:'skip'})};rb.appendChild(pb);"
+  const PDF_BTN_PATCH = PDF_BTN_ANCHOR + `if(!IP.filePlus)IP.filePlus='<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/>';const pf=ib('filePlus','加入 PDF');pf.onclick=async()=>{if(changed){toast('請先按「儲存」保存提醒設定，再加入 PDF');return}window.HOST_PICK_PDF&&window.HOST_PICK_PDF();await saveEdit(d,ta.value,null,true);hostSend({addpdf:d},{go:d,pend:'skip'})};rb.appendChild(pf);`
+  const PDF_ACT_ANCHOR = `function actHtml(d){return '<div class="act">'+remLinks(d)+phHtml(d)+'</div>'}`
+  const PDF_ACT_PATCH = `function actHtml(d){return '<div class="act">'+remLinks(d)+phHtml(d)+(window.PwaHost&&window.PwaHost.pdfHtml?window.PwaHost.pdfHtml(d):'')+'</div>'}`
+  const PDF_CSS = ".pdfs{display:flex;flex-direction:column;gap:8px;flex-basis:100%;min-width:0}.pdfc{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}.pdfc img{display:block;max-width:100%;max-height:78vh;width:auto;height:auto;margin:0 auto}.pdfm{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;font-size:14px;color:var(--sub);border-top:1px solid var(--line)}.pdfn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.pdfp{flex:none}"
+
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
   // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
   // 沒換的：「連不上 iCloud」的離線提示（網頁版不會出現，OFFLINE 固定是 0）；「請用『日誌』腳本打開日誌」的提示（網頁版一定帶提醒資料，REMOK 恆為真，不會出現）。
@@ -109,13 +119,15 @@
     if (!tpl.includes("__DATA__")) throw new Error("模板裏找不到 __DATA__")
     const esc = o => JSON.stringify(o).replace(/</g, "\\u003c")
     if (tpl.includes(PICK_ANCHOR)) tpl = tpl.replace(PICK_ANCHOR, () => PICK_PATCH)   // 找不到那一行（模板改過）就不插，照舊顯示對話框
+    if (tpl.includes(PDF_BTN_ANCHOR)) tpl = tpl.replace(PDF_BTN_ANCHOR, () => PDF_BTN_PATCH)   // 「加入 PDF」按鈕（找不到就沒有這顆按鈕）
+    if (tpl.includes(PDF_ACT_ANCHOR)) tpl = tpl.replace(PDF_ACT_ANCHOR, () => PDF_ACT_PATCH)   // 卡片裏的 PDF 區塊（找不到就不顯示）
     for (const [a, b] of TEXT_PATCHES) if (tpl.includes(a)) tpl = tpl.split(a).join(b)   // 提示文字改寫（見上面的 TEXT_PATCHES）
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
     const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
-    return html.replace("</head>", () => head + inject + "</head>")
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};window.HOST_PICK_PDF=function(){PwaHost.prePickPdf()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.installPdf();PwaHost.loadCardPdfs();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
+    return html.replace("</head>", () => head + "<style>" + PDF_CSS + "</style>" + inject + "</head>")
   }
 
   // ---------- 備份與還原 ----------
@@ -720,6 +732,154 @@
     }
     const dates = [...new Set([dateOf(name), dateOf(nn)].filter(Boolean))]
     pushPhotos(await cardMap(dates), "已更新")
+  }
+
+  // ---------- 卡片 PDF：原檔存在這部裝置（IndexedDB），卡片裏顯示第一頁的縮圖 ----------
+  // 編者按 / Editor's note：使用者要看的是「原本的 PDF」（銀行結單、電子機票），所以存的是原檔；縮圖只是卡片上的預覽。不要改成抽文字或 OCR。
+  //   The user wants to see the ORIGINAL PDF (statements, e-tickets): the original file is stored and the thumbnail is only a card preview. Do not switch to text extraction or OCR.
+  // 儲存鍵：pdfIndex（清單）、pdf:<內部檔名>（原檔）、pdfthumb:<內部檔名>（第一頁縮圖 JPEG）。內部檔名＝「日期_毫秒_序號.pdf」，原來的檔名記在清單的 n。
+  // 內部檔名以 .pdf 結尾，照片那一套（okName、dateOf 只認 .jpg）碰不到它們；備份、還原、刪除、改日期是後面的步驟。
+  const PDF_THUMB_W = 900, PDF_WARN = 20 * 1048576   // 縮圖寬度（像素）；超過這個大小（20 MB）加入前先問
+  const pdfDateOf = n => /^\d{4}-\d{2}-\d{2}_[\w.-]+\.pdf$/.test(n || "") ? n.slice(0, 10) : ""
+  const escH = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))
+  let pdfjsP = null
+  function loadPdfjs() {   // 第一次要用才載入（pdf.min.mjs 和 pdf.worker.min.mjs 放在網頁同一個資料夾）；載入失敗下次會再試
+    if (!pdfjsP) {
+      pdfjsP = import(new root.URL("pdf.min.mjs", root.location.href).href).then(m => { m.GlobalWorkerOptions.workerSrc = new root.URL("pdf.worker.min.mjs", root.location.href).href; return m })
+      pdfjsP.catch(() => { pdfjsP = null })
+    }
+    return pdfjsP
+  }
+  async function readPdf(file) {   // 回傳 { pages, thumb（第一頁的 JPEG Blob）}；有密碼回傳 { pw: true }；讀不了就丟錯
+    const lib = await loadPdfjs()
+    let doc
+    try { doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise } catch (e) { if (e && e.name === "PasswordException") return { pw: true }; throw e }
+    try {
+      const pg = await doc.getPage(1), v1 = pg.getViewport({ scale: 1 })
+      const vp = pg.getViewport({ scale: Math.min(3, PDF_THUMB_W / v1.width) })
+      const c = root.document.createElement("canvas"); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height)
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height)
+      await pg.render({ canvasContext: x, viewport: vp }).promise
+      const thumb = await new Promise(r => c.toBlob(r, "image/jpeg", 0.82))
+      c.width = c.height = 0   // iPad 的 canvas 記憶體要主動放掉
+      if (!thumb) throw new Error("縮圖失敗")
+      return { pages: doc.numPages, thumb }
+    } finally { try { await doc.destroy() } catch (e) {} }
+  }
+  const pdfThumbUrls = new Map()   // 內部檔名 → blob 網址（顯示用）
+  async function pdfIndex() { return await getStore().get("pdfIndex") || [] }
+  async function pdfThumbUrl(f) {
+    if (pdfThumbUrls.has(f)) return pdfThumbUrls.get(f)
+    const blob = await getStore().get("pdfthumb:" + f)
+    if (!blob) return ""
+    const u = root.URL.createObjectURL(blob); pdfThumbUrls.set(f, u); return u
+  }
+  async function pdfCardMap(dates) {   // 日期 → [{ f（內部檔名）, n（原檔名）, p（頁數）, s（縮圖網址）}]
+    const idx = await pdfIndex(), map = {}
+    for (const d of dates) map[d] = await Promise.all(idx.filter(x => pdfDateOf(x.f) === d).sort((a, b) => a.f < b.f ? -1 : 1).map(async x => ({ f: x.f, n: x.n, p: x.pages, s: await pdfThumbUrl(x.f) })))
+    return map
+  }
+  function pdfHtml(d) {   // 卡片裏的 PDF 區塊（由模板的 actHtml 呼叫，見 PDF_ACT_PATCH）
+    const a = (root.CARD_PDFS || {})[d]
+    if (!a || !a.length) return ""
+    return '<div class="pdfs">' + a.map(p => '<div class="pdfc" data-pdf="' + escH(p.f) + '" data-d="' + d + '" role="button" aria-label="PDF：' + escH(p.n) + '">' + (p.s ? '<img src="' + p.s + '" alt="" decoding="async">' : "") +
+      '<div class="pdfm"><span class="pdfn">📄 ' + escH(p.n) + '</span><span class="pdfp">共 ' + (p.p || "?") + " 頁</span></div></div>").join("") + "</div>"
+  }
+  function pushPdfs(map, msg) {   // 只換「那幾天」卡片裏的區塊，不重畫整個列表（和 pushPhotos 同一個做法）
+    try {
+      root.CARD_PDFS = root.CARD_PDFS || {}
+      for (const d of Object.keys(map || {})) {
+        if (map[d].length) root.CARD_PDFS[d] = map[d]; else delete root.CARD_PDFS[d]
+        const el = root.document.getElementById("d" + d), act = el && el.querySelector(".act")
+        if (act && typeof root.actHtml === "function") act.outerHTML = root.actHtml(d)
+      }
+      if (msg) say(msg, 2500)
+    } catch (e) {}
+  }
+  async function loadCardPdfs() {   // 頁面載入後，把所有卡片的 PDF 補上去
+    try {
+      const idx = await pdfIndex(), dates = [...new Set(idx.map(x => pdfDateOf(x.f)).filter(Boolean))]
+      if (dates.length) pushPdfs(await pdfCardMap(dates), "")
+    } catch (e) { say("載入 PDF 失敗：" + (e && e.message || e)) }
+  }
+  let pdfClickFn = null
+  function installPdf() {   // 點卡片裏的 PDF（第 2 步會換成展開全部頁／全螢幕閱讀）
+    const d = root.document
+    if (!d || !d.addEventListener) return
+    if (pdfClickFn) d.removeEventListener("click", pdfClickFn, true)   // 組頁（document.write）會清掉舊的監聽，所以每次都「先拿掉舊的、再加新的」
+    pdfClickFn = e => {
+      const c = e.target && e.target.closest && e.target.closest(".pdfc")
+      if (!c) return
+      e.preventDefault(); e.stopPropagation()
+      say("展開全部頁和全螢幕閱讀，會在下一步加入", 3000)
+    }
+    d.addEventListener("click", pdfClickFn, true)
+  }
+  let prePickP = null   // 按下「加入 PDF」當下已經打開的選檔視窗（和照片的 prePick 同一個做法）
+  function prePickPdf() {
+    if (prePickP) prePickP.cancel()
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "application/pdf,.pdf"; inp.multiple = true; inp.hidden = true
+    let finish
+    const promise = new Promise(res => { finish = res })
+    prePickP = { promise, at: Date.now(), cancel: () => { inp.remove(); finish(null) } }
+    inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); finish(fs) }
+    inp.addEventListener("cancel", () => { inp.remove(); finish(null) })
+    d.body.appendChild(inp); inp.click()
+  }
+  function pickPdfs(done) {
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "application/pdf,.pdf"; inp.multiple = true; inp.hidden = true
+    inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  async function askBigPdfs(files) {   // 超過 PDF_WARN 的檔案，逐個問「仍要加入／略過」；回傳要加入的
+    const keep = []
+    for (const f of files) {
+      if (f.size <= PDF_WARN) { keep.push(f); continue }
+      const go = await modal("這個 PDF 很大", "「" + f.name + "」有 " + fmtMB(f.size) + "，存在這部裝置會佔不少空間。要加入嗎？", [{ label: "仍要加入", kind: "pri", value: true }, { label: "略過這個", value: false }])
+      if (go) keep.push(f)
+    }
+    return keep
+  }
+  async function doAddPdf(date) {
+    if (!DATERE.test(date || "")) { say("加入 PDF 失敗：日期不對"); return }
+    const pre = prePickP; prePickP = null
+    if (pre && Date.now() - pre.at < 10000) {   // 按下按鈕時選檔視窗已經打開了：選完再處理；這裏不等，沒選檔案也不會卡住後面的動作
+      pre.promise.then(async fs => {
+        if (!fs || !fs.length) return
+        const keep = await askBigPdfs(fs)   // 問大小的對話框不放進訊息佇列：對話框開著的時候，頁面的同步、備份照常進行
+        if (keep.length) queue = queue.then(() => addPdfFiles(date, keep)).catch(e => say("出錯了：" + (e && e.message || e)))
+      }).catch(e => say("出錯了：" + (e && e.message || e)))
+      return
+    }
+    if (pre) pre.cancel()
+    const pick = await modal("加入 PDF 到 " + date, "選取一個或好幾個 PDF，原檔會存在這部裝置。", [{ label: "PDF…", kind: "pri", onclick: pickPdfs }, { label: "取消", value: null }])
+    if (!pick) return
+    const keep = await askBigPdfs(pick.files)
+    if (keep.length) await addPdfFiles(date, keep)
+  }
+  async function addPdfFiles(date, files) {
+    try { await loadPdfjs() } catch (e) { say("PDF 閱讀工具載入失敗：請確認 pdf.min.mjs 和 pdf.worker.min.mjs 已放進網頁資料夾", 6000); return }
+    const s = getStore(); let idx = await pdfIndex(), ok = 0, bad = 0, i = 0; const pw = []
+    say("處理 " + files.length + " 個 PDF…")
+    for (const f of files) {
+      try {
+        const r = await readPdf(f)
+        if (r.pw) { pw.push(f.name); continue }
+        let name = date + "_" + Date.now() + "_" + (i++) + ".pdf"
+        while (idx.some(x => x.f === name)) name = date + "_" + Date.now() + "_" + (i++) + ".pdf"
+        await s.set("pdf:" + name, f.slice(0, f.size, "application/pdf"))
+        await s.set("pdfthumb:" + name, r.thumb)
+        idx = [...idx, { f: name, n: (f.name || "PDF").replace(/\.pdf$/i, ""), pages: r.pages, size: f.size, created: Date.now() }]
+        await s.set("pdfIndex", idx); ok++
+      } catch (e) { bad++ }
+    }
+    let msg = ok ? "已加入 " + ok + " 個 PDF" : ""
+    if (pw.length) msg += (msg ? "；" : "") + "「" + pw[0] + "」" + (pw.length > 1 ? "等 " + pw.length + " 個" : "") + "有密碼保護，目前不能加入"
+    if (bad) msg += (msg ? "；" : "") + bad + " 個讀不了（可能不是 PDF，或檔案損壞）"
+    if (ok && !root.document.getElementById("d" + date)) msg += "。這一天還沒有日誌文字：PDF 已存起來，等你寫了文字，才會在卡片裏出現"
+    pushPdfs(await pdfCardMap([date]), msg || "沒有加入任何 PDF")
   }
 
   // ---------- 照片備份與還原：備份檔（.json）不含照片，所以照片另外存成一張張 .jpg（檔名不變），還原時依檔名放回原來的卡片 ----------
@@ -1399,6 +1559,7 @@
     if (p.restorephotos !== undefined) return "restorephotos"   // 面板「照片」那排的「還原」：直接開選照片的視窗
     if (p.restore !== undefined) return "restore"
     if (p.addphoto) return "addphoto"
+    if (p.addpdf) return "addpdf"
     if (p.delphoto) return "delphoto"
     if (p.movephoto) return "movephoto"
     if (p.wxcfg !== undefined) return "wxcfg"
@@ -1438,6 +1599,7 @@
     else if (act === "restorephotos") await doRestorePhotos()
     else if (act === "restore") restored = await doRestore(p.restore)
     else if (act === "addphoto") await doAddPhotos(p.addphoto)
+    else if (act === "addpdf") await doAddPdf(p.addpdf)
     else if (act === "delphoto") await doDelPhoto(p.delphoto)
     else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
     else if (act === "remsave") await doRemSave(p.remsave)
@@ -1615,7 +1777,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
