@@ -762,9 +762,12 @@
   // 編者按 / Editor's note：「存到哪個資料夾」的說明只在第一次出現（文字備份用 hint:backup、照片備份用 hint:photobk），之後的對話框只留最簡單的一句；不要把每一批都附上資料夾說明（使用者嫌煩，要求只提第一次）。
   //   網頁版沒辦法記住資料夾，只有 iOS 自己會記住上次存的位置；那一步程式碰不到。
   //   English: the "which folder to save to" text appears only the first time (hint:backup for text, hint:photobk for photos); later dialogs keep just one short line. Do not re-add the folder text to every batch (the user asked for first-time-only). A web page cannot remember a folder; only iOS remembers the last location.
+  //   更新：「看過說明」的條件改成——這部裝置只要已經有任何照片備份記錄（photobk:done 裡有東西），就直接當成看過，不必等用新版成功存完一批照片；舊的 hint:photobk 標記仍然算看過。
+  //   English update: "seen the instructions" is now true as soon as this device has any photo-backup record (photobk:done is non-empty); the old hint:photobk flag still counts.
+  async function photoHintSeen() { if (await getStore().get("hint:photobk")) return true; return Object.keys(await readPhotoDone()).length > 0 }
   async function backupPhotos(year, files) {   // 一批一批存；每一批都要使用者按一下（分享選單只能在按下的當下打開）。回傳實際存出幾張
     const nav = root.navigator, batches = []
-    let seen = !!(await getStore().get("hint:photobk"))
+    let seen = await photoHintSeen()
     const markSeen = async () => { if (!seen) { seen = true; try { await getStore().set("hint:photobk", 1) } catch (e) {} } }
     for (let i = 0; i < files.length; i += PHOTO_BATCH) batches.push(files.slice(i, i + PHOTO_BATCH))
     let saved = 0
@@ -793,10 +796,9 @@
     const buttons = [{ label: "核對備份資料夾再備份", kind: "pri", onclick: pickPhotoFolder }]
     if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 張）", value: "new" })
     buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", value: "all" }, { label: "不用了", value: "" })
-    const seen = !!(await getStore().get("hint:photobk"))   // 資料夾的說明只在第一次備份照片前出現（見 backupPhotos 的編者按）
+    const seen = await photoHintSeen()   // 資料夾的說明只在第一次備份照片前出現（見 backupPhotos 的編者按）
     const msg = year + " 年有 " + names.length + " 張照片。" +
-      (hasRecord ? "\n\n記錄上" + (fresh.length ? "有 " + fresh.length + " 張是上次備份後新增的" : "都備份過了") + "，但記錄只代表「分享成功過」。" : "") +
-      (seen ? "" : "\n\n選「核對備份資料夾」：請選 iCloud Drive › Scriptable › pwa_photos，程式會看資料夾裡實際有哪些照片，只補缺的（需要 iOS 18.4 以上；資料夾裡一張照片都沒有時選不了，請選「全部備份」）。")
+      (seen ? "" : "\n\n• 選「核對備份資料夾」：請選 iCloud Drive › Scriptable › pwa_photos\n\n• 若資料夾是空的，請選「全部備份」")
     const pick = await modal("備份 " + year + " 年照片", msg, buttons)
     if (!pick) return
     let only = null   // null＝全部；Set＝只備份這些
