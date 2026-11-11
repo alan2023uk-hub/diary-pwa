@@ -99,7 +99,13 @@
   const PDF_BTN_PATCH = PDF_BTN_ANCHOR + `if(!IP.filePlus)IP.filePlus='<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/>';const pf=ib('filePlus','加入 PDF');pf.onclick=async()=>{if(changed){toast('請先按「儲存」保存提醒設定，再加入 PDF');return}window.HOST_PICK_PDF&&window.HOST_PICK_PDF();await saveEdit(d,ta.value,null,true);hostSend({addpdf:d},{go:d,pend:'skip'})};rb.appendChild(pf);`
   const PDF_ACT_ANCHOR = `function actHtml(d){return '<div class="act">'+remLinks(d)+phHtml(d)+'</div>'}`
   const PDF_ACT_PATCH = `function actHtml(d){return '<div class="act">'+remLinks(d)+phHtml(d)+(window.PwaHost&&window.PwaHost.pdfHtml?window.PwaHost.pdfHtml(d):'')+'</div>'}`
-  const PDF_CSS = ".pdfs{display:flex;flex-direction:column;gap:8px;flex-basis:100%;min-width:0}.pdfc{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}.pdfc img{display:block;max-width:100%;max-height:78vh;width:auto;height:auto;margin:0 auto}.pdfm{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;font-size:14px;color:var(--sub);border-top:1px solid var(--line)}.pdfn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.pdfp{flex:none}"
+  const PDF_CSS = ".pdfs{display:flex;flex-direction:column;gap:8px;flex-basis:100%;min-width:0}.pdfc{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent}.pdfc img{display:block;max-width:100%;max-height:78vh;width:auto;height:auto;margin:0 auto}.pdfc.open>img{display:none}" +
+    ".pdfm{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:14px;color:var(--sub);border-top:1px solid var(--line)}.pdfn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.pdfp{flex:none}" +
+    ".pdfx{flex:none;font:inherit;font-size:13px;color:inherit;background:none;border:1px solid var(--line);border-radius:8px;padding:2px 10px;cursor:pointer}" +
+    ".pdfpgs{display:flex;flex-direction:column;gap:6px;background:var(--line)}.pdfpg{position:relative;width:100%;background:#fff;overflow:hidden}.pdfpg canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}.pdfpn{position:absolute;right:8px;bottom:6px;font-size:12px;padding:1px 8px;border-radius:10px;background:rgba(0,0,0,.45);color:#fff;pointer-events:none}" +
+    ".pdfv{position:fixed;left:0;top:0;right:0;bottom:0;z-index:99990;background:#1c1c1e;display:flex;flex-direction:column}.pdfvb{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;color:#fff;background:#2a2a2c;flex:none}" +
+    ".pdfvb button{font:inherit;font-size:18px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:10px;min-width:44px;height:40px;cursor:pointer}.pdfvt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}.pdfvn{flex:none;font-size:14px;opacity:.8}" +
+    ".pdfvs{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}.pdfvi{width:100%;display:flex;flex-direction:column;gap:8px;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));box-sizing:border-box}"
 
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
   // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
@@ -782,8 +788,8 @@
   function pdfHtml(d) {   // 卡片裏的 PDF 區塊（由模板的 actHtml 呼叫，見 PDF_ACT_PATCH）
     const a = (root.CARD_PDFS || {})[d]
     if (!a || !a.length) return ""
-    return '<div class="pdfs">' + a.map(p => '<div class="pdfc" data-pdf="' + escH(p.f) + '" data-d="' + d + '" role="button" aria-label="PDF：' + escH(p.n) + '">' + (p.s ? '<img src="' + p.s + '" alt="" decoding="async">' : "") +
-      '<div class="pdfm"><span class="pdfn">📄 ' + escH(p.n) + '</span><span class="pdfp">共 ' + (p.p || "?") + " 頁</span></div></div>").join("") + "</div>"
+    return '<div class="pdfs">' + a.map(p => '<div class="pdfc" data-pdf="' + escH(p.f) + '" data-n="' + escH(p.n) + '" data-d="' + d + '" role="button" aria-label="PDF：' + escH(p.n) + '">' + (p.s ? '<img src="' + p.s + '" alt="" decoding="async">' : "") +
+      '<div class="pdfm"><span class="pdfn">📄 ' + escH(p.n) + '</span><span class="pdfp">共 ' + (p.p || "?") + ' 頁</span>' + (p.p > 1 ? '<button type="button" class="pdfx">展開全部</button>' : "") + "</div></div>").join("") + "</div>"
   }
   function pushPdfs(map, msg) {   // 只換「那幾天」卡片裏的區塊，不重畫整個列表（和 pushPhotos 同一個做法）
     try {
@@ -802,16 +808,136 @@
       if (dates.length) pushPdfs(await pdfCardMap(dates), "")
     } catch (e) { say("載入 PDF 失敗：" + (e && e.message || e)) }
   }
+  // ---------- PDF 閱讀：卡片裏「展開全部」、全螢幕閱讀（雙指放大）----------
+  // 編者按 / Editor's note：一律「只畫看得到（和附近）的幾頁，離開畫面就放掉」，不要改成一次畫完所有頁。iPad 的 canvas 記憶體有限（單張大約 1600 萬像素上限），十幾頁一起畫，系統會把頁面砍掉重載。
+  //   Always render only the pages near the viewport and release them when they leave; never render all pages at once. iPad canvas memory is limited (about 16M pixels per canvas), and drawing a long document in one go gets the page killed and reloaded.
+  // 展開和全螢幕畫的是 PDF 原檔（pdf:<檔名>），不是卡片上的縮圖；縮圖只在沒展開時顯示。
+  const PDF_MAX_PX = 2600, PDF_MAX_AREA = 12e6   // 單張 canvas 的寬度上限、面積上限（像素）
+  async function openPdfDoc(f) {
+    const blob = await getStore().get("pdf:" + f)
+    if (!blob) throw new Error("找不到這個 PDF 的原檔")
+    const lib = await loadPdfjs()
+    return await lib.getDocument({ data: await blob.arrayBuffer() }).promise
+  }
+  async function makePdfPages(doc, box, opts) {   // 在 box 裏排好每一頁的空白框；框進入畫面（上下各多算一個畫面高）才畫，離開就放掉。opts.root＝負責捲動的容器（null＝整個視窗）
+    const n = doc.numPages, dpr = Math.min(2, root.devicePixelRatio || 1), pages = [], byEl = new Map(), queue = []
+    let ratio = 1 / 1.414, dead = false, busy = false
+    for (let i = 1; i <= n; i++) {
+      if (i === 1 || n <= 80) { try { const v = (await doc.getPage(i)).getViewport({ scale: 1 }); ratio = v.width / v.height } catch (e) {} }   // 很長的文件（80 頁以上）只量第一頁，其他頁借用
+      const el = root.document.createElement("div"); el.className = "pdfpg"; el.style.aspectRatio = String(ratio)
+      const lb = root.document.createElement("span"); lb.className = "pdfpn"; lb.textContent = i + " / " + n; el.appendChild(lb)
+      box.appendChild(el)
+      const pg = { i, el, cv: null, rw: 0, task: null, want: false }; pages.push(pg); byEl.set(el, pg)
+    }
+    async function draw(p) {
+      if (dead || !p.want) return
+      const cssW = p.el.clientWidth
+      if (!cssW) return
+      const wantW = Math.round(cssW * dpr)
+      if (p.cv && Math.abs(p.rw - wantW) < 8) return   // 已經畫好，而且大小夠用
+      const pg = await doc.getPage(p.i), v1 = pg.getViewport({ scale: 1 })
+      let w = Math.min(wantW, PDF_MAX_PX), h = w * v1.height / v1.width
+      if (w * h > PDF_MAX_AREA) { w = Math.floor(Math.sqrt(PDF_MAX_AREA * v1.width / v1.height)); h = w * v1.height / v1.width }
+      const vp = pg.getViewport({ scale: w / v1.width })
+      const cv = root.document.createElement("canvas"); cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height)
+      const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height)
+      const task = pg.render({ canvasContext: x, viewport: vp }); p.task = task
+      try { await task.promise } catch (e) { cv.width = cv.height = 0; return } finally { if (p.task === task) p.task = null }   // 被取消（離開畫面）或失敗
+      if (dead || !p.want) { cv.width = cv.height = 0; return }
+      if (p.cv) { p.cv.width = p.cv.height = 0; p.cv.remove() }   // 換新的畫好了才放掉舊的，放大縮小時不會閃一下空白
+      p.cv = cv; p.rw = wantW; p.el.insertBefore(cv, p.el.firstChild)
+    }
+    async function pump() {   // 一次只畫一頁，免得同時吃太多記憶體和運算
+      if (busy) return
+      busy = true
+      try { while (queue.length && !dead) { const p = queue.shift(); try { await draw(p) } catch (e) {} } } finally { busy = false }
+    }
+    const want = p => { p.want = true; if (!queue.includes(p)) queue.push(p); pump() }
+    function release(p) {
+      p.want = false
+      const k = queue.indexOf(p); if (k >= 0) queue.splice(k, 1)
+      if (p.task) { try { p.task.cancel() } catch (e) {} }
+      if (p.cv) { p.cv.width = p.cv.height = 0; p.cv.remove(); p.cv = null; p.rw = 0 }
+    }
+    const io = new root.IntersectionObserver(es => { for (const e of es) { const p = byEl.get(e.target); if (p) { if (e.isIntersecting) want(p); else release(p) } } }, { root: opts.root || null, rootMargin: "100% 0px 100% 0px" })
+    pages.forEach(p => io.observe(p.el))
+    return {
+      n, pages,
+      refresh() { for (const p of pages) if (p.want) want(p) },   // 寬度變了（放大縮小）：目前在畫面附近的頁，大小不夠就重畫
+      destroy() { dead = true; io.disconnect(); pages.forEach(release); try { doc.destroy() } catch (e) {} }
+    }
+  }
+  const pdfOpen = new Map()   // 內部檔名 → { box, ctl }：卡片裏已經展開的
+  async function togglePdfCard(c) {   // c＝卡片裏的 .pdfc；展開／收起全部頁
+    for (const [k, v] of pdfOpen) if (!v.box.isConnected) { v.ctl.destroy(); pdfOpen.delete(k) }   // 卡片被重畫掉的，順便放掉
+    const f = c.dataset.pdf, btn = c.querySelector(".pdfx"), cur = pdfOpen.get(f)
+    if (cur) { cur.ctl.destroy(); cur.box.remove(); pdfOpen.delete(f); c.classList.remove("open"); if (btn) btn.textContent = "展開全部"; return }
+    if (btn) { btn.disabled = true; btn.textContent = "載入中…" }
+    try {
+      const doc = await openPdfDoc(f), box = root.document.createElement("div"); box.className = "pdfpgs"
+      c.insertBefore(box, c.querySelector(".pdfm")); c.classList.add("open")
+      pdfOpen.set(f, { box, ctl: await makePdfPages(doc, box, { root: null }) })
+      if (btn) btn.textContent = "收起"
+    } catch (e) { say("展開失敗：" + (e && e.message || e), 4000); if (btn) btn.textContent = "展開全部" } finally { if (btn) btn.disabled = false }
+  }
+  let pdfViewing = false
+  async function openPdfViewer(f, name, start) {   // 全螢幕閱讀：頂欄有關閉鈕、頁碼、放大縮小；雙指也能放大
+    if (pdfViewing) return
+    pdfViewing = true
+    let doc
+    try { doc = await openPdfDoc(f) } catch (e) { pdfViewing = false; say("打開失敗：" + (e && e.message || e), 4000); return }
+    const d = root.document, ov = d.createElement("div"); ov.className = "pdfv"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "PDF：" + name)
+    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvk" aria-label="關閉">✕</button><span class="pdfvt"></span><span class="pdfvn"></span><button type="button" class="pdfvz" data-z="-" aria-label="縮小">－</button><button type="button" class="pdfvz" data-z="+" aria-label="放大">＋</button></div><div class="pdfvs"><div class="pdfvi"></div></div>'
+    ov.querySelector(".pdfvt").textContent = name
+    const sc = ov.querySelector(".pdfvs"), inner = ov.querySelector(".pdfvi"), num = ov.querySelector(".pdfvn")
+    const oldHtml = d.documentElement.style.overflow, oldBody = d.body.style.overflow
+    d.body.appendChild(ov); d.documentElement.style.overflow = "hidden"; d.body.style.overflow = "hidden"   // 鎖住後面日誌的捲動
+    let ctl = null, z = 1, tmr = 0, raf = 0, pin = null
+    const close = () => { clearTimeout(tmr); if (ctl) ctl.destroy(); else try { doc.destroy() } catch (e) {} ; ov.remove(); d.documentElement.style.overflow = oldHtml; d.body.style.overflow = oldBody; d.removeEventListener("keydown", onKey, true); pdfViewing = false }
+    const onKey = e => { if (e.key === "Escape") close() }
+    d.addEventListener("keydown", onKey, true)
+    ov.querySelector(".pdfvk").onclick = close
+    try { ctl = await makePdfPages(doc, inner, { root: sc }) } catch (e) { close(); say("打開失敗：" + (e && e.message || e), 4000); return }
+    const target = ctl.pages[Math.max(1, Math.min(ctl.n, start || 1)) - 1]
+    if (target) sc.scrollTop = target.el.offsetTop - 8
+    const setNum = () => {   // 頁碼：畫面上半部看到的那一頁
+      raf = 0
+      const y = sc.scrollTop + sc.clientHeight / 2; let cur = 1
+      for (const p of ctl.pages) { if (p.el.offsetTop <= y) cur = p.i; else break }
+      num.textContent = cur + " / " + ctl.n
+    }
+    setNum()
+    sc.addEventListener("scroll", () => { if (!raf) raf = root.requestAnimationFrame(setNum) }, { passive: true })
+    const setZ = (nz, cx, cy) => {   // 縮放：改內層寬度，並讓 (cx, cy) 那一點留在原處；放開後（或停下來 0.2 秒）才重畫清楚
+      nz = Math.max(1, Math.min(5, nz)); if (Math.abs(nz - z) < 0.001) return
+      const fx = (sc.scrollLeft + cx) / sc.scrollWidth, fy = (sc.scrollTop + cy) / sc.scrollHeight
+      z = nz; inner.style.width = (z * 100) + "%"
+      sc.scrollLeft = fx * sc.scrollWidth - cx; sc.scrollTop = fy * sc.scrollHeight - cy
+      clearTimeout(tmr); tmr = setTimeout(() => ctl.refresh(), 200)
+    }
+    ov.querySelectorAll(".pdfvz").forEach(b => { b.onclick = () => setZ(z + (b.dataset.z === "+" ? 0.5 : -0.5), sc.clientWidth / 2, sc.clientHeight / 2) })
+    const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+    sc.addEventListener("touchstart", e => { pin = e.touches.length === 2 ? { d: dist(e.touches), z } : null }, { passive: true })
+    sc.addEventListener("touchmove", e => {
+      if (!pin || e.touches.length !== 2) return
+      e.preventDefault()
+      const r = sc.getBoundingClientRect()
+      setZ(pin.z * dist(e.touches) / pin.d, (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top)
+    }, { passive: false })
+    sc.addEventListener("touchend", e => { if (e.touches.length < 2) pin = null }, { passive: true })
+  }
   let pdfClickFn = null
-  function installPdf() {   // 點卡片裏的 PDF（第 2 步會換成展開全部頁／全螢幕閱讀）
+  function installPdf() {   // 點卡片裏的 PDF：「展開全部」按鈕＝展開／收起；點頁面或標題列＝全螢幕閱讀
     const d = root.document
     if (!d || !d.addEventListener) return
     if (pdfClickFn) d.removeEventListener("click", pdfClickFn, true)   // 組頁（document.write）會清掉舊的監聽，所以每次都「先拿掉舊的、再加新的」
     pdfClickFn = e => {
-      const c = e.target && e.target.closest && e.target.closest(".pdfc")
+      const t = e.target, c = t && t.closest && t.closest(".pdfc")
       if (!c) return
       e.preventDefault(); e.stopPropagation()
-      say("展開全部頁和全螢幕閱讀，會在下一步加入", 3000)
+      if (t.closest(".pdfx")) { togglePdfCard(c); return }
+      const pg = t.closest(".pdfpg")
+      openPdfViewer(c.dataset.pdf, c.dataset.n || "PDF", pg ? [...pg.parentNode.children].indexOf(pg) + 1 : 1)
     }
     d.addEventListener("click", pdfClickFn, true)
   }
