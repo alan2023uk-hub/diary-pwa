@@ -493,7 +493,7 @@
     let pick
     for (;;) {
       const all = await readAcIndex(), acs = all.filter(x => x.year === year)
-      const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }]
+      const buttons = [{ label: "從檔案…", kind: "pri", onclick: pickFile }]
       acs.slice(0, AC_SHOW).forEach(x => buttons.push({ label: "自動 " + acLabel(x), value: { auto: x.id } }))
       if (acs.length > AC_SHOW) buttons.push({ label: "更多自動備份（共 " + acs.length + " 份）…", value: "more" })
       pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + "天" + (Array.isArray(x.body.reminders) ? " · " + x.body.reminders.length + "提醒" : ""), value: { pre: i } }))
@@ -615,7 +615,7 @@
       return
     }
     if (pre) pre.cancel()
-    const pick = await modal("加入照片到 " + date, "選取一張或好幾張相片，會縮小後存在這部裝置。", [{ label: "選取相片…", kind: "pri", onclick: pickImages }, { label: "取消", value: null }])
+    const pick = await modal("加入照片到 " + date, "選取一張或好幾張相片，會縮小後存在這部裝置。", [{ label: "相片…", kind: "pri", onclick: pickImages }, { label: "取消", value: null }])
     if (!pick) return
     await addPhotoFiles(date, pick.files)
   }
@@ -764,6 +764,7 @@
   //   English: the "which folder to save to" text appears only the first time (hint:backup for text, hint:photobk for photos); later dialogs keep just one short line. Do not re-add the folder text to every batch (the user asked for first-time-only). A web page cannot remember a folder; only iOS remembers the last location.
   //   更新：「看過說明」的條件改成——這部裝置只要已經有任何照片備份記錄（photobk:done 裡有東西），就直接當成看過，不必等用新版成功存完一批照片；舊的 hint:photobk 標記仍然算看過。
   //   English update: "seen the instructions" is now true as soon as this device has any photo-backup record (photobk:done is non-empty); the old hint:photobk flag still counts.
+  const photoFolderEg = () => isIOS() ? "，例如，iCloud Drive › Scriptable › pwa_photos" : ""   // 範例路徑只給 iPhone／iPad 看（見 isIOS），其他裝置不顯示
   async function photoHintSeen() { if (await getStore().get("hint:photobk")) return true; return Object.keys(await readPhotoDone()).length > 0 }
   async function backupPhotos(year, files) {   // 一批一批存；每一批都要使用者按一下（分享選單只能在按下的當下打開）。回傳實際存出幾張
     const nav = root.navigator, batches = []
@@ -778,7 +779,7 @@
         const buttons = []
         if (nav && nav.share) buttons.push({ label: "儲存照片", kind: "pri", onclick: done => nav.share({ files: batch }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
         buttons.push({ label: "改用下載", value: "download" }, { label: "停止", value: "stop" })
-        const r = await modal(title, "這一批 " + batch.length + " 張。" + (seen ? "按「儲存照片」。" : "按「儲存照片」後，選擇儲存成檔案，並選 iCloud Drive › Scriptable › pwa_photos" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。") + note, buttons)
+        const r = await modal(title, "這一批 " + batch.length + " 張。" + (seen ? "按「儲存照片」。" : "按「儲存照片」後，選擇儲存成檔案，再選你指定的資料夾" + photoFolderEg() + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。") + note, buttons)
         if (r === "shared") { saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); await markSeen(); break }
         if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); await markSeen(); break }
         if (r === "stop") return saved
@@ -798,7 +799,7 @@
     buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", value: "all" }, { label: "不用了", value: "" })
     const seen = await photoHintSeen()   // 資料夾的說明只在第一次備份照片前出現（見 backupPhotos 的編者按）
     const msg = year + " 年有 " + names.length + " 張照片。" +
-      (seen ? "" : "\n\n• 選「核對備份資料夾」：請選 iCloud Drive › Scriptable › pwa_photos\n\n• 若資料夾是空的，請選「全部備份」")
+      (seen ? "" : "\n\n• 選「核對備份資料夾」，再選你指定的資料夾" + photoFolderEg() + "\n\n• 若該資料夾是空的，請選「全部備份」")
     const pick = await modal("備份 " + year + " 年照片", msg, buttons)
     if (!pick) return
     let only = null   // null＝全部；Set＝只備份這些
@@ -852,7 +853,7 @@
     return { ok, dup, skip, other, msg }
   }
   async function doRestorePhotos() {   // 面板「照片」那排的「還原」：不限年份，自己選
-    const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_mhjk3f2x_0.jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n可以直接選放備份照片的資料夾（需要 iOS 18.4 以上），或改選照片檔；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "取消", value: null }])
+    const pick = await modal("還原照片", "依檔名日期（如 2026-03-05）自動將照片放回日誌：\n\n• 自動過濾：已存在的會略過。\n• 全部還原：選「照片資料夾」，再選有備份照片的資料夾" + (isIOS() ? "（如 iCloud/Scriptable/pwa_photos）" : "") + "。\n• 個別還原：按「改選照片檔」，選取照片以還原至指定日期的日誌卡片。\n• 注意：勿從「照片圖庫」選，否則檔名被改會無法對應日期。", [{ label: "照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     await importPhotoFiles(pick.files, null)
   }
@@ -1594,7 +1595,7 @@
   }
   function showImport(el) {
     el.innerHTML = '<h1>生活日誌</h1><p>第一次使用：請選取日誌資料檔（<code>data2025.json</code>、<code>data2026.json</code> …，或之前備份的 <code>.json</code> 備份檔，可以一次選好幾個）；沒有資料檔就直接按「從空白開始」。資料只會存在這部裝置的瀏覽器裏，不會上傳到任何地方。</p>' +
-      '<label class="btn">選取資料檔<input id="pick" type="file" accept=".json,application/json" multiple hidden></label><p id="msg"></p><button id="go" class="btn pri">從空白開始</button>'
+      '<label class="btn">資料檔<input id="pick" type="file" accept=".json,application/json" multiple hidden></label><p id="msg"></p><button id="go" class="btn pri">從空白開始</button>'
     const msg = el.querySelector("#msg"), go = el.querySelector("#go")
     el.querySelector("#pick").onchange = async e => {
       msg.className = ""; msg.textContent = "匯入中…"
