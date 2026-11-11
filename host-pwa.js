@@ -3,9 +3,9 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以從「還原」視窗的「匯入天氣資料」把 Scriptable 版的 weather.json 補進來（只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
-   自動備份（提示式）：網頁版沒辦法自己把檔案寫進 iCloud 資料夾，所以到期（距上次存超過設定的天數、而且有修改）時，打開日誌會跳出提示，按一下「儲存」經分享選單存成檔案（建議存進 iCloud 的 Scriptable › autobackup，Scriptable 版的還原選單認得）；間隔在「⋯」→「備份與還原」裏的「自動備份」切換。
-   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：備份完文字後會問要不要把照片存成一張張 .jpg（經分享選單或下載存成檔案），還原日誌之後會接著問要不要還原這一年的照片（也可以在還原視窗按「還原照片」），依檔名放回原來的卡片；網頁版讀不到資料夾，照片檔要自己選取。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
+   目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以用「⋯」選單的「匯入資料檔」把 Scriptable 版的 weather.json 補進來（可以和日誌資料檔、備份檔一起選，程式依內容自己分；只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
+   自動備份（存在這部裝置）：到期（距這一年上次存超過設定的天數、而且之後有修改）時，打開日誌後悄悄把這一年的完整備份存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。間隔在「⋯」→「備份與還原」裏的「自動備份」切換。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「文字」那排的「備份」把備份檔存進 iCloud。
+   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：選單「照片」那排的「備份」把照片存成一張張 .jpg（經分享選單或下載存成檔案），「還原…」依檔名放回原來的卡片（日誌文字的還原做完就結束，不再追問照片）；網頁版讀不到資料夾，照片檔要自己選取。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -113,7 +113,7 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_BKCHECK=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
       '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
     return html.replace("</head>", () => head + inject + "</head>")
   }
@@ -284,6 +284,9 @@
     ".hu-box{width:min(26rem,100%);max-height:100%;overflow:auto;box-sizing:border-box;background:#fff;color:#222;border-radius:14px;padding:18px 18px 12px;font:15px/1.6 -apple-system,'PingFang TC','Noto Sans TC',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.3)}" +
     ".hu-box h3{margin:0 0 .5rem;font-size:1.05rem}.hu-box p{margin:0 0 .9rem;white-space:pre-wrap;color:#555}" +
     ".hu-btn{display:block;width:100%;margin:.4rem 0;padding:.7rem;border:1px solid #2f5d8a;border-radius:10px;background:none;color:#2f5d8a;font:inherit;line-height:1.4;white-space:normal;overflow-wrap:anywhere}.hu-btn.pri{background:#2f5d8a;color:#fff}.hu-btn.dng{border-color:#b3261e;color:#b3261e}" +
+    ".hu-list{margin:0 0 .5rem;border:1px solid rgba(128,128,128,.35);border-radius:10px;max-height:50vh;overflow:auto}" +
+    ".hu-row{display:flex;align-items:center;gap:.75rem;padding:.7rem .8rem;border-bottom:1px solid rgba(128,128,128,.25);cursor:pointer}.hu-row:last-child{border-bottom:0}.hu-row input{flex:none;width:1.3rem;height:1.3rem;margin:0}.hu-row small{display:block;color:#888;font-size:.8rem;line-height:1.3}" +
+    ".hu-btn[disabled]{opacity:.4}" +
     "@media (prefers-color-scheme:dark){.hu-box{background:#222;color:#eee}.hu-box p{color:#aaa}.hu-btn{border-color:#7fb0e0;color:#7fb0e0}.hu-btn.pri{background:#7fb0e0;color:#111}.hu-btn.dng{border-color:#ff8a80;color:#ff8a80}}"
   // 按鈕：{ label, kind, value }＝按了就回傳 value；或 { label, kind, onclick(done) }＝按了當場執行（選檔案、分享都要在按下的當下呼叫）
   function modal(title, message, buttons) {
@@ -325,7 +328,6 @@
     }
     download(name, text); return "downloaded"
   }
-  let photoOffer = null   // 日誌還原做完（頁面更新後）要不要接著問照片：{ year, b, onlyIfKnown }；由 run() 取用
   const PRE_KEEP = 5
   async function savePre(year, item) {   // 還原前的自動備份：存在這部裝置，最多留 5 份
     const s = getStore(), list = await s.get("pre:" + year) || []
@@ -348,17 +350,36 @@
     const saved = how === "shared" || how === "downloaded"
     return saved   // 照片不在這裏問了：用選單的「備份照片」按鈕另外備份
   }
-  // ---------- 自動備份（提示式）----------
-  // 網頁版沒辦法自己把檔案寫進 iCloud 資料夾（瀏覽器只能在使用者按一下的當下，經分享選單存檔）。所以：打開日誌後，某一年「上次存自動備份已超過設定的天數、而且之後有修改」（或從來沒存過）→ 跳出提示，按「儲存」打開分享選單，
-  // 選「儲存到檔案」，存進 iCloud Drive › Scriptable › autobackup（iOS 會記住上次存的位置）；多個年份一次存。「稍後再問」＝一天內不再問；存好了才記下時間，沒存成下次再問。
-  // 設定（間隔天數，0＝關閉）和每一年上次存檔的時間存在 IndexedDB（autobk:cfg、autobk:last）。檔名 pwa_yymmdd_hhmm_auto.json（Scriptable 版的還原選單認得）。
-  const AUTO_BK_DAYS = 7, AUTO_BK_SNOOZE_MS = 864e5
+  // ---------- 自動備份（存在這部裝置）----------
+  // 編者按 / Editor's note：網頁版的「自動備份」＝悄悄把每一年的完整備份存在這部裝置裏（IndexedDB）：不彈提示、不叫使用者存檔；數量不設上限，要刪由使用者在「還原」視窗的「整理備份…」自己勾選。
+  //   不要改回「提示使用者儲存」，也不要加張數上限或自動刪舊的（使用者明確要求不限、自己刪）。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機——那要靠「備份」按鈕存進 iCloud 的檔案；面板上的說明要照實寫「存在這部裝置」。
+  //   English: the web version's "auto backup" silently keeps full per-year copies on this device (IndexedDB): no prompts, no cap, nothing auto-pruned; the user deletes copies by hand via "整理備份…" in the restore window. Do not go back to prompt-to-save and do not add a cap or auto-delete (explicitly requested).
+  //   It guards against bad edits/restores, NOT against cleared browser data or a lost device; only the manual 備份 file saved to iCloud does that, so the panel text must say "存在這部裝置" honestly.
+  // 儲存方式：每一份獨立一個鍵（autocp:<id>，內容＝{ created, body }），另有一份清單（autocp:index：[{ id, year, created, days, rems, bytes }]，新到舊），列清單、算空間不用把整份備份讀出來。id＝年份-建立時間（毫秒）。
+  // 什麼時候存：設定的間隔（autobk:cfg，天數，0＝關閉）過了、而且這一年上次存完之後有修改（或這一年還沒有任何一份）→ 存一份。「上次」以清單裏這一年最新一份為準（刪掉了就不算），所以刪光之後下次檢查會再存一份。
+  // 以前的「提示式」自動備份（autobk:last、autobk:snooze、autobackup 資料夾的檔案）不再使用；舊的記錄留在原處不動，Scriptable 版的還原選單仍然認得那些舊檔案。
+  const AUTO_BK_DAYS = 7
   const okBkDays = n => Number.isInteger(n) && n >= 0 && n <= 365
   const bkDaysLabel = n => n === 0 ? "關閉" : n === 7 ? "每週" : n === 30 ? "每月" : "每 " + n + " 天"
   async function readBkDays() { const v = await getStore().get("autobk:cfg"); return v && okBkDays(v.days) ? v.days : AUTO_BK_DAYS }
-  async function readBkLast() { const v = await getStore().get("autobk:last"); return v && typeof v === "object" ? v : {} }   // { "2026": 上次存的毫秒數, … }
-  async function bkCfgForPage() {   // 給頁面「自動備份」那一行：間隔天數＋上次存檔時間（日/月 時:分，沒有就空字串）
-    const last = Object.values(await readBkLast()).reduce((a, b) => Math.max(a, Number(b) || 0), 0)
+  const AC_INDEX = "autocp:index", acKey = id => "autocp:" + id
+  let acChain = Promise.resolve()   // 清單的讀改寫排成一條隊：自動存和整理刪除同時進行時，不會互相蓋掉
+  function acTask(fn) { const p = acChain.then(fn); acChain = p.then(() => {}, () => {}); return p }
+  async function readAcIndex() {   // [{ id, year, created, days, rems, bytes }]，新到舊
+    const v = await getStore().get(AC_INDEX)
+    return (Array.isArray(v) ? v : []).filter(x => x && typeof x.id === "string" && Number.isInteger(x.year) && Number.isFinite(x.created)).sort((a, b) => b.created - a.created || b.year - a.year)
+  }
+  async function readAcBody(id) { const v = await getStore().get(acKey(id)); return v && v.body && typeof v.body === "object" ? v.body : null }
+  async function deleteAutoCopies(ids) {   // 回傳刪完後的清單。先改清單、再刪內容：中途出錯，最多留下看不到的舊內容，不會留下「點了卻讀不到」的項目
+    return acTask(async () => {
+      const s = getStore(), gone = new Set(ids), idx = (await readAcIndex()).filter(x => !gone.has(x.id))
+      await s.set(AC_INDEX, idx)
+      for (const id of gone) { try { await s.del(acKey(id)) } catch (e) {} }
+      return idx
+    })
+  }
+  async function bkCfgForPage() {   // 給頁面「自動備份」那一行：間隔天數＋上次存的時間（日/月 時:分，沒有就空字串）
+    const last = (await readAcIndex()).reduce((a, x) => Math.max(a, x.created), 0)
     return { days: await readBkDays(), last: last ? fmtTime(last) : "" }
   }
   async function doBkCfg(raw) {   // 頁面「自動備份」那顆按鈕切換了間隔
@@ -367,89 +388,93 @@
     if (!okBkDays(days)) return
     await getStore().set("autobk:cfg", { v: 1, days })
     say("自動備份：" + bkDaysLabel(days))
+    if (days > 0) autoBackupCheck().catch(() => {})   // 剛開啟（或改短）：不用等下次打開，現在就看有沒有該存的
   }
-  async function autoBackupItems(now) {   // 現在該備份的年份（沒開啟、或都還不到期，回傳空陣列）
+  async function autoBackupItems(now) {   // 現在該存的年份（沒開啟、或都還不到期，回傳空陣列）
     const days = await readBkDays()
     if (days <= 0) return []
-    const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), last = await readBkLast()
+    const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), idx = await readAcIndex()
     const years = new Set(rows.map(r => +String(r[0]).slice(0, 4)).filter(y => y > 1999))
     for (const e of edits) { const m = /^(\d{4})-/.exec(e && e.date || ""); if (m) years.add(+m[1]) }
     const out = []
     for (const y of [...years].sort()) {
-      const lastMs = Number(last[y]) || 0
+      const lastMs = idx.filter(x => x.year === y).reduce((a, x) => Math.max(a, x.created), 0)
       if (lastMs && now - lastMs < days * 864e5) continue
-      if (lastMs && ![...edits, ...rems].some(r => r && String(r.date || "").startsWith(y + "-") && (Number(r.t) || 0) > lastMs)) continue   // 上次存檔之後沒有修改
+      if (lastMs && ![...edits, ...rems].some(r => r && String(r.date || "").startsWith(y + "-") && (Number(r.t) || 0) > lastMs)) continue   // 上次存完之後沒有修改
       if (!effectiveDays(y, rows, edits).days.size) continue   // 這一年沒有內容
       const r = makeBackupBody(y, rows, edits, now, false, rems, undefined, true)
-      out.push({ year: y, name: r.name, text: JSON.stringify(r.body), days: r.days, rems: r.rems })
+      out.push({ year: y, name: r.name, body: r.body, text: JSON.stringify(r.body), days: r.days, rems: r.rems })
     }
     return out
   }
   let autoBusy = false
-  async function autoBackupCheck() {   // 回傳 true＝這次有存好
+  async function autoBackupCheck() {   // 回傳 true＝這次有存新的（悄悄存，沒有任何提示；存失敗才提醒，而且一天最多一次）
     if (autoBusy) return false
     autoBusy = true
     try {
-      const s = getStore(), now = Date.now()
-      if (now < (Number(await s.get("autobk:snooze")) || 0)) return false
-      const items = await autoBackupItems(now)
+      const now = Date.now(), items = await autoBackupItems(now)
       if (!items.length) return false
-      const nav = root.navigator, saveAll = () => items.forEach(i => download(i.name, i.text))
-      const pick = await modal("自動備份準備好了", items.map(i => i.year + " 年：" + i.days + " 天、" + i.rems + " 則提醒").join("\n") +
-        "\n\n按「儲存」會打開分享選單：選「儲存到檔案」，存進 iCloud Drive › Scriptable › autobackup（第一次選好之後，iOS 會記住這個位置）。", [
-        { label: "儲存", kind: "pri", onclick: done => {   // 分享選單要在「按下的當下」打開
-          const files = items.map(i => new root.File([i.text], i.name, { type: "application/json" }))
-          if (nav.share && nav.canShare && nav.canShare({ files })) nav.share({ files }).then(() => done("saved"), err => { if (err && err.name === "AbortError") done("later"); else { saveAll(); done("saved") } })
-          else { saveAll(); done("saved") }
-        } },
-        { label: "稍後再問", value: "later" }])
-      if (pick === "saved") {
-        const last = await readBkLast(); for (const i of items) last[i.year] = now
-        await s.set("autobk:last", last)
-        try { if (root.BKCFG) root.BKCFG.last = fmtTime(now) } catch (e) {}   // 頁面「自動備份」那一行的「上次」馬上換成現在
-        say("已存好自動備份")
-        return true
-      }
-      await s.set("autobk:snooze", now + AUTO_BK_SNOOZE_MS)
+      await acTask(async () => {
+        const s = getStore(), idx = await readAcIndex()
+        for (const it of items) {
+          const id = it.year + "-" + now
+          await s.set(acKey(id), { created: now, body: it.body })
+          idx.push({ id, year: it.year, created: now, days: it.days, rems: it.rems, bytes: it.text.length })
+          await s.set(AC_INDEX, idx)   // 每存好一份就更新清單：中途出錯，已存好的也都在清單裏
+        }
+      })
+      try { if (root.BKCFG) root.BKCFG.last = fmtTime(now) } catch (e) {}   // 頁面「自動備份」那一行的「上次」換成現在
+      return true
+    } catch (e) {
+      try { await wxHintOnce("hint:acfail", "自動備份沒有存成功（可能是這部裝置的儲存空間滿了）：請到「⋯」→「備份與還原」→「還原…」→「整理備份…」刪掉不要的備份，或用「備份」按鈕存成檔案") } catch (e2) {}
       return false
     } finally { autoBusy = false }
   }
-  // ---------- 核對自動備份：網頁版看不到資料夾，所以請使用者選 autobackup 資料夾，依檔名重算每一年「上次自動備份」的時間 ----------
-  // 備份檔被刪掉、或換過資料夾時，記錄會和實際不符；核對之後記錄就以資料夾裡實際有的為準，該備份的年份馬上提示。只認 pwa_…_auto 開頭的檔名（網頁版自己的自動備份）。
-  const AUTO_NAME = /^pwa_(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})_auto(?:_y(\d{2}))?\.json$/
-  function pickBackupFolder(done) {   // 在按鈕被按下的當下呼叫；只收檔名，不讀內容。iOS 18.4 以上
-    const d = root.document, inp = d.createElement("input")
-    inp.type = "file"; inp.setAttribute("webkitdirectory", ""); inp.hidden = true
-    inp.onchange = () => { const names = [...(inp.files || [])].map(f => f.name); inp.remove(); done({ names }) }
-    d.body.appendChild(inp); inp.click()
-  }
-  async function doBkVerify() {
-    const pick = await modal("核對自動備份", "網頁版看不到資料夾，所以請選 iCloud Drive › Scriptable › autobackup，程式會依檔名看每一年最新的自動備份是哪天（需要 iOS 18.4 以上）。\n\n如果裡面的備份已經刪光，資料夾是空的、選不了，請按「資料夾是空的」。",
-      [{ label: "選取 autobackup 資料夾…", kind: "pri", onclick: pickBackupFolder }, { label: "資料夾是空的", value: { names: [] } }, { label: "取消", value: null }])
-    if (!pick) return
-    const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || []
-    const years = new Set(rows.map(r => +String(r[0]).slice(0, 4)).filter(y => y > 1999))
-    for (const e of edits) { const m = /^(\d{4})-/.exec(e && e.date || ""); if (m) years.add(+m[1]) }
-    const found = {}   // 年 → 資料夾裡最新一份自動備份的時間（毫秒）
-    for (const n of pick.names) {
-      const m = AUTO_NAME.exec(n)
-      if (!m) continue
-      const y = 2000 + (m[6] ? +m[6] : +m[1]), ms = new Date(2000 + +m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime()
-      if (!(found[y] >= ms)) found[y] = ms
-    }
-    const last = await readBkLast(), lines = []
-    for (const y of [...years].filter(y => effectiveDays(y, rows, edits).days.size).sort()) {
-      if (found[y]) { last[y] = found[y]; lines.push(y + " 年：資料夾裡最新的是 " + fmtTime(found[y])) }
-      else { delete last[y]; lines.push(y + " 年：資料夾裡沒有自動備份") }
-    }
-    await s.set("autobk:last", last); await s.set("autobk:snooze", 0)
-    try { if (root.BKCFG) root.BKCFG.last = (await bkCfgForPage()).last } catch (e) {}   // 頁面「自動備份」那一行的「上次」換成實際的
-    if (!lines.length) { say("沒有可核對的日誌"); return }
-    if (await readBkDays() <= 0) { say(lines.join("；") + "。記錄已更新；自動備份目前是關閉的", 6000); return }
-    const items = await autoBackupItems(Date.now())
-    if (!items.length) { say(lines.join("；") + "。記錄已更新，目前不用備份", 6000); return }
-    say(lines.join("；") + "。記錄已更新", 3000)
-    await autoBackupCheck()
+  const fmtMB = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + " KB" : (n / 1048576).toFixed(1) + " MB"
+  const acLabel = x => fmtShort(x.created) + " · " + x.days + "天" + (typeof x.rems === "number" ? " · " + x.rems + "提醒" : "")   // 還原視窗按鈕上用的（和「還原前…」同一個格式）
+  async function manageAutoCopies() {   // 「還原」視窗的「整理備份…」：勾選要刪的自動備份（所有年份），按「刪除」再按一次確認才真的刪；刪完留在清單裏，可以接著整理
+    const d = root.document
+    if (!d.getElementById("hu-css")) { const st = d.createElement("style"); st.id = "hu-css"; st.textContent = CSS; d.head.appendChild(st) }
+    let idx = await readAcIndex()
+    return new Promise(res => {
+      const sel = new Set()
+      let armed = false
+      const o = d.createElement("div"), b = d.createElement("div"), h = d.createElement("h3"), m = d.createElement("p"), list = d.createElement("div")
+      const bAll = d.createElement("button"), bDel = d.createElement("button"), bOk = d.createElement("button")
+      o.className = "hu-ov"; b.className = "hu-box"; b.setAttribute("role", "dialog"); h.textContent = "整理自動備份"; list.className = "hu-list"
+      for (const x of [bAll, bDel, bOk]) { x.type = "button"; x.className = "hu-btn" }
+      bDel.classList.add("dng"); bOk.textContent = "完成"
+      const sync = () => {
+        bAll.style.display = bDel.style.display = idx.length ? "" : "none"
+        bAll.textContent = sel.size && sel.size === idx.length ? "取消全選" : "全選"
+        bDel.disabled = !sel.size
+        bDel.textContent = armed ? "再按一次：永久刪除 " + sel.size + " 份（無法還原）" : "刪除（已選 " + sel.size + " 份）"
+      }
+      const render = () => {
+        m.textContent = idx.length ? "共 " + idx.length + " 份，約 " + fmtMB(idx.reduce((a, x) => a + (x.bytes || 0), 0)) + "。勾選要刪除的備份。" : "目前沒有自動備份。"
+        list.style.display = idx.length ? "" : "none"
+        list.replaceChildren(...idx.map(x => {
+          const lb = d.createElement("label"), cb = d.createElement("input"), tx = d.createElement("span"), sm = d.createElement("small")
+          lb.className = "hu-row"; cb.type = "checkbox"; cb.checked = sel.has(x.id)
+          cb.onchange = () => { if (cb.checked) sel.add(x.id); else sel.delete(x.id); armed = false; sync() }
+          tx.textContent = x.year + " 年　" + fmtTime(x.created) + " · " + x.days + " 天" + (typeof x.rems === "number" ? " · " + x.rems + " 提醒" : ""); sm.textContent = fmtMB(x.bytes || 0); tx.appendChild(sm)
+          lb.append(cb, tx); return lb
+        }))
+        sync()
+      }
+      bAll.onclick = () => { if (sel.size === idx.length) sel.clear(); else idx.forEach(x => sel.add(x.id)); armed = false; render() }
+      bDel.onclick = async () => {
+        if (!sel.size) return
+        if (!armed) { armed = true; sync(); return }
+        bDel.disabled = true
+        const n = sel.size
+        try { idx = await deleteAutoCopies([...sel]); say("已刪除 " + n + " 份自動備份") } catch (e) { say("刪除失敗：" + (e && e.message || e)) }
+        sel.clear(); armed = false; render()
+      }
+      bOk.onclick = () => { o.remove(); res(true) }
+      b.append(h, m, list, bAll, bDel, bOk); o.appendChild(b); d.body.appendChild(o)
+      render()
+    })
   }
   function startAutoBackup() {   // 頁面載入後呼叫：稍等一下檢查一次；之後每次回到日誌（隔了六小時以上）再檢查
     const d = root.document
@@ -461,19 +486,38 @@
   async function doRestore(yearStr) {   // 回傳 true＝有改動（呼叫端要把最新的修改推回頁面）
     if (!/^\d{4}$/.test(yearStr || "")) { say("還原失敗：年份不對"); return false }
     const year = +yearStr, s = getStore(), pres = await s.get("pre:" + year) || []
-    const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }, { label: "還原照片…", value: "photos" }, { label: "匯入天氣…", onclick: done => pickFile(r => done({ wx: r.file })) }]
-    pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + "天" + (Array.isArray(x.body.reminders) ? " · " + x.body.reminders.length + "提醒" : ""), value: { pre: i } }))
-    buttons.push({ label: "取消", value: null })
-    const pick = await modal("還原 " + year + " 年日誌", "選一份備份檔（.json）" + (pres.length ? "，或下面還原前自動留下的備份" : ""), buttons)
+    // 編者按 / Editor's note：還原視窗只做「還原」：選備份檔、這一年的自動備份、還原前自動留下的備份，加上「整理備份…」。不要把「還原照片」「匯入天氣」放回來（照片在選單「照片」那排、天氣和資料檔在「匯入資料檔」），
+    //   也不要在日誌還原完之後自動追問要不要還原照片（使用者要求拿掉）。還原前自動留下的備份（固定 5 份）和自動備份分開，不放進「整理備份…」。
+    //   English: this window only restores (file / this year's auto copies / pre-restore copies) plus "整理備份…". Do not put photo restore or weather import back here, and do not re-add the automatic "restore photos too?" prompt after a restore (removed on request). The 5 pre-restore copies stay separate from the auto copies.
+    const AC_SHOW = 5   // 視窗裏先列最近幾份自動備份；更多的放進「更多自動備份…」
+    let pick
+    for (;;) {
+      const all = await readAcIndex(), acs = all.filter(x => x.year === year)
+      const buttons = [{ label: "從檔案選取…", kind: "pri", onclick: pickFile }]
+      acs.slice(0, AC_SHOW).forEach(x => buttons.push({ label: "自動 " + acLabel(x), value: { auto: x.id } }))
+      if (acs.length > AC_SHOW) buttons.push({ label: "更多自動備份（共 " + acs.length + " 份）…", value: "more" })
+      pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + "天" + (Array.isArray(x.body.reminders) ? " · " + x.body.reminders.length + "提醒" : ""), value: { pre: i } }))
+      if (all.length) buttons.push({ label: "整理備份…", value: "manage" })
+      buttons.push({ label: "取消", value: null })
+      const got = await modal("還原 " + year + " 年日誌", "選一份備份檔（.json）" + (acs.length || pres.length ? "，或下面自動留存、還原前自動留下的備份" : ""), buttons)
+      if (got === "manage") { await manageAutoCopies(); continue }   // 整理完回到這個視窗（清單已經更新）
+      if (got === "more") {
+        const m = await modal("選一份自動備份", year + " 年的自動備份，新到舊", [...acs.map(x => ({ label: acLabel(x), value: { auto: x.id } })), { label: "返回", value: null }])
+        if (m) { pick = m; break }
+        continue
+      }
+      pick = got; break
+    }
     if (!pick) return false
-    if (pick === "photos") { await doRestorePhotos(); return false }
-    if (pick.wx) { await doImportWeather(pick.wx); return false }
     let b
-    try { b = pick.file ? JSON.parse(await pick.file.text()) : pres[pick.pre].body } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
+    try {
+      b = pick.file ? JSON.parse(await pick.file.text()) : pick.auto ? await readAcBody(pick.auto) : pres[pick.pre].body
+      if (!b) throw new Error("這份自動備份讀不到（可能已經刪除了）")
+    } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
     const rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), now = Date.now()
     const plan = planRestore(year, rows, edits, b, now, rems)
     if (!plan.ok) { await modal("沒辦法還原", plan.error, [{ label: "好", value: 1 }]); return false }
-    if (plan.same) { await modal("不需要還原", "目前的日誌，與這份備份完全相同。", [{ label: "好", value: 1 }]); if (pick.file) photoOffer = { year, b, onlyIfKnown: true }; return false }   // 文字一樣，但備份附了照片清單、這裡又缺照片時，還是問一下
+    if (plan.same) { await modal("不需要還原", "目前的日誌，與這份備份完全相同。", [{ label: "好", value: 1 }]); return false }
     const parts = []
     if (plan.add) parts.push("新增 " + plan.add + " 天")
     if (plan.chg) parts.push("改回備份內容 " + plan.chg + " 天")
@@ -488,19 +532,17 @@
       [{ label: "合併（留較新的）", kind: "pri", value: "merge" }, { label: "完全還原（以備份為準）", kind: "dng", value: "full" }, { label: "取消", value: null }])
     if (!choice) return false
     if (choice === "merge") {
-      if (mp.same) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); if (pick.file) photoOffer = { year, b, onlyIfKnown: true }; return false }
+      if (mp.same) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); return false }
       await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 合併前先存一份
       await s.set("edits", mp.edits)
       if (mp.remDiff) { await saveRems(mp.rems); await markFired(mp.remChanged, now) }   // 備份裏已經過去的提醒時間，不要合併完馬上又響
       say("已合併 " + year + " 年：" + mp.days + " 天、" + mp.remCount + " 則提醒（合併前已自動備份）")
-      if (pick.file) photoOffer = { year, b, onlyIfKnown: b.kind !== BK_KIND }
       return true
     }
     await savePre(year, { created: now, body: makeBackupBody(year, rows, edits, now, true, rems).body })   // 還原前先存一份
     await s.set("edits", plan.edits)
     if (plan.remTouch) { await saveRems(plan.rems); await markFired(plan.rems, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
     say("已還原 " + year + " 年：" + plan.target.size + " 天" + (plan.remTouch ? "、" + plan.remTarget + " 則提醒" : "") + "（還原前已自動備份）")
-    if (pick.file) photoOffer = { year, b, onlyIfKnown: b.kind !== BK_KIND }   // 照片只補不刪：備份裏沒有的照片，不會因為「完全還原」被刪掉
     return true
   }
 
@@ -717,8 +759,13 @@
     const d = root.document, a = d.createElement("a"), u = root.URL.createObjectURL(blob)
     a.href = u; a.download = name; d.body.appendChild(a); a.click(); a.remove(); setTimeout(() => root.URL.revokeObjectURL(u), 10000)
   }
+  // 編者按 / Editor's note：「存到哪個資料夾」的說明只在第一次出現（文字備份用 hint:backup、照片備份用 hint:photobk），之後的對話框只留最簡單的一句；不要把每一批都附上資料夾說明（使用者嫌煩，要求只提第一次）。
+  //   網頁版沒辦法記住資料夾，只有 iOS 自己會記住上次存的位置；那一步程式碰不到。
+  //   English: the "which folder to save to" text appears only the first time (hint:backup for text, hint:photobk for photos); later dialogs keep just one short line. Do not re-add the folder text to every batch (the user asked for first-time-only). A web page cannot remember a folder; only iOS remembers the last location.
   async function backupPhotos(year, files) {   // 一批一批存；每一批都要使用者按一下（分享選單只能在按下的當下打開）。回傳實際存出幾張
     const nav = root.navigator, batches = []
+    let seen = !!(await getStore().get("hint:photobk"))
+    const markSeen = async () => { if (!seen) { seen = true; try { await getStore().set("hint:photobk", 1) } catch (e) {} } }
     for (let i = 0; i < files.length; i += PHOTO_BATCH) batches.push(files.slice(i, i + PHOTO_BATCH))
     let saved = 0
     for (let i = 0; i < batches.length; i++) {
@@ -728,9 +775,9 @@
         const buttons = []
         if (nav && nav.share) buttons.push({ label: "儲存照片", kind: "pri", onclick: done => nav.share({ files: batch }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
         buttons.push({ label: "改用下載", value: "download" }, { label: "停止", value: "stop" })
-        const r = await modal(title, "這一批 " + batch.length + " 張。按「儲存照片」後，選擇儲存成檔案，並選 iCloud Drive › Scriptable › pwa_photos" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。" + note, buttons)
-        if (r === "shared") { saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); break }
-        if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); break }
+        const r = await modal(title, "這一批 " + batch.length + " 張。" + (seen ? "按「儲存照片」。" : "按「儲存照片」後，選擇儲存成檔案，並選 iCloud Drive › Scriptable › pwa_photos" + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。") + note, buttons)
+        if (r === "shared") { saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); await markSeen(); break }
+        if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; await markPhotoDone(batch.map(f => photoInternalName(f.name))); await markSeen(); break }
         if (r === "stop") return saved
         note = r === "failed" ? "\n\n剛才分享失敗了，請再按一次，或改用下載。" : ""
       }
@@ -746,9 +793,10 @@
     const buttons = [{ label: "核對備份資料夾再備份", kind: "pri", onclick: pickPhotoFolder }]
     if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 張）", value: "new" })
     buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", value: "all" }, { label: "不用了", value: "" })
-    const msg = year + " 年有 " + names.length + " 張照片。\n\n" +
-      (hasRecord ? "記錄上" + (fresh.length ? "有 " + fresh.length + " 張是上次備份後新增的" : "都備份過了") + "，但記錄只代表「分享成功過」。" : "") +
-      "選「核對備份資料夾」：請選 iCloud Drive › Scriptable › pwa_photos，程式會看資料夾裡實際有哪些照片，只補缺的（需要 iOS 18.4 以上；資料夾裡一張照片都沒有時選不了，請選「全部備份」）。"
+    const seen = !!(await getStore().get("hint:photobk"))   // 資料夾的說明只在第一次備份照片前出現（見 backupPhotos 的編者按）
+    const msg = year + " 年有 " + names.length + " 張照片。" +
+      (hasRecord ? "\n\n記錄上" + (fresh.length ? "有 " + fresh.length + " 張是上次備份後新增的" : "都備份過了") + "，但記錄只代表「分享成功過」。" : "") +
+      (seen ? "" : "\n\n選「核對備份資料夾」：請選 iCloud Drive › Scriptable › pwa_photos，程式會看資料夾裡實際有哪些照片，只補缺的（需要 iOS 18.4 以上；資料夾裡一張照片都沒有時選不了，請選「全部備份」）。")
     const pick = await modal("備份 " + year + " 年照片", msg, buttons)
     if (!pick) return
     let only = null   // null＝全部；Set＝只備份這些
@@ -801,30 +849,10 @@
     if (!ok) say(msg)
     return { ok, dup, skip, other, msg }
   }
-  async function doRestorePhotos() {   // 面板「照片」那排的「還原」（還原視窗裏也還有「還原照片…」，之後會拿掉）：不限年份，自己選
+  async function doRestorePhotos() {   // 面板「照片」那排的「還原」：不限年份，自己選
     const pick = await modal("還原照片", "選取備份的照片（檔名像 2026-03-05_mhjk3f2x_0.jpg），會依檔名上的日期放回對應的日誌卡片，不同年份可以一次選。已經有的會略過。\n可以直接選放備份照片的資料夾（需要 iOS 18.4 以上），或改選照片檔；從照片圖庫選的話，檔名會被改掉，就放不回原來的日子。", [{ label: "選取照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     await importPhotoFiles(pick.files, null)
-  }
-  async function offerPhotoRestore(year, b, onlyIfKnown) {   // 日誌還原完成後：這一年的照片也一起還原。備份附了照片清單就核對還缺幾張，缺的才問；沒有清單（舊備份）就直接問
-    const listed = Array.isArray(b && b.photos) ? b.photos.filter(n => okName(n) && n.slice(0, 4) === String(year)) : null
-    if (onlyIfKnown && !listed) return
-    const missingOf = async () => { const have = new Set((await photoIndex()).map(x => x.f)); return listed.filter(n => !have.has(n)) }
-    let missing = listed ? await missingOf() : null
-    if (listed && !missing.length) return   // 備份記錄的照片，這部裝置都有了
-    let note = ""
-    for (;;) {
-      const pick = await modal("連 " + year + " 年照片一起還原？",
-        (listed ? "備份記錄了 " + listed.length + " 張 " + year + " 年的照片，這部裝置還缺 " + missing.length + " 張。" : "這份備份沒有照片清單，不知道原本有幾張。") +
-        "\n\n請選放備份照片的資料夾（需要 iOS 18.4 以上；選不了資料夾，就改選照片檔並全選）。資料夾裡不是 " + year + " 年的、已經有的、不是 .jpg 的，都會自動略過。" + note,
-        [{ label: "選取照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "不用了", value: null }])
-      if (!pick) return
-      const r = await importPhotoFiles(pick.files, year)
-      if (!listed) return
-      missing = await missingOf()
-      if (!missing.length) { say("已還原 " + year + " 年的照片，齊全了"); return }
-      note = "\n\n剛才" + (r.ok ? "還原了 " + r.ok + " 張" : "沒有還原到新的照片") + "，還缺 " + missing.length + " 張，可以再選一次補上。"
-    }
   }
 
   // ---------- 天氣：每張日誌卡片的標題欄顯示「地名 溫度範圍 有雨／下雪 大風 酷熱」（判斷規則和 Scriptable 版相同）----------
@@ -1097,16 +1125,15 @@
     if (!n) return r.keep ? "這部裝置已經有這些日子的天氣，沒有新增" : "天氣檔裏沒有可用的日子"
     return "已匯入天氣：" + n + " 天（" + r.from + " 至 " + r.to + "）" + (r.keep ? "；" + r.keep + " 天這裡已有，沒動" : "") + (r.skip ? "；" + r.skip + " 筆無法使用，略過" : "")
   }
-  async function doImportWeather(file) {   // 「還原」視窗裏按了「匯入天氣資料」並選好檔案
-    let imp
-    try { imp = JSON.parse(await file.text()) } catch (e) { await modal("天氣檔讀取失敗", "「" + (file.name || "") + "」不是有效的 JSON。", [{ label: "好", value: 1 }]); return }
-    if (!isWxFile(imp)) { await modal("這不是天氣檔", "「" + (file.name || "") + "」裏找不到天氣資料。" + (isIOS() ? "請選 Scriptable 版存在 iCloud 資料夾裏的 weather.json。" : "請選天氣檔（weather.json）。"), [{ label: "好", value: 1 }]); return }
-    say("匯入天氣中…")
-    wxTask(async () => {   // 不等它做完（可能要排在背景更新後面）：做完會自己更新畫面並顯示結果
-      const r = await importWeatherData(imp)
-      if (r.add || r.upg) pushWeather(r.st)
-      say(wxImportMsg(r), 7000)
-    }).catch(e => say("天氣匯入失敗：" + (e && e.message || e)))
+  async function importWxFiles(imps) {   // 「匯入資料檔」時一起選到的天氣檔：一個一個併進去（排在 wxTask 隊伍裏，不和背景更新互相蓋掉）；回傳加總的摘要（st＝最新的天氣資料，要推給頁面）
+    const sum = { add: 0, upg: 0, keep: 0, skip: 0, from: "", to: "", st: null }
+    for (const imp of imps) {
+      const r = await wxTask(() => importWeatherData(imp))
+      sum.add += r.add; sum.upg += r.upg; sum.keep += r.keep; sum.skip += r.skip; sum.st = r.st
+      if (r.from && (!sum.from || r.from < sum.from)) sum.from = r.from
+      if (r.to && (!sum.to || r.to > sum.to)) sum.to = r.to
+    }
+    return sum
   }
 
   // ---------- 提醒：屬於日誌的某一天（一天一個），資料存在這部裝置（IndexedDB 的 reminders）----------
@@ -1373,7 +1400,6 @@
     if (p.movephoto) return "movephoto"
     if (p.wxcfg !== undefined) return "wxcfg"
     if (p.bkcfg !== undefined) return "bkcfg"
-    if (p.bkverify !== undefined) return "bkverify"
     if (p.remsave !== undefined) return "remsave"
     for (const k of Object.keys(UNSUPPORTED)) if (p[k] !== undefined) return k
     return "sync"
@@ -1413,11 +1439,9 @@
     else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
     else if (act === "remsave") await doRemSave(p.remsave)
     else if (act === "bkcfg") await doBkCfg(p.bkcfg)
-    else if (act === "bkverify") await doBkVerify()
     else if (act === "wxcfg") doWxCfg(p.wxcfg)   // 不等它做完：定位和查天氣可能要幾秒，結果做完會自己推回頁面
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
     if (restored) { await pushCloud(); await pushRems(); remCheckSoon() }
-    if (photoOffer) { const o = photoOffer; photoOffer = null; await offerPhotoRestore(o.year, o.b, o.onlyIfKnown) }   // 頁面已經更新、新卡片都在了，再問照片
   }
   let queue = Promise.resolve()   // 一個一個處理，免得連按兩下時互相蓋掉
   function handle(u) { queue = queue.then(() => run(u)).catch(e => say("出錯了：" + (e && e.message || e))); return queue }
@@ -1479,13 +1503,13 @@
   //   This only ADDS days that are missing; it never overwrites an existing day (edited or deleted days included). Do not "simplify" it to importFiles' last-one-wins merge: that would clobber the user's existing edits.
   // 為什麼需要：還原只能還原「目前正在看的那一年」，而年份選單是依已匯入的資料產生的。改用主畫面 App 之後（它的儲存和 Safari 是分開的）如果只匯入了今年，就選不到其他年份；
   // 「第一次使用」的匯入畫面又只在完全沒有資料時才出現。所以在日誌頁補一個入口，把 data2025.json 或 2025 年的備份檔補進來。
-  // 可選：dataXXXX.json（Scriptable 版的資料檔）、備份檔（.json，網頁版和 Scriptable 版的都行）；天氣檔（weather.json）略過，請用「還原」視窗的「匯入天氣資料」。照片不在這些檔案裏。
-  async function planDataAdd(files) {   // 讀檔、算出「會加入什麼」；這一步不寫入任何東西。回傳 { add（要加的列）, rems（要加的提醒）, skip（已經有、略過的天數）, wxSkipped, years（年 → 天數）}
-    const s = getStore(), found = new Map(), remsIn = []; let wxSkipped = 0
+  // 可選：dataXXXX.json（Scriptable 版的資料檔）、備份檔（.json，網頁版和 Scriptable 版的都行）；天氣檔（weather.json）也可以一起選：程式依內容自己分（日誌、備份、天氣），天氣檔走 importWeatherData（只收已經發生的日子）。照片不在這些檔案裏。
+  async function planDataAdd(files) {   // 讀檔、算出「會加入什麼」；這一步不寫入任何東西。回傳 { add（要加的列）, rems（要加的提醒）, skip（已經有、略過的天數）, wxs（選到的天氣檔內容，由呼叫端另外匯入）, years（年 → 天數）}
+    const s = getStore(), found = new Map(), remsIn = [], wxs = []
     for (const f of files) {   // 讀檔的規則和 importFiles 相同
       let list
       try { list = JSON.parse(await f.text()) } catch (e) { throw new Error("「" + f.name + "」不是有效的 JSON") }
-      if (isWxFile(list)) { wxSkipped++; continue }
+      if (isWxFile(list)) { wxs.push(list); continue }   // 天氣檔：不是日誌，交給 importWeatherData
       if (list && okKind(list.kind) && Array.isArray(list.days)) {   // 備份檔
         if (Array.isArray(list.reminders)) for (const x of list.reminders) { const c = cleanRem(x); if (c && !c.del) remsIn.push(c) }
         list = list.days.filter(x => x && typeof x.text === "string").map(x => [x.date, "", x.text]).concat(list.pre ? [[list.year + "-00-00", "", list.pre, true]] : [])
@@ -1505,7 +1529,7 @@
     }
     const addDates = new Set(add.map(r => r[0])), haveRem = new Set((await readRems()).map(r => r.date))
     const rems = mergeRems([], remsIn.filter(r => addDates.has(r.date) && !haveRem.has(r.date)))   // 只收「新加進來的那幾天」的提醒；那一天現有的提醒不動
-    return { add, rems, skip, wxSkipped, years }
+    return { add, rems, skip, wxs, years }
   }
   async function commitDataAdd(p) {   // 把 planDataAdd 算好的寫進去：加日子；加提醒（已經過去的時間記成已提醒過，不補響）
     const s = getStore(), rows = await s.get("rows") || [], have = new Set(rows.map(rowKey))
@@ -1514,7 +1538,7 @@
     if (p.rems.length) { await saveRems(mergeRems(await readRems(), p.rems)); await markFired(p.rems, Date.now()) }
     return add.length
   }
-  function startDataImport() {   // 「匯入資料檔」按鈕按下的當下呼叫：先打開檔案選單（瀏覽器只准許在剛按下時打開），選完再算、再問
+  function startDataImport() {   // 「匯入資料檔」按鈕按下的當下呼叫：先打開檔案選單（瀏覽器只准許在剛按下時打開），選完再算、再問。日誌資料檔、備份檔、天氣檔可以一起選，程式依內容自己分
     const d = root.document, inp = d.createElement("input")
     inp.type = "file"; inp.accept = ".json,application/json"; inp.multiple = true; inp.hidden = true
     inp.onchange = async () => {
@@ -1522,17 +1546,25 @@
       if (!fs.length) return
       try {
         const p = await planDataAdd(fs)   // 問答不放進訊息佇列：對話框開著的時候，頁面的同步、備份照常進行
-        const yrs = Object.keys(p.years).sort().map(y => y + " 年 " + p.years[y] + " 天").join("、")
-        const notes = (p.skip ? "\n已經有的 " + p.skip + " 天不會動。" : "") + (p.wxSkipped ? "\n天氣檔已略過（請用「還原」視窗的「匯入天氣資料」）。" : "")
+        const yrs = Object.keys(p.years).sort().map(y => y + " 年 " + p.years[y] + " 天").join("、"), nWx = p.wxs.length
+        const notes = p.skip ? "\n已經有的 " + p.skip + " 天不會動。" : ""
         if (!p.add.length) {
+          if (nWx) {   // 只選了天氣檔：不用確認，直接匯入（和以前「匯入天氣」一樣）
+            say("匯入天氣中…")
+            const r = await importWxFiles(p.wxs)
+            if (r.add || r.upg) pushWeather(r.st)
+            say(wxImportMsg(r) + (p.skip ? "（日誌檔裏已經有的 " + p.skip + " 天沒動）" : ""), 7000)
+            return
+          }
           await modal("沒有需要加入的日子", "這些檔案裏沒有目前還沒有的日子，所以沒有動任何東西。" + notes, [{ label: "好", value: 1 }])
           return
         }
-        const ok = await modal("加入這些日子？", "會加入：" + (yrs || "只有前言") + (p.rems.length ? "；提醒 " + p.rems.length + " 則" : "") + "。" + notes +
+        const ok = await modal("加入這些日子？", "會加入：" + (yrs || "只有前言") + (p.rems.length ? "；提醒 " + p.rems.length + " 則" : "") + "。" + (nWx ? "\n另外選了 " + nWx + " 個天氣檔，會一併匯入。" : "") + notes +
           "\n加入後頁面會重新載入一次，請先確認沒有編輯到一半的卡片。", [{ label: "加入", kind: "pri", value: true }, { label: "取消", value: false }])
         if (!ok) { say("已取消，沒有加入任何東西"); return }
         await commitDataAdd(p)
-        await modal("已加入", (yrs || "前言") + "已經加進日誌。照片不在資料檔裏，有 .jpg 備份的話請到「還原」視窗按「還原照片」。\n按「好」會重新載入頁面。", [{ label: "好", kind: "pri", value: 1 }])
+        const wxLine = nWx ? "\n" + wxImportMsg(await importWxFiles(p.wxs)) : ""   // 重新載入之前先匯入：新組的頁面就帶著天氣
+        await modal("已加入", (yrs || "前言") + "已經加進日誌。" + wxLine + "\n照片不在資料檔裏，有 .jpg 備份的話請到「照片」那排按「還原…」。\n按「好」會重新載入頁面。", [{ label: "好", kind: "pri", value: 1 }])
         await launch()   // 年份選單是組頁時依資料產生的，要重新組頁才看得到新的年份
       } catch (e) { say("匯入失敗：" + (e && e.message || e), 7000) }
     }
@@ -1544,7 +1576,7 @@
       const d = root.document, menu = d && d.querySelector && d.querySelector("#pd .menu")
       if (!menu || d.getElementById("dix")) return
       const b = d.createElement("button")
-      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("data-lb", "匯入資料檔"); b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子（已有的不會動）"); b.title = "補進缺的年份或日子（已有的不會動）"
+      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("data-lb", "匯入資料檔"); b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子，也可以匯入天氣檔（已有的不會動）"); b.title = "補進缺的年份或日子，也可以匯入天氣檔（已有的不會動）"
       const ref = menu.querySelector("svg")   // 借用選單裏現有圖示的外框（class、大小），只換圖案；找不到（模板改過）就沒有圖示
       if (ref) { const ic = ref.cloneNode(false); ic.innerHTML = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></g>'; b.appendChild(ic) }
       b.onclick = () => { startDataImport(); if (typeof root.pdClose === "function") root.pdClose() }   // 先打開檔案選單（要在按下的當下），再收起選單
@@ -1580,7 +1612,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, doImportWeather, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
