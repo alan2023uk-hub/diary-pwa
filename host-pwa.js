@@ -1076,16 +1076,19 @@
   }
   // 編者按 / Editor's note：這個視窗原本第一顆是「核對備份資料夾再備份」（選資料夾、比對裡面實際有的檔案），使用者要求拿掉；不要加回來。現在「已備份」只看這部裝置上的記錄（photobk:done）；換了備份資料夾、或資料夾裡的檔案被刪了，要自己選「全部重新備份」。
   //   English: the first button used to be "核對備份資料夾再備份" (pick the folder and compare what is really in it); the user asked for it to be removed, so do not add it back. "Already backed up" now relies only on this device's record (photobk:done); after changing folders or deleting files there, choose 全部重新備份.
-  async function doBackupPhotos(yearStr) {   // 選單的「照片 → 備份 → 執行」。已備份的不重複匯出：可以「只備份新增的」，或全部（重新）備份
+  // 編者按 / Editor's note：這個視窗在這一步就檢查有沒有重複：已備份過的明說「不會重複存」，預設只備份新增的；全部都備份過時只給「好」，「仍要全部重新備份（會重複存）」放在後面當作退路（換了資料夾、或資料夾裡的檔案被刪了才用得到）。使用者按過「全部重新備份」而重複存了，所以不要再把「全部重新備份」放成主要選項。
+  //   English: the duplicate check happens right here: already-backed-up items are stated as "won't be stored again" and only the new ones are backed up by default; when everything is already backed up the primary button is just 好 and "仍要全部重新備份（會重複存）" stays as a labelled escape hatch (changed folder / files deleted there). The user once pressed 全部重新備份 and got duplicates, so never make it the main choice again.
+  async function doBackupPhotos(yearStr) {   // 選單的「照片 → 備份 → 執行」。這一步就先檢查哪些已經備份過，視窗直接告訴使用者，預設只備份新增的
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return }
     const year = +yearStr
     const names = yearPhotoNames(await photoIndex(), year)
     if (!names.length) { say(year + " 年沒有照片可備份"); return }
-    const done = await readPhotoDone(), fresh = names.filter(n => !done[n]), hasRecord = names.some(n => done[n])
-    const buttons = []
-    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 張）", kind: "pri", value: "new" })
-    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", kind: buttons.length ? "" : "pri", value: "all" }, { label: "不用了", value: "" })
-    const pick = await modal("備份 " + year + " 年照片", year + " 年有 " + names.length + " 張照片。", buttons)
+    const done = await readPhotoDone(), fresh = names.filter(n => !done[n]), had = names.length - fresh.length
+    let msg, buttons
+    if (!had) { msg = year + " 年有 " + names.length + " 張照片，都還沒備份過。"; buttons = [{ label: "全部備份（" + names.length + " 張）", kind: "pri", value: "new" }, { label: "不用了", value: "" }] }
+    else if (fresh.length) { msg = year + " 年有 " + names.length + " 張照片：\n\n• 已備份過 " + had + " 張（不會重複存）\n• 新增 " + fresh.length + " 張"; buttons = [{ label: "只備份新增的（" + fresh.length + " 張）", kind: "pri", value: "new" }, { label: "不用了", value: "" }] }
+    else { msg = year + " 年的 " + names.length + " 張照片都已經備份過了，沒有新增的。"; buttons = [{ label: "好", kind: "pri", value: "" }, { label: "仍要全部重新備份（" + names.length + " 張，會重複存）", value: "all" }] }
+    const pick = await modal("備份 " + year + " 年照片", msg, buttons)
     if (!pick) return
     const files = await photoFilesOf(year, pick === "new" ? new Set(fresh) : null), saved = files.length ? await backupPhotos(year, files) : 0
     say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
@@ -1220,15 +1223,16 @@
     inp.onchange = () => { const fs = [...(inp.files || [])].filter(f => /\.pdf$/i.test(f.name)); inp.remove(); if (fs.length) done({ files: fs }) }
     d.body.appendChild(inp); inp.click()
   }
-  async function doBackupPdfs(yearStr) {   // 選單的「PDF → 備份 → 執行」。和照片一樣：沒有「核對備份資料夾」（使用者要求拿掉，見照片備份的編者按），已備份的只看這部裝置上的記錄（pdfbk:done）
+  async function doBackupPdfs(yearStr) {   // 選單的「PDF → 備份 → 執行」。和照片一樣：這一步先檢查哪些已經備份過（只看這部裝置上的記錄 pdfbk:done），告訴使用者，預設只備份新增的（見照片備份的編者按）
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return }
     const year = +yearStr, names = yearPdfs(await pdfIndex(), year).map(x => x.f)
     if (!names.length) { say(year + " 年沒有 PDF 可備份"); return }
-    const done = await readPdfDone(), fresh = names.filter(n => !done[n]), hasRecord = names.some(n => done[n])
-    const buttons = []
-    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 個）", kind: "pri", value: "new" })
-    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 個）" : "全部備份（" + names.length + " 個）", kind: buttons.length ? "" : "pri", value: "all" }, { label: "不用了", value: "" })
-    const pick = await modal("備份 " + year + " 年 PDF", year + " 年有 " + names.length + " 個 PDF。", buttons)
+    const done = await readPdfDone(), fresh = names.filter(n => !done[n]), had = names.length - fresh.length
+    let msg, buttons
+    if (!had) { msg = year + " 年有 " + names.length + " 個 PDF，都還沒備份過。"; buttons = [{ label: "全部備份（" + names.length + " 個）", kind: "pri", value: "new" }, { label: "不用了", value: "" }] }
+    else if (fresh.length) { msg = year + " 年有 " + names.length + " 個 PDF：\n\n• 已備份過 " + had + " 個（不會重複存）\n• 新增 " + fresh.length + " 個"; buttons = [{ label: "只備份新增的（" + fresh.length + " 個）", kind: "pri", value: "new" }, { label: "不用了", value: "" }] }
+    else { msg = year + " 年的 " + names.length + " 個 PDF 都已經備份過了，沒有新增的。"; buttons = [{ label: "好", kind: "pri", value: "" }, { label: "仍要全部重新備份（" + names.length + " 個，會重複存）", value: "all" }] }
+    const pick = await modal("備份 " + year + " 年 PDF", msg, buttons)
     if (!pick) return
     const files = await pdfFilesOf(year, pick === "new" ? new Set(fresh) : null), saved = files.length ? await backupPdfs(year, files) : 0
     say(saved ? "已備份 " + saved + " 個 PDF" : "沒有備份 PDF")
