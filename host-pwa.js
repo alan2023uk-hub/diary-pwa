@@ -105,7 +105,8 @@
     ".pdfpgs{display:flex;flex-direction:column;gap:6px;background:var(--line)}.pdfpg{position:relative;width:100%;background:#fff;overflow:hidden}.pdfpg canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}.pdfpn{position:absolute;right:8px;bottom:6px;font-size:12px;padding:1px 8px;border-radius:10px;background:rgba(0,0,0,.45);color:#fff;pointer-events:none}" +
     ".pdfv{position:fixed;left:0;top:0;right:0;bottom:0;z-index:99990;background:#1c1c1e;display:flex;flex-direction:column}.pdfvb{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;color:#fff;background:#2a2a2c;flex:none}" +
     ".pdfvb button{font:inherit;font-size:18px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:10px;min-width:44px;height:40px;cursor:pointer}.pdfvt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}.pdfvn{flex:none;font-size:14px;opacity:.8}" +
-    ".pdfvs{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}.pdfvi{width:100%;display:flex;flex-direction:column;gap:8px;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));box-sizing:border-box}"
+    ".pdfvs{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}.pdfvi{width:100%;display:flex;flex-direction:column;gap:8px;padding:8px 0 8px;box-sizing:border-box}" +
+    ".pdfvf{flex:none;display:flex;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:#2a2a2c}.pdfvd{font:inherit;font-size:15px;color:#ff8a80;background:rgba(255,255,255,.1);border:0;border-radius:10px;height:40px;padding:0 18px;cursor:pointer}.pdfvd.arm{background:#c62828;color:#fff}"
 
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
   // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
@@ -131,7 +132,7 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_PDFBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
       '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};window.HOST_PICK_PDF=function(){PwaHost.prePickPdf()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.installPdf();PwaHost.loadCardPdfs();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
     return html.replace("</head>", () => head + "<style>" + PDF_CSS + "</style>" + inject + "</head>")
   }
@@ -887,16 +888,21 @@
     let doc
     try { doc = await openPdfDoc(f) } catch (e) { pdfViewing = false; say("打開失敗：" + (e && e.message || e), 4000); return }
     const d = root.document, ov = d.createElement("div"); ov.className = "pdfv"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "PDF：" + name)
-    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvk" aria-label="關閉">✕</button><span class="pdfvt"></span><span class="pdfvn"></span><button type="button" class="pdfvz" data-z="-" aria-label="縮小">－</button><button type="button" class="pdfvz" data-z="+" aria-label="放大">＋</button></div><div class="pdfvs"><div class="pdfvi"></div></div>'
+    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvk" aria-label="關閉">✕</button><span class="pdfvt"></span><span class="pdfvn"></span><button type="button" class="pdfvz" data-z="-" aria-label="縮小">－</button><button type="button" class="pdfvz" data-z="+" aria-label="放大">＋</button></div><div class="pdfvs"><div class="pdfvi"></div></div><div class="pdfvf"><button type="button" class="pdfvd">🗑 刪除這個 PDF</button></div>'
     ov.querySelector(".pdfvt").textContent = name
     const sc = ov.querySelector(".pdfvs"), inner = ov.querySelector(".pdfvi"), num = ov.querySelector(".pdfvn")
     const oldHtml = d.documentElement.style.overflow, oldBody = d.body.style.overflow
     d.body.appendChild(ov); d.documentElement.style.overflow = "hidden"; d.body.style.overflow = "hidden"   // 鎖住後面日誌的捲動
-    let ctl = null, z = 1, tmr = 0, raf = 0, pin = null
-    const close = () => { clearTimeout(tmr); if (ctl) ctl.destroy(); else try { doc.destroy() } catch (e) {} ; ov.remove(); d.documentElement.style.overflow = oldHtml; d.body.style.overflow = oldBody; d.removeEventListener("keydown", onKey, true); pdfViewing = false }
+    let ctl = null, z = 1, tmr = 0, raf = 0, pin = null, armT = 0
+    const close = () => { clearTimeout(tmr); clearTimeout(armT); if (ctl) ctl.destroy(); else try { doc.destroy() } catch (e) {} ; ov.remove(); d.documentElement.style.overflow = oldHtml; d.body.style.overflow = oldBody; d.removeEventListener("keydown", onKey, true); pdfViewing = false }
     const onKey = e => { if (e.key === "Escape") close() }
     d.addEventListener("keydown", onKey, true)
     ov.querySelector(".pdfvk").onclick = close
+    const delB = ov.querySelector(".pdfvd")   // 刪除：要按兩次（第一次變紅，3.5 秒內再按一次才刪）
+    delB.onclick = async () => {
+      if (!delB.classList.contains("arm")) { delB.classList.add("arm"); delB.textContent = "再按一次，確定刪除"; armT = setTimeout(() => { delB.classList.remove("arm"); delB.textContent = "🗑 刪除這個 PDF" }, 3500); return }
+      delB.disabled = true; close(); await doDelPdf(f)
+    }
     try { ctl = await makePdfPages(doc, inner, { root: sc }) } catch (e) { close(); say("打開失敗：" + (e && e.message || e), 4000); return }
     const target = ctl.pages[Math.max(1, Math.min(ctl.n, start || 1)) - 1]
     if (target) sc.scrollTop = target.el.offsetTop - 8
@@ -1142,6 +1148,153 @@
     const pick = await modal("還原照片", "依檔名日期（如 2026-03-05）自動將照片放回日誌：\n\n• 自動過濾：已存在的會略過。\n• 全部還原：選「照片資料夾」，再選有備份照片的資料夾" + (isIOS() ? "（如 iCloud/Scriptable/pwa_photos）" : "") + "。\n• 個別還原：按「改選照片檔」，選取照片以還原至指定日期的日誌卡片。\n• 注意：勿從「照片圖庫」選，否則檔名被改會無法對應日期。", [{ label: "照片資料夾…", kind: "pri", onclick: pickPhotoFolder }, { label: "改選照片檔…", onclick: pickPhotoFiles }, { label: "取消", value: null }])
     if (!pick) return
     await importPhotoFiles(pick.files, null)
+  }
+
+
+  async function doDelPdf(f) {   // 在全螢幕閱讀畫面按兩次「刪除」：原檔、縮圖、清單一起刪；卡片上的 PDF 區塊跟著更新
+    const d = pdfDateOf(f)
+    if (!d) { say("刪除失敗：檔名不對"); return }
+    try {
+      const s = getStore(), idx = await pdfIndex()
+      await s.set("pdfIndex", idx.filter(x => x.f !== f)); await s.del("pdf:" + f); await s.del("pdfthumb:" + f)
+      if (pdfThumbUrls.has(f)) { root.URL.revokeObjectURL(pdfThumbUrls.get(f)); pdfThumbUrls.delete(f) }
+      const o = pdfOpen.get(f); if (o) { o.ctl.destroy(); pdfOpen.delete(f) }   // 卡片裏已經展開的，順便放掉
+      pushPdfs(await pdfCardMap([d]), "已刪除")
+    } catch (e) { say("刪除失敗：" + (e && e.message || e)) }
+  }
+
+  // ---------- PDF 備份與還原：和照片一樣，備份檔（.json）不含 PDF，所以 PDF 另外存成一個個 .pdf；還原時依檔名放回原來的卡片 ----------
+  // 編者按 / Editor's note：這一段是上面「照片備份與還原」的 PDF 版，故意分開寫、不和照片共用程式，免得動到已經測好的照片備份。
+  //   English: this is the PDF twin of the photo backup above. It is written separately on purpose so the tested photo backup is not touched.
+  // 備份檔名：「日期_8位36進位毫秒_序號_原檔名.pdf」。內部檔名是「日期_毫秒_序號.pdf」，原來的檔名記在清單的 n；還原時從檔名拆回來，卡片上才會顯示原來的名字。
+  //   English: export name = date_ms-in-base36_seq_originalName.pdf; restore splits it back into the internal name and the display name.
+  // 分享選單一次不要塞太多或太大：每一批最多 PDF_BATCH 個、PDF_BATCH_BYTES 位元組（先到的為準；單一檔案超過上限就自己一批）。
+  const PDF_BATCH = 10, PDF_BATCH_BYTES = 80 * 1048576
+  const PDF_EXP = /^(\d{4}-\d{2}-\d{2})_([0-9a-z]{8})_(\d+)_(.+)\.pdf$/i
+  const safePdfName = n => String(n || "PDF").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim().slice(0, 60) || "PDF"
+  const pdfExportName = x => { const m = /^(\d{4}-\d{2}-\d{2})_(\d{13})_(\d+)\.pdf$/.exec(x.f); return m ? m[1] + "_" + Number(m[2]).toString(36).padStart(8, "0") + "_" + m[3] + "_" + safePdfName(x.n) + ".pdf" : "" }
+  const pdfParseExport = nm => { const m = PDF_EXP.exec(nm || ""); if (!m) return null; const ms = parseInt(m[2].toLowerCase(), 36); return String(ms).length === 13 ? { f: m[1] + "_" + ms + "_" + m[3] + ".pdf", n: m[4] } : null }
+  const yearPdfs = (idx, year) => idx.filter(x => pdfDateOf(x.f).slice(0, 4) === String(year)).sort((a, b) => a.f < b.f ? -1 : 1)
+  const PDF_DONE_KEY = "pdfbk:done"   // 已經備份過的 PDF：{ 內部檔名: 備份時間 }，和 photobk:done 同一個做法
+  async function readPdfDone() { const v = await getStore().get(PDF_DONE_KEY); return v && typeof v === "object" && !Array.isArray(v) ? v : {} }
+  async function markPdfDone(names) {
+    if (!names.length) return
+    const cur = await readPdfDone(), now = Date.now()
+    for (const n of names) cur[n] = now
+    await getStore().set(PDF_DONE_KEY, cur)
+  }
+  async function syncPdfDone(have, missing) {
+    const cur = await readPdfDone(), now = Date.now()
+    for (const n of have) if (!cur[n]) cur[n] = now
+    for (const n of missing) delete cur[n]
+    await getStore().set(PDF_DONE_KEY, cur)
+  }
+  const folderPdfNames = files => new Set(files.map(f => { const q = pdfParseExport(f.name); return q ? q.f : "" }).filter(Boolean))
+  async function pdfFilesOf(year, only) {   // only＝只要這些內部檔名（Set）；不給＝全部
+    const s = getStore(), out = []
+    for (const x of yearPdfs(await pdfIndex(), year)) {
+      if (only && !only.has(x.f)) continue
+      const blob = await s.get("pdf:" + x.f), nm = pdfExportName(x)
+      if (blob && nm) out.push(new root.File([blob], nm, { type: "application/pdf" }))
+    }
+    return out
+  }
+  function pdfBatches(files) {
+    const out = []; let cur = [], sz = 0
+    for (const f of files) {
+      if (cur.length && (cur.length >= PDF_BATCH || sz + f.size > PDF_BATCH_BYTES)) { out.push(cur); cur = []; sz = 0 }
+      cur.push(f); sz += f.size
+    }
+    if (cur.length) out.push(cur)
+    return out
+  }
+  const pdfFolderEg = () => isIOS() ? "，例如，iCloud Drive › Scriptable › pwa_pdfs" : ""
+  async function pdfHintSeen() { if (await getStore().get("hint:pdfbk")) return true; return Object.keys(await readPdfDone()).length > 0 }   // 資料夾的說明只在第一次出現（見照片備份的編者按）
+  async function backupPdfs(year, files) {   // 一批一批存，每一批都要使用者按一下（分享選單只能在按下的當下打開）。回傳實際存出幾個
+    const nav = root.navigator, batches = pdfBatches(files)
+    let seen = await pdfHintSeen(), saved = 0
+    const markSeen = async () => { if (!seen) { seen = true; try { await getStore().set("hint:pdfbk", 1) } catch (e) {} } }
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i], title = "備份 " + year + " 年 PDF" + (batches.length > 1 ? "（第 " + (i + 1) + "／" + batches.length + " 批）" : "")
+      let note = ""
+      for (;;) {
+        const buttons = []
+        if (nav && nav.share) buttons.push({ label: "儲存 PDF", kind: "pri", onclick: done => nav.share({ files: batch }).then(() => done("shared"), err => done(err && err.name === "AbortError" ? "again" : "failed")) })
+        buttons.push({ label: "改用下載", value: "download" }, { label: "停止", value: "stop" })
+        const r = await modal(title, "這一批 " + batch.length + " 個（" + fmtMB(batch.reduce((n, f) => n + f.size, 0)) + "）。" + (seen ? "按「儲存 PDF」。" : "按「儲存 PDF」後，選擇儲存成檔案，再選你指定的資料夾" + pdfFolderEg() + (batches.length > 1 ? "（每一批都選同一個）" : "") + "。") + note, buttons)
+        const names = () => batch.map(f => (pdfParseExport(f.name) || {}).f).filter(Boolean)
+        if (r === "shared") { saved += batch.length; await markPdfDone(names()); await markSeen(); break }
+        if (r === "download") { for (const f of batch) { downloadBlob(f.name, f); await new Promise(res => setTimeout(res, 300)) } saved += batch.length; await markPdfDone(names()); await markSeen(); break }
+        if (r === "stop") return saved
+        note = r === "failed" ? "\n\n剛才分享失敗了，請再按一次，或改用下載。" : ""
+      }
+    }
+    return saved
+  }
+  function pickPdfFiles(done) {   // 在按鈕被按下的當下呼叫
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.accept = "application/pdf,.pdf"; inp.multiple = true; inp.hidden = true
+    inp.onchange = () => { const fs = [...(inp.files || [])]; inp.remove(); if (fs.length) done({ files: fs }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  function pickPdfFolder(done) {   // 在按鈕被按下的當下呼叫：選一個資料夾，裡面的 .pdf 全部收進來（其他檔案不管）。iOS 18.4 以上的 Safari 才有這個功能；舊系統會變成選單一個檔案，所以另外留「改選 PDF 檔」
+    const d = root.document, inp = d.createElement("input")
+    inp.type = "file"; inp.setAttribute("webkitdirectory", ""); inp.hidden = true
+    inp.onchange = () => { const fs = [...(inp.files || [])].filter(f => /\.pdf$/i.test(f.name)); inp.remove(); if (fs.length) done({ files: fs }) }
+    d.body.appendChild(inp); inp.click()
+  }
+  async function doBackupPdfs(yearStr) {   // 選單的「PDF → 備份 → 執行」。已備份的不重複匯出：可以「核對備份資料夾」，或只看記錄
+    if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return }
+    const year = +yearStr, list = yearPdfs(await pdfIndex(), year), names = list.map(x => x.f)
+    if (!names.length) { say(year + " 年沒有 PDF 可備份"); return }
+    const done = await readPdfDone(), fresh = names.filter(n => !done[n]), hasRecord = names.some(n => done[n])
+    const buttons = [{ label: "核對備份資料夾再備份", kind: "pri", onclick: pickPdfFolder }]
+    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 個）", value: "new" })
+    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 個）" : "全部備份（" + names.length + " 個）", value: "all" }, { label: "不用了", value: "" })
+    const seen = await pdfHintSeen()
+    const msg = year + " 年有 " + names.length + " 個 PDF。" + (seen ? "" : "\n\n• 選「核對備份資料夾」，再選你指定的資料夾" + pdfFolderEg() + "\n\n• 若該資料夾是空的，請選「全部備份」")
+    const pick = await modal("備份 " + year + " 年 PDF", msg, buttons)
+    if (!pick) return
+    let only = null   // null＝全部；Set＝只備份這些
+    if (pick === "new") only = new Set(fresh)
+    else if (pick.files) {   // 核對資料夾
+      const have = folderPdfNames(pick.files), missing = names.filter(n => !have.has(n))
+      await syncPdfDone(names.filter(n => have.has(n)), missing)
+      if (!missing.length) { say("資料夾裡已經有 " + year + " 年全部 " + names.length + " 個 PDF，不用再備份"); return }
+      say("資料夾裡缺 " + missing.length + " 個，只備份缺的")
+      only = new Set(missing)
+    }
+    const files = await pdfFilesOf(year, only), saved = files.length ? await backupPdfs(year, files) : 0
+    say(saved ? "已備份 " + saved + " 個 PDF" : "沒有備份 PDF")
+  }
+  async function importPdfFiles(files) {   // 把選到的 .pdf 放回來：檔名要是備份出來的格式，依日期放回對應的卡片，名字也換回原來的；已經有的略過；原檔直接存
+    try { await loadPdfjs() } catch (e) { say("PDF 閱讀工具載入失敗：請確認 pdf.min.mjs 和 pdf.worker.min.mjs 已放進網頁資料夾", 6000); return }
+    const s = getStore(), dates = new Set(), onDisk = []
+    let idx = await pdfIndex(), ok = 0, dup = 0, skip = 0, pw = 0
+    say("處理 " + files.length + " 個 PDF…")
+    for (const f of files) {
+      try {
+        const q = pdfParseExport(f.name)
+        if (!q) { skip++; continue }
+        if (idx.some(x => x.f === q.f)) { dup++; onDisk.push(q.f); continue }
+        if (!(await f.slice(0, 1024).text()).includes("%PDF")) { skip++; continue }   // 不是 PDF
+        const r = await readPdf(f)
+        if (r.pw) { pw++; continue }
+        await s.set("pdf:" + q.f, f.slice(0, f.size, "application/pdf"))
+        await s.set("pdfthumb:" + q.f, r.thumb)
+        idx = [...idx, { f: q.f, n: q.n, pages: r.pages, size: f.size, created: Date.now() }]
+        await s.set("pdfIndex", idx); ok++; onDisk.push(q.f); dates.add(pdfDateOf(q.f))
+      } catch (e) { skip++ }
+    }
+    try { await markPdfDone(onDisk) } catch (e) {}
+    const msg = "已還原 " + ok + " 個 PDF" + (dup ? "，略過 " + dup + " 個已有的" : "") + (pw ? "，" + pw + " 個有密碼不能用" : "") + (skip ? "，" + skip + " 個不能用（檔名不對或不是 PDF）" : "")
+    pushPdfs(await pdfCardMap([...dates]), ok ? msg : "")
+    if (!ok) say(msg)
+  }
+  async function doRestorePdfs() {   // 選單的「PDF → 還原 → 執行」：不限年份，自己選
+    const pick = await modal("還原 PDF", "依檔名日期（如 2026-03-05）自動將 PDF 放回日誌：\n\n• 自動過濾：已存在的會略過。\n• 全部還原：選「PDF 資料夾」，再選有備份 PDF 的資料夾" + (isIOS() ? "（如 iCloud/Scriptable/pwa_pdfs）" : "") + "。\n• 個別還原：按「改選 PDF 檔」，選取要還原的 PDF。\n• 注意：檔名要保持備份時的樣子（日期＋一串代碼＋原檔名），改過名字的無法對應日期。", [{ label: "PDF 資料夾…", kind: "pri", onclick: pickPdfFolder }, { label: "改選 PDF 檔…", onclick: pickPdfFiles }, { label: "取消", value: null }])
+    if (!pick) return
+    await importPdfFiles(pick.files)
   }
 
   // ---------- 天氣：每張日誌卡片的標題欄顯示「地名 溫度範圍 有雨／下雪 大風 酷熱」（判斷規則和 Scriptable 版相同）----------
@@ -1683,6 +1836,8 @@
     if (p.backup !== undefined) return "backup"
     if (p.backupphotos !== undefined) return "backupphotos"
     if (p.restorephotos !== undefined) return "restorephotos"   // 面板「照片」那排的「還原」：直接開選照片的視窗
+    if (p.backuppdfs !== undefined) return "backuppdfs"
+    if (p.restorepdfs !== undefined) return "restorepdfs"
     if (p.restore !== undefined) return "restore"
     if (p.addphoto) return "addphoto"
     if (p.addpdf) return "addpdf"
@@ -1723,6 +1878,8 @@
     else if (act === "backup") await doBackup(p.backup)
     else if (act === "backupphotos") await doBackupPhotos(p.backupphotos)
     else if (act === "restorephotos") await doRestorePhotos()
+    else if (act === "backuppdfs") await doBackupPdfs(p.backuppdfs)
+    else if (act === "restorepdfs") await doRestorePdfs()
     else if (act === "restore") restored = await doRestore(p.restore)
     else if (act === "addphoto") await doAddPhotos(p.addphoto)
     else if (act === "addpdf") await doAddPdf(p.addpdf)
