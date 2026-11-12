@@ -356,14 +356,15 @@
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return false }
     const year = +yearStr, s = getStore()
     const r = makeBackupBody(year, await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems(), yearPhotoNames(await photoIndex(), year))
-    if (!await s.get("hint:backup")) {   // 第一次備份：先提醒存到哪裏（網頁版沒辦法自己指定資料夾，iOS 會預設停在你上次用的位置）
-      const go = await modal("備份前先看一下", "備份會存到你接著選的位置。" + (isIOS()
-        ? "\n\n日誌（.json）：兩邊通用，請存進 iCloud Drive › Scriptable › manual_backup（Scriptable 版的還原選單認得），第一次選好之後 iOS 會記住這個位置。\n照片（.jpg）：請存進 iCloud Drive › Scriptable › pwa_photos（和 Scriptable 版的 diary_photos 分開，不要混在一起）。"
-        : "\n\n照片（.jpg）建議另建專用資料夾（例如「日誌網頁版備份」），之後比較好找。"),
-        [{ label: "繼續備份", kind: "pri", value: true }, { label: "取消", value: false }])
-      if (!go) { say("已取消備份"); return false }
-      await s.set("hint:backup", 1)
-    }
+    // 編者按 / Editor's note：文字備份和照片、PDF 備份一致：每次都先彈出一個訊息視窗（有「備份」和「不用了」），按了「備份」才開分享選單；「存到哪裏」的說明只在第一次出現、而且併在這個視窗裡（不要另外再彈一個視窗）。
+    //   English: text backup now matches photo and PDF backup: a message window first (備份 / 不用了), the share sheet opens only after 備份; the "where to save" explanation appears only the first time and lives inside this same window (no second window).
+    const seen = !!await s.get("hint:backup")
+    const msg = year + " 年有 " + r.days + " 天日誌、" + r.rems + " 則提醒。" + (seen ? "" : "\n\n備份會存到你接著選的位置。" + (isIOS()
+      ? "\n\n日誌（.json）：兩邊通用，請存進 iCloud Drive › Scriptable › manual_backup（Scriptable 版的還原選單認得），第一次選好之後 iOS 會記住這個位置。\n照片（.jpg）：請存進 iCloud Drive › Scriptable › pwa_photos（和 Scriptable 版的 diary_photos 分開，不要混在一起）。\nPDF：請存進 iCloud Drive › Scriptable › pwa_pdfs。"
+      : "\n\n照片（.jpg）和 PDF 建議另建專用資料夾（例如「日誌網頁版備份」），之後比較好找。"))
+    const go = await modal("備份 " + year + " 年文字", msg, [{ label: "備份（" + r.days + " 天）", kind: "pri", value: true }, { label: "不用了", value: false }])
+    if (!go) return false
+    if (!seen) await s.set("hint:backup", 1)
     const how = await deliverFile(r.name, JSON.stringify(r.body))
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份 " + year + " 年：" + r.days + " 天、" + r.rems + " 則提醒" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
     const saved = how === "shared" || how === "downloaded"
@@ -1031,13 +1032,6 @@
     for (const n of names) cur[n] = now
     await getStore().set(PHOTO_DONE_KEY, cur)
   }
-  async function syncPhotoDone(have, missing) {   // 核對過備份資料夾之後：資料夾裡有的記成已備份，缺的從記錄拿掉
-    const cur = await readPhotoDone(), now = Date.now()
-    for (const n of have) if (!cur[n]) cur[n] = now
-    for (const n of missing) delete cur[n]
-    await getStore().set(PHOTO_DONE_KEY, cur)
-  }
-  const folderPhotoNames = files => new Set(files.map(f => photoInternalName(f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name)))
   async function photoFilesOf(year, only) {   // only＝只要這些內部檔名（Set）；不給＝全部
     const s = getStore(), out = []
     for (const f of yearPhotoNames(await photoIndex(), year)) {
@@ -1080,30 +1074,20 @@
     }
     return saved
   }
-  async function doBackupPhotos(yearStr) {   // 選單的「備份照片」按鈕：和文字備份分開。已備份的不重複匯出：可以「核對備份資料夾」（以資料夾裡實際有的為準），或只看記錄
+  // 編者按 / Editor's note：這個視窗原本第一顆是「核對備份資料夾再備份」（選資料夾、比對裡面實際有的檔案），使用者要求拿掉；不要加回來。現在「已備份」只看這部裝置上的記錄（photobk:done）；換了備份資料夾、或資料夾裡的檔案被刪了，要自己選「全部重新備份」。
+  //   English: the first button used to be "核對備份資料夾再備份" (pick the folder and compare what is really in it); the user asked for it to be removed, so do not add it back. "Already backed up" now relies only on this device's record (photobk:done); after changing folders or deleting files there, choose 全部重新備份.
+  async function doBackupPhotos(yearStr) {   // 選單的「照片 → 備份 → 執行」。已備份的不重複匯出：可以「只備份新增的」，或全部（重新）備份
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return }
     const year = +yearStr
     const names = yearPhotoNames(await photoIndex(), year)
     if (!names.length) { say(year + " 年沒有照片可備份"); return }
     const done = await readPhotoDone(), fresh = names.filter(n => !done[n]), hasRecord = names.some(n => done[n])
-    const buttons = [{ label: "核對備份資料夾再備份", kind: "pri", onclick: pickPhotoFolder }]
-    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 張）", value: "new" })
-    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", value: "all" }, { label: "不用了", value: "" })
-    const seen = await photoHintSeen()   // 資料夾的說明只在第一次備份照片前出現（見 backupPhotos 的編者按）
-    const msg = year + " 年有 " + names.length + " 張照片。" +
-      (seen ? "" : "\n\n• 選「核對備份資料夾」，再選你指定的資料夾" + photoFolderEg() + "\n\n• 若該資料夾是空的，請選「全部備份」")
-    const pick = await modal("備份 " + year + " 年照片", msg, buttons)
+    const buttons = []
+    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 張）", kind: "pri", value: "new" })
+    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 張）" : "全部備份（" + names.length + " 張）", kind: buttons.length ? "" : "pri", value: "all" }, { label: "不用了", value: "" })
+    const pick = await modal("備份 " + year + " 年照片", year + " 年有 " + names.length + " 張照片。", buttons)
     if (!pick) return
-    let only = null   // null＝全部；Set＝只備份這些
-    if (pick === "new") only = new Set(fresh)
-    else if (pick.files) {   // 核對資料夾
-      const have = folderPhotoNames(pick.files), missing = names.filter(n => !have.has(n))
-      await syncPhotoDone(names.filter(n => have.has(n)), missing)
-      if (!missing.length) { say("資料夾裡已經有 " + year + " 年全部 " + names.length + " 張照片，不用再備份"); return }
-      say("資料夾裡缺 " + missing.length + " 張，只備份缺的")
-      only = new Set(missing)
-    }
-    const files = await photoFilesOf(year, only), saved = files.length ? await backupPhotos(year, files) : 0
+    const files = await photoFilesOf(year, pick === "new" ? new Set(fresh) : null), saved = files.length ? await backupPhotos(year, files) : 0
     say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
   }
   function pickPhotoFiles(done) {   // 在按鈕被按下的當下呼叫
@@ -1183,13 +1167,6 @@
     for (const n of names) cur[n] = now
     await getStore().set(PDF_DONE_KEY, cur)
   }
-  async function syncPdfDone(have, missing) {
-    const cur = await readPdfDone(), now = Date.now()
-    for (const n of have) if (!cur[n]) cur[n] = now
-    for (const n of missing) delete cur[n]
-    await getStore().set(PDF_DONE_KEY, cur)
-  }
-  const folderPdfNames = files => new Set(files.map(f => { const q = pdfParseExport(f.name); return q ? q.f : "" }).filter(Boolean))
   async function pdfFilesOf(year, only) {   // only＝只要這些內部檔名（Set）；不給＝全部
     const s = getStore(), out = []
     for (const x of yearPdfs(await pdfIndex(), year)) {
@@ -1243,28 +1220,17 @@
     inp.onchange = () => { const fs = [...(inp.files || [])].filter(f => /\.pdf$/i.test(f.name)); inp.remove(); if (fs.length) done({ files: fs }) }
     d.body.appendChild(inp); inp.click()
   }
-  async function doBackupPdfs(yearStr) {   // 選單的「PDF → 備份 → 執行」。已備份的不重複匯出：可以「核對備份資料夾」，或只看記錄
+  async function doBackupPdfs(yearStr) {   // 選單的「PDF → 備份 → 執行」。和照片一樣：沒有「核對備份資料夾」（使用者要求拿掉，見照片備份的編者按），已備份的只看這部裝置上的記錄（pdfbk:done）
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return }
-    const year = +yearStr, list = yearPdfs(await pdfIndex(), year), names = list.map(x => x.f)
+    const year = +yearStr, names = yearPdfs(await pdfIndex(), year).map(x => x.f)
     if (!names.length) { say(year + " 年沒有 PDF 可備份"); return }
     const done = await readPdfDone(), fresh = names.filter(n => !done[n]), hasRecord = names.some(n => done[n])
-    const buttons = [{ label: "核對備份資料夾再備份", kind: "pri", onclick: pickPdfFolder }]
-    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 個）", value: "new" })
-    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 個）" : "全部備份（" + names.length + " 個）", value: "all" }, { label: "不用了", value: "" })
-    const seen = await pdfHintSeen()
-    const msg = year + " 年有 " + names.length + " 個 PDF。" + (seen ? "" : "\n\n• 選「核對備份資料夾」，再選你指定的資料夾" + pdfFolderEg() + "\n\n• 若該資料夾是空的，請選「全部備份」")
-    const pick = await modal("備份 " + year + " 年 PDF", msg, buttons)
+    const buttons = []
+    if (fresh.length && fresh.length < names.length) buttons.push({ label: "只備份新增的（" + fresh.length + " 個）", kind: "pri", value: "new" })
+    buttons.push({ label: hasRecord ? "全部重新備份（" + names.length + " 個）" : "全部備份（" + names.length + " 個）", kind: buttons.length ? "" : "pri", value: "all" }, { label: "不用了", value: "" })
+    const pick = await modal("備份 " + year + " 年 PDF", year + " 年有 " + names.length + " 個 PDF。", buttons)
     if (!pick) return
-    let only = null   // null＝全部；Set＝只備份這些
-    if (pick === "new") only = new Set(fresh)
-    else if (pick.files) {   // 核對資料夾
-      const have = folderPdfNames(pick.files), missing = names.filter(n => !have.has(n))
-      await syncPdfDone(names.filter(n => have.has(n)), missing)
-      if (!missing.length) { say("資料夾裡已經有 " + year + " 年全部 " + names.length + " 個 PDF，不用再備份"); return }
-      say("資料夾裡缺 " + missing.length + " 個，只備份缺的")
-      only = new Set(missing)
-    }
-    const files = await pdfFilesOf(year, only), saved = files.length ? await backupPdfs(year, files) : 0
+    const files = await pdfFilesOf(year, pick === "new" ? new Set(fresh) : null), saved = files.length ? await backupPdfs(year, files) : 0
     say(saved ? "已備份 " + saved + " 個 PDF" : "沒有備份 PDF")
   }
   async function importPdfFiles(files) {   // 把選到的 .pdf 放回來：檔名要是備份出來的格式，依日期放回對應的卡片，名字也換回原來的；已經有的略過；原檔直接存
