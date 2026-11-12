@@ -908,7 +908,7 @@ function openPanel(){   // 垃圾桶：單日還原／永久刪除、全部還�
 function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
 function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toast(window.LIVE_BK?y+' 年備份中…':y+' 年備份中…畫面會短暫離開再回來');scriptRun('backup',y)}
 function backupPhotoYear(y){toast(y+' 年照片：準備中…');hostSend({backupphotos:y},{go:lastDate||'',pend:'skip'})}   /* 只有網頁版（宿主設了 PWA_PHOTOBK）才有「備份照片」按鈕 */
-function restorePhotos(){hostSend({restorephotos:'1'},{go:lastDate||'',pend:'skip'})}
+function restorePhotos(){if(window.MASTER_PHOTORS)toast('照片：掃描中…',1500);hostSend({restorephotos:'1'},{go:lastDate||'',pend:'skip'})}
 function backupPdfYear(y){toast(y+' 年 PDF：準備中…');hostSend({backuppdfs:y},{go:lastDate||'',pend:'skip'})}   /* 只有網頁版（宿主設了 PWA_PDFBK）才有「PDF」 */
 function restorePdfs(){hostSend({restorepdfs:'1'},{go:lastDate||'',pend:'skip'})}   /* 網頁版「PDF → 還原」：直接開選 PDF 的視窗（不分年份，依檔名放回原來的日子） */   /* 網頁版「照片」那排的「還原」：直接開選照片的視窗（不分年份，依檔名放回原來的日子） */
 function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
@@ -937,34 +937,37 @@ function yearDialog(){
  /* 網頁版：三排選擇器（年份／種類／動作），每一排一次只顯示一個選項（點兩邊箭頭，或在中間左右滑動換），選好了按最底下的「執行」才動手，不會因為滑過頭而誤做。
     編者按 / Editor's note：選了就直接執行會有危險：滑動時會一路經過其他選項（尤其「還原」）。所以一定要有獨立的「執行」鈕；動作的預設永遠是「備份」，不記住上次選過還原。
     English: never execute on selection; swiping passes through other values (notably 還原). Keep the separate 執行 button, and keep the default action at 備份 (do not remember a previous 還原).
-    Scriptable 母版沒有照片和 PDF（沒有 PWA_PHOTOBK），維持原來一排「備份」「還原…」。 */
- const WEB=!!window.PWA_PHOTOBK;
+    Scriptable 母版（MASTER_PHOTORS）也用這個選擇器：種類有「文字」「照片」，選「照片」時動作只剩「還原」（把網頁版存在 pwa_photos 的照片放回日誌）；舊版宿主（沒有 PWA_PHOTOBK 也沒有 MASTER_PHOTORS）維持原來一排「備份」「還原…」。 */
+ const WEB=!!window.PWA_PHOTOBK,MPH=!WEB&&!!window.MASTER_PHOTORS,PICK=WEB||MPH;   /* WEB＝網頁版；MPH＝母版（宿主設了 MASTER_PHOTORS）；PICK＝用三排選擇器的（兩者都用）。母版的「照片」只有「還原」（網頁版才是照片的來源），所以母版的動作那排會隨種類改變；網頁版維持原樣 */
  const TYPES=[['text','文字'],['photo','照片']].concat(window.PWA_PDFBK?[['pdf','PDF']]:[]),ACTS=[['bk','備份'],['rs','還原']];
  let ti=0,ai=0;
- const typ=()=>TYPES[ti][0],act=()=>ACTS[ai][0];
+ const typ=()=>TYPES[ti][0];
+ const acts=()=>MPH&&typ()==='photo'?[['rs','還原']]:ACTS;   /* 母版：選「照片」時動作只剩「還原」 */
+ const act=()=>acts()[ai][0];
  const cnt=(m,yy)=>{if(!m)return null;let n=0;for(const k in m)if(k.slice(0,4)===String(yy)&&m[k]&&m[k].length)n+=m[k].length;return n};
  const mkpick=(vals,get,set)=>{
+  const V=()=>typeof vals==='function'?vals():vals;   /* vals 可以是函式（動作那排會隨種類改變） */
   const pv=mkb('上一個','chevL','',()=>step(-1)),nx=mkb('下一個','chevR','',()=>step(1));
   const c=document.createElement('div');c.className='yc';const b=document.createElement('b');c.append(b);
   const row=document.createElement('div');row.className='yp';row.append(pv,c,nx);
-  const step=d=>{const n=get()+d;if(n<0||n>=vals.length)return;set(n);draw()};
+  const step=d=>{const n=get()+d;if(n<0||n>=V().length)return;set(n);draw()};
   let x0=null;row.onpointerdown=e=>{x0=e.clientX};row.onpointercancel=()=>{x0=null};
   row.onpointerup=e=>{if(x0==null)return;const dx=e.clientX-x0;x0=null;if(Math.abs(dx)>40)step(dx<0?1:-1)};
-  row.upd=()=>{b.textContent=vals[get()][1];pv.disabled=get()===0;nx.disabled=get()===vals.length-1};
+  row.upd=()=>{b.textContent=V()[get()][1];pv.disabled=get()===0;nx.disabled=get()===V().length-1};
   return row};
- const tp=WEB?mkpick(TYPES,()=>ti,v=>{ti=v}):null,ap=WEB?mkpick(ACTS,()=>ai,v=>{ai=v}):null;
- const goB=WEB?mkb('執行','check','pri',()=>{const y=ys[i],t=typ(),a=act();pdClose();
+ const tp=PICK?mkpick(TYPES,()=>ti,v=>{ti=v;if(MPH)ai=0}):null,ap=PICK?mkpick(acts,()=>ai,v=>{ai=v}):null;   /* 母版換種類時，動作回到第一個（文字＝備份、照片＝還原） */
+ const goB=PICK?mkb('執行','check','pri',()=>{const y=ys[i],t=typ(),a=act();pdClose();
   if(t==='text'){if(a==='bk')backupYear(y,yearDays(y));else restoreYear(y)}
   else if(t==='photo'){if(a==='bk')backupPhotoYear(y);else restorePhotos()}
   else{if(a==='bk')backupPdfYear(y);else restorePdfs()}}):null;
  if(goB)goB.append('執行');
  const draw=()=>{const y=ys[i],n=yearDays(y);yb.textContent=y+' 年';prev.disabled=i===0;next.disabled=i===ys.length-1;
-  if(!WEB){sp.textContent=n?n+' 天':'沒有日誌';bkB.disabled=!n;return}
+  if(!PICK){sp.textContent=n?n+' 天':'沒有日誌';bkB.disabled=!n;return}
   const t=typ(),a=act();   /* 年份那排的小字：依選的種類顯示那一年有多少；還原照片／PDF 不分年份，所以直接這樣寫 */
   let sub;if(a==='rs'&&t!=='text')sub='全部還原';else if(t==='text')sub=n?n+' 天':'沒有日誌';else{const c=cnt(t==='photo'?window.CARD_PHOTOS:window.CARD_PDFS,y);sub=c==null?'':(c+(t==='photo'?' 張':' 個'))}
-  sp.textContent=sub;tp.upd();ap.upd();goB.disabled=a==='bk'&&t==='text'&&!n;goB.setAttribute('aria-label',ACTS[ai][1]+' '+y+' 年 '+TYPES[ti][1])};draw();
+  sp.textContent=sub;tp.upd();ap.upd();goB.disabled=a==='bk'&&t==='text'&&!n;goB.setAttribute('aria-label',acts()[ai][1]+' '+y+' 年 '+TYPES[ti][1])};draw();
  const mkrow=(...bs)=>{const r=document.createElement('div');r.className='cf';r.append(...bs);return r};
- const kids=WEB?[yp,tp,ap,mkrow(goB)]:[yp,mkrow(bkB,rsB)];
+ const kids=PICK?[yp,tp,ap,mkrow(goB)]:[yp,mkrow(bkB,rsB)];
  if(window.BKCFG){   // 自動備份的間隔：點一下輪流切換（Scriptable 宿主和網頁版宿主會注入 BKCFG；其他宿主沒有這一行）。網頁版（PWA_AUTOCP）的自動備份是悄悄存在這部裝置，所以第二行照實寫「存在這部裝置」
   const MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
   const ar=document.createElement('div');ar.className='bka';
@@ -978,7 +981,7 @@ function yearDialog(){
   const info=()=>{const c=window.BKCFG,m=MODES.find(x=>x[0]===c.days);pill.textContent=m?m[1]:'每 '+c.days+' 天';pill.classList.toggle('pri',c.days>0);pill.setAttribute('aria-label','自動備份：'+pill.textContent+'（點一下切換）');t2.textContent=c.days===0?'已關閉':(c.last?(window.PWA_AUTOCP?'存在這部裝置　':'')+'上次 '+c.last:'尚未自動備份')};info();
   pill.onclick=()=>{const c=window.BKCFG,i=MODES.findIndex(x=>x[0]===c.days);c.days=MODES[(i+1)%MODES.length][0];info();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
   kids.push(ar)}
- bx.classList.toggle('wk',WEB);bx.replaceChildren(...kids);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
+ bx.classList.toggle('wk',PICK);bx.replaceChildren(...kids);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
  try{bx.scrollIntoView({block:'nearest'})}catch(e){}}
 document.getElementById('bkp').insertAdjacentHTML('beforeend','<i class="cv">'+ico('chevDown')+'</i>');
 document.getElementById('bkp').onclick=()=>yearDialog();
