@@ -106,7 +106,7 @@
     ".pdfv{position:fixed;left:0;top:0;right:0;bottom:0;z-index:99990;background:#1c1c1e;display:flex;flex-direction:column}.pdfvb{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;color:#fff;background:#2a2a2c;flex:none}" +
     ".pdfvb button{font:inherit;font-size:18px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:10px;min-width:44px;height:40px;cursor:pointer}.pdfvt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}.pdfvn{flex:none;font-size:14px;opacity:.8}" +
     ".pdfvs{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}.pdfvi{width:100%;display:flex;flex-direction:column;gap:8px;padding:8px 0 8px;box-sizing:border-box}" +
-    ".pdfvf{flex:none;display:flex;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:#2a2a2c}.pdfvd{font:inherit;font-size:15px;color:#ff8a80;background:rgba(255,255,255,.1);border:0;border-radius:10px;height:40px;padding:0 18px;cursor:pointer}.pdfvd.arm{background:#c62828;color:#fff}"
+    ".pdfvf{flex:none;display:flex;justify-content:center;gap:12px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:#2a2a2c}.pdfvm,.pdfvd{font:inherit;font-size:15px;color:#ff8a80;background:rgba(255,255,255,.1);border:0;border-radius:10px;height:40px;padding:0 18px;cursor:pointer}.pdfvm{color:#fff}.pdfvd.arm{background:#c62828;color:#fff}"
 
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
   // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
@@ -889,7 +889,7 @@
     let doc
     try { doc = await openPdfDoc(f) } catch (e) { pdfViewing = false; say("打開失敗：" + (e && e.message || e), 4000); return }
     const d = root.document, ov = d.createElement("div"); ov.className = "pdfv"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "PDF：" + name)
-    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvk" aria-label="關閉">✕</button><span class="pdfvt"></span><span class="pdfvn"></span><button type="button" class="pdfvz" data-z="-" aria-label="縮小">－</button><button type="button" class="pdfvz" data-z="+" aria-label="放大">＋</button></div><div class="pdfvs"><div class="pdfvi"></div></div><div class="pdfvf"><button type="button" class="pdfvd">🗑 刪除這個 PDF</button></div>'
+    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvk" aria-label="關閉">✕</button><span class="pdfvt"></span><span class="pdfvn"></span><button type="button" class="pdfvz" data-z="-" aria-label="縮小">－</button><button type="button" class="pdfvz" data-z="+" aria-label="放大">＋</button></div><div class="pdfvs"><div class="pdfvi"></div></div><div class="pdfvf"><button type="button" class="pdfvm">✎ 標記</button><button type="button" class="pdfvd">🗑 刪除這個 PDF</button></div>'
     ov.querySelector(".pdfvt").textContent = name
     const sc = ov.querySelector(".pdfvs"), inner = ov.querySelector(".pdfvi"), num = ov.querySelector(".pdfvn")
     const oldHtml = d.documentElement.style.overflow, oldBody = d.body.style.overflow
@@ -899,6 +899,15 @@
     const onKey = e => { if (e.key === "Escape") close() }
     d.addEventListener("keydown", onKey, true)
     ov.querySelector(".pdfvk").onclick = close
+    // 標記：把原檔交給 iOS 分享選單，選「標記」就是母版 QuickLook 那套工具；檔案先備好，按下的當下才能馬上開分享選單。標記結果存到「檔案」，不寫回日誌
+    let shareFile = null
+    getStore().get("pdf:" + f).then(b => { if (b) shareFile = new root.File([b], (String(name || "PDF").replace(/[\\/:*?"<>|]/g, "_").trim() || "PDF") + ".pdf", { type: "application/pdf" }) }).catch(() => {})
+    ov.querySelector(".pdfvm").onclick = async () => {
+      if (!shareFile) { say("PDF 還在準備，請再按一次", 2500); return }
+      const nav = root.navigator
+      if (!(nav.share && nav.canShare && nav.canShare({ files: [shareFile] }))) { say("這部裝置不支援分享選單", 4000); return }
+      try { await nav.share({ files: [shareFile] }) } catch (e) { if (!e || e.name !== "AbortError") say("無法打開分享選單：" + (e && e.message || e), 4000) }   // 不帶 title／text（和備份一樣）
+    }
     const delB = ov.querySelector(".pdfvd")   // 刪除：要按兩次（第一次變紅，3.5 秒內再按一次才刪）
     delB.onclick = async () => {
       if (!delB.classList.contains("arm")) { delB.classList.add("arm"); delB.textContent = "再按一次，確定刪除"; armT = setTimeout(() => { delB.classList.remove("arm"); delB.textContent = "🗑 刪除這個 PDF" }, 3500); return }
