@@ -1647,6 +1647,14 @@
     if (!pick) return
     const files = await photoFilesOf(year, pick === "new" ? new Set(fresh) : null), saved = files.length ? await backupPhotos(year, files) : 0
     say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
+    if (saved && isIOS()) await offerMasterImport()   // 編者按／Editor's note：這一批（所有批次）都存進 pwa_photos 之後才問，不要在「加入照片」那一刻問——那時候可能還要繼續加，問了很煩。只有 iOS 才有 Scriptable，其他裝置不問。
+  }
+  // 編者按／Editor's note：按「要」之後一定會短暫切到 Scriptable（母版沒辦法在背景被偷偷叫起，iOS 不允許），這裡只負責問一次、按下去才切過去；不要改成自動切過去不問。
+  //   English: tapping "要" always switches to Scriptable for a moment (iOS has no way to call the master silently in the background) — this just asks once and only switches on confirmation; don't make it jump automatically without asking.
+  async function offerMasterImport() {
+    const ok = await modal("存入母版？", "要不要現在把剛才備份的照片存進 Scriptable 母版？按「要」畫面會切到 Scriptable 一下，匯入完母版會顯示「已存入母版」。", [{ label: "要", kind: "pri", value: true }, { label: "不用", value: false }])
+    if (!ok) return
+    try { root.location.href = "scriptable:///run?scriptName=" + encodeURIComponent("日誌") + "&pwaimport=1" } catch (e) {}
   }
   function pickPhotoFiles(done) {   // 在按鈕被按下的當下呼叫
     const d = root.document, inp = d.createElement("input")
