@@ -106,7 +106,20 @@
     ".pdfv{position:fixed;left:0;top:0;right:0;bottom:0;z-index:99990;background:#1c1c1e;display:flex;flex-direction:column}.pdfvb{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;color:#fff;background:#2a2a2c;flex:none}" +
     ".pdfvb button{font:inherit;font-size:18px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:10px;min-width:44px;height:40px;cursor:pointer}.pdfvt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}.pdfvn{flex:none;font-size:14px;opacity:.8}" +
     ".pdfvs{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}.pdfvi{width:100%;display:flex;flex-direction:column;gap:8px;padding:8px 0 8px;box-sizing:border-box}" +
-    ".pdfvf{flex:none;display:flex;justify-content:center;gap:12px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:#2a2a2c}.pdfvm,.pdfvd{font:inherit;font-size:15px;color:#ff8a80;background:rgba(255,255,255,.1);border:0;border-radius:10px;height:40px;padding:0 18px;cursor:pointer}.pdfvm{color:#fff}.pdfvd.arm{background:#c62828;color:#fff}"
+    ".pdfvf{flex:none;display:flex;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:#2a2a2c}.pdfvd{font:inherit;font-size:15px;color:#ff8a80;background:rgba(255,255,255,.1);border:0;border-radius:10px;height:40px;padding:0 18px;cursor:pointer}.pdfvd.arm{background:#c62828;color:#fff}" +
+    ".pdfv [hidden]{display:none!important}.pdfvs{position:relative}" +
+    ".pdfvb{background:#000;gap:2px;padding:calc(6px + env(safe-area-inset-top,0px)) 8px 6px}.pdfvb button{background:none;color:#409cff;font-size:17px;min-width:40px;height:40px;padding:0 6px;border-radius:10px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.pdfvb button.on,.pdfvq button.on{background:rgba(64,156,255,.22)}" +
+    ".pdfvc{flex:1;min-width:0;justify-content:flex-start!important;gap:6px;color:#fff!important;font-weight:600}.pdfvc .pdfvt{flex:0 1 auto}.pdfvb .pdfvk{font-weight:700}.pdfvn{color:#fff;margin-right:4px}@media (max-width:520px){.pdfvn{display:none}}" +
+    ".pdfvq{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#1c1c1e;border-bottom:1px solid rgba(255,255,255,.12);flex:none}.pdfvq input{flex:1;min-width:0;font:inherit;font-size:16px;color:#fff;background:rgba(255,255,255,.12);border:0;border-radius:10px;height:36px;padding:0 10px;outline:none}.pdfqn{flex:none;font-size:13px;color:#ccc;min-width:3.5em;text-align:center}.pdfvq button{background:none;color:#409cff;border:0;font:inherit;font-size:17px;min-width:36px;height:36px;cursor:pointer}" +
+    ".pdfsb{position:absolute;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:6;display:flex;gap:2px;background:#2c2c2e;border-radius:12px;padding:4px;box-shadow:0 4px 16px rgba(0,0,0,.5)}.pdfsb button{font:inherit;font-size:15px;color:#fff;background:none;border:0;border-radius:8px;height:36px;padding:0 12px;cursor:pointer}" +
+    ".pdfmn{position:absolute;left:8px;top:calc(56px + env(safe-area-inset-top,0px));z-index:7;min-width:200px;background:#2c2c2e;color:#fff;border-radius:12px;padding:6px;box-shadow:0 6px 20px rgba(0,0,0,.55);display:flex;flex-direction:column}.pdfmn button{font:inherit;font-size:16px;color:#fff;background:none;border:0;border-radius:8px;text-align:left;padding:10px 12px;cursor:pointer}.pdfmz{display:flex;align-items:center;justify-content:space-between;padding:2px 4px}.pdfmz button{text-align:center;min-width:44px;font-size:20px}.pdfmz span{font-size:15px}" +
+    ".pdfo{position:absolute;left:0;top:0;transform-origin:0 0}.pdft{position:absolute;left:0;top:0;right:0;bottom:0;line-height:1;-webkit-user-select:text;user-select:text}.pdft span{position:absolute;white-space:pre;color:transparent;transform-origin:0 0}.pdft span::selection,.pdft mark::selection{background:rgba(0,110,255,.35);color:transparent}" +
+    ".pdft mark{background:rgba(255,200,0,.5);color:transparent;border-radius:2px}.pdft mark.cur{background:rgba(255,110,0,.7)}.pdfa{position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none}.pdfa svg{display:block;width:100%;height:100%}" +
+    ".pdfv.dr .pdfpg{touch-action:none}.pdfv.dr .pdft{pointer-events:none;-webkit-user-select:none;user-select:none}" +
+    ".pdfvm{flex:none;display:flex;align-items:center;gap:2px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:#2a2a2c;color:#fff}.pdfmt{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:52px;height:48px;font:inherit;color:#fff;background:none;border:0;border-radius:10px;cursor:pointer}" +
+    ".pdfmt b{font-size:18px;font-weight:600;line-height:1.1}.pdfmt i{font-style:normal;font-size:11px;opacity:.75}.pdfmt.on{background:rgba(64,156,255,.3)}.pdfmt[disabled]{opacity:.3}.pdfmt.pri{color:#409cff;margin-left:auto}" +
+    ".pdfcs{flex:none;display:flex;gap:8px;padding:0 8px;align-items:center}.pdfcd{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.35);padding:0;cursor:pointer}.pdfcd.on{border-color:#fff;box-shadow:0 0 0 2px #409cff}" +
+    ".pdfta{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:8px;border:1px solid rgba(128,128,128,.5);border-radius:8px;margin:0 0 .6rem;background:transparent;color:inherit}.pdfsg{display:block;width:100%;height:auto;box-sizing:border-box;touch-action:none;background:#fff;border:1px solid rgba(128,128,128,.5);border-radius:10px;margin:0 0 .5rem}"
 
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
   // 組頁時把這幾句換成符合事實的字（母版和模板檔都不動）。每一句：在模板裏找得到才換；找不到（模板改過）就照舊顯示原字，功能不受影響。
@@ -848,6 +861,7 @@
       if (dead || !p.want) { cv.width = cv.height = 0; return }
       if (p.cv) { p.cv.width = p.cv.height = 0; p.cv.remove() }   // 換新的畫好了才放掉舊的，放大縮小時不會閃一下空白
       p.cv = cv; p.rw = wantW; p.el.insertBefore(cv, p.el.firstChild)
+      if (opts.decorate && !p.dec) { p.dec = true; try { const r = opts.decorate(p, pg); if (r && r.catch) r.catch(() => {}) } catch (e) {} }   // 全螢幕閱讀：疊上文字層和批註層（不等它做完，免得拖慢畫頁面）
     }
     async function pump() {   // 一次只畫一頁，免得同時吃太多記憶體和運算
       if (busy) return
@@ -857,6 +871,7 @@
     const want = p => { p.want = true; if (!queue.includes(p)) queue.push(p); pump() }
     function release(p) {
       p.want = false
+      if (p.dec) { p.dec = false; if (opts.undecorate) try { opts.undecorate(p) } catch (e) {} }
       const k = queue.indexOf(p); if (k >= 0) queue.splice(k, 1)
       if (p.task) { try { p.task.cancel() } catch (e) {} }
       if (p.cv) { p.cv.width = p.cv.height = 0; p.cv.remove(); p.cv = null; p.rw = 0 }
@@ -882,48 +897,493 @@
       if (btn) btn.textContent = "收起"
     } catch (e) { say("展開失敗：" + (e && e.message || e), 4000); if (btn) btn.textContent = "展開全部" } finally { if (btn) btn.disabled = false }
   }
+  // ---------- PDF 批註：資料格式、繪圖、命中判斷、輸出 ----------
+  // 編者按 / Editor's note：批註另存在 pdfann:<內部檔名>，PDF 原檔不動（使用者要看的是「原本的 PDF」）。要寄出去或留底時，才用「分享」或「另存含批註的新 PDF」把批註畫進去；輸出的那份是圖片頁（文字不能選取），原檔照舊還在。不要改成直接改寫原檔。
+  //   English: annotations are kept in pdfann:<name>, the original file is never modified. Exporting (share / save-as-new) draws them into image pages, so the exported copy has no selectable text; the original stays as it was.
+  // 資料格式：{ pages: { "頁碼": [批註…] } }；座標一律是「PDF 點（pt），左上角為原點」，和畫面縮放無關：
+  //   { t:"ink", c, w, p:[[x,y]…], o?（透明度）, m?（螢光筆：乘色混合）}
+  //   { t:"hl", k:"h|u|s"（螢光／底線／刪除線）, c, r:[[x,y,w,h]…] }
+  //   { t:"txt", x, y, s（字級）, c, v }    { t:"sig", x, y, w, a（高寬比）, c, st:[[[x,y]…]…]（筆畫，座標 0~1）}
+  const AFONT = "-apple-system,'PingFang TC','Noto Sans TC',sans-serif"
+  const r1 = n => Math.round(n * 10) / 10
+  function inkPath(p) {   // 點連成平滑的線（二次曲線經過各點的中點）
+    if (!p.length) return ""
+    const f = q => r1(q[0]) + " " + r1(q[1])
+    if (p.length === 1) return "M" + f(p[0]) + "l0.01 0"
+    if (p.length === 2) return "M" + f(p[0]) + "L" + f(p[1])
+    let d = "M" + f(p[0])
+    for (let i = 1; i < p.length - 1; i++) d += "Q" + f(p[i]) + " " + r1((p[i][0] + p[i + 1][0]) / 2) + " " + r1((p[i][1] + p[i + 1][1]) / 2)
+    return d + "L" + f(p[p.length - 1])
+  }
+  const txtLines = a => String(a.v == null ? "" : a.v).split("\n")
+  function txtBox(a) {   // 文字框大小（估算：中日韓字＝一個字級寬，其他約半個）
+    let w = 0
+    for (const l of txtLines(a)) { let x = 0; for (const ch of l) x += ch.charCodeAt(0) > 0x2e7f ? a.s : a.s * 0.56; w = Math.max(w, x) }
+    return { x: a.x, y: a.y, w: Math.max(w, a.s * 0.6), h: txtLines(a).length * a.s * 1.25 }
+  }
+  function annBox(a) {
+    if (a.t === "ink") {
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+      for (const q of a.p) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]) }
+      return { x: x0 - a.w / 2, y: y0 - a.w / 2, w: x1 - x0 + a.w, h: y1 - y0 + a.w }
+    }
+    if (a.t === "hl") {
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+      for (const q of a.r) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0] + q[2]); y1 = Math.max(y1, q[1] + q[3]) }
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
+    }
+    if (a.t === "txt") return txtBox(a)
+    if (a.t === "sig") return { x: a.x, y: a.y, w: a.w, h: a.w * a.a }
+    return { x: 0, y: 0, w: 0, h: 0 }
+  }
+  const inBox = (b, x, y, t) => x >= b.x - t && x <= b.x + b.w + t && y >= b.y - t && y <= b.y + b.h + t
+  function segDist(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy
+    const u = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0
+    return Math.hypot(px - (ax + u * dx), py - (ay + u * dy))
+  }
+  function annHit(a, x, y, t) {   // (x, y) 是否點到這個批註；t＝容許的誤差（pt，手指不會很準）
+    if (a.t === "ink") {
+      if (!inBox(annBox(a), x, y, t)) return false
+      const r = a.w / 2 + t
+      if (a.p.length === 1) return Math.hypot(x - a.p[0][0], y - a.p[0][1]) <= r
+      for (let i = 1; i < a.p.length; i++) if (segDist(x, y, a.p[i - 1][0], a.p[i - 1][1], a.p[i][0], a.p[i][1]) <= r) return true
+      return false
+    }
+    if (a.t === "hl") return a.r.some(q => inBox({ x: q[0], y: q[1], w: q[2], h: q[3] }, x, y, t))
+    return inBox(annBox(a), x, y, t)
+  }
+  function annMove(a, dx, dy) {
+    if (a.t === "ink") for (const q of a.p) { q[0] += dx; q[1] += dy }
+    else if (a.t === "hl") for (const q of a.r) { q[0] += dx; q[1] += dy }
+    else { a.x += dx; a.y += dy }
+  }
+  // list＝這一頁的批註；W、H＝頁面大小（pt）；o：{ k（畫面每 pt 幾像素，畫選取框用）, sel（被選的批註）, flat（輸出用：不用混色）, pw/ph（輸出的像素大小）}
+  function annSvg(list, W, H, o) {
+    o = o || {}
+    const g = [], rect = (x, y, w, h, c, extra) => '<rect x="' + r1(x) + '" y="' + r1(y) + '" width="' + r1(w) + '" height="' + r1(h) + '" fill="' + c + '"' + (extra || "") + "/>"
+    for (const a of list) {
+      if (a.t === "ink") g.push('<path d="' + inkPath(a.p) + '" fill="none" stroke="' + a.c + '" stroke-width="' + a.w + '" stroke-linecap="round" stroke-linejoin="round"' + (a.o ? ' opacity="' + a.o + '"' : "") + (a.m && !o.flat ? ' style="mix-blend-mode:multiply"' : "") + "/>")
+      else if (a.t === "hl") for (const q of a.r) {
+        if (a.k === "u") g.push(rect(q[0], q[1] + q[3] - 1.4, q[2], 1.4, a.c))
+        else if (a.k === "s") g.push(rect(q[0], q[1] + q[3] / 2 - 0.7, q[2], 1.4, a.c))
+        else g.push(rect(q[0], q[1], q[2], q[3], a.c, ' opacity=".4"' + (o.flat ? "" : ' style="mix-blend-mode:multiply"')))
+      }
+      else if (a.t === "txt") txtLines(a).forEach((l, j) => g.push('<text x="' + r1(a.x) + '" y="' + r1(a.y + a.s * (0.95 + 1.25 * j)) + '" font-size="' + r1(a.s) + '" fill="' + a.c + '" font-family="' + AFONT + '" xml:space="preserve">' + escH(l) + "</text>"))
+      else if (a.t === "sig") { let d = ""; for (const st of a.st) d += inkPath(st.map(q => [a.x + q[0] * a.w, a.y + q[1] * a.w])); g.push('<path d="' + d + '" fill="none" stroke="' + a.c + '" stroke-width="' + Math.max(1, a.w * 0.012).toFixed(2) + '" stroke-linecap="round" stroke-linejoin="round"/>') }
+    }
+    if (o.sel >= 0 && list[o.sel]) { const b = annBox(list[o.sel]), k = o.k || 1, p = 3 / k; g.push('<rect x="' + r1(b.x - p) + '" y="' + r1(b.y - p) + '" width="' + r1(b.w + 2 * p) + '" height="' + r1(b.h + 2 * p) + '" fill="none" stroke="#2f80ff" stroke-width="' + (1.5 / k).toFixed(2) + '" stroke-dasharray="' + (5 / k).toFixed(1) + " " + (3 / k).toFixed(1) + '"/>') }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + r1(W) + " " + r1(H) + '" width="' + (o.pw || "100%") + '" height="' + (o.ph || "100%") + '" preserveAspectRatio="none">' + g.join("") + "</svg>"
+  }
+  // 搜尋：把一頁的文字項目接成一個字串（項目之間不加字、換行補一個空格），map＝每個項目在字串裏的起訖，這樣跨項目的詞也找得到
+  function pageText(c) {
+    let s = "", map = []
+    c.items.forEach((it, k) => { if (typeof it.str !== "string") return; const a = s.length; s += it.str; map.push({ k, a, b: s.length }); if (it.hasEOL) s += " " })
+    return { s, l: s.toLowerCase(), map }
+  }
+  function findIn(pt, q) {
+    const out = []; if (!q) return out
+    let i = 0
+    while ((i = pt.l.indexOf(q, i)) >= 0) { out.push([i, i + q.length]); i += q.length }
+    return out
+  }
+  // 輸出：每頁一張 JPEG，組成最簡單的 PDF（不靠任何外部程式庫）。pages＝[{ w, h（頁面 pt）, pw, ph（圖片像素）, jpg（Uint8Array）}]
+  function buildPdf(pages) {
+    const enc = new root.TextEncoder(), parts = [], offs = []; let len = 0
+    const push = u8 => { parts.push(u8); len += u8.length }, str = s => push(enc.encode(s)), f = n => String(Math.round(n * 100) / 100)
+    const obj = (num, fn) => { offs[num] = len; str(num + " 0 obj\n"); fn(); str("endobj\n") }
+    const n = pages.length
+    str("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n")
+    obj(1, () => str("<</Type/Catalog/Pages 2 0 R>>\n"))
+    obj(2, () => str("<</Type/Pages/Count " + n + "/Kids[" + pages.map((_, k) => (3 + 3 * k) + " 0 R").join(" ") + "]>>\n"))
+    pages.forEach((p, k) => {
+      const po = 3 + 3 * k, co = po + 1, io = po + 2, cs = "q " + f(p.w) + " 0 0 " + f(p.h) + " 0 0 cm /Im0 Do Q"
+      obj(po, () => str("<</Type/Page/Parent 2 0 R/MediaBox[0 0 " + f(p.w) + " " + f(p.h) + "]/Resources<</XObject<</Im0 " + io + " 0 R>>>>/Contents " + co + " 0 R>>\n"))
+      obj(co, () => str("<</Length " + cs.length + ">>\nstream\n" + cs + "\nendstream\n"))
+      obj(io, () => { str("<</Type/XObject/Subtype/Image/Width " + p.pw + "/Height " + p.ph + "/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length " + p.jpg.length + ">>\nstream\n"); push(p.jpg); str("\nendstream\n") })
+    })
+    const xo = len, total = 3 + 3 * n
+    let x = "xref\n0 " + total + "\n0000000000 65535 f \n"
+    for (let i = 1; i < total; i++) x += String(offs[i]).padStart(10, "0") + " 00000 n \n"
+    str(x + "trailer\n<</Size " + total + "/Root 1 0 R>>\nstartxref\n" + xo + "\n%%EOF\n")
+    return new root.Blob(parts, { type: "application/pdf" })
+  }
+  async function flattenPdf(doc, A, prog) {   // 每一頁畫成圖（含批註）再組成 PDF
+    const out = [], n = doc.numPages, d = root.document
+    for (let i = 1; i <= n; i++) {
+      if (prog) prog(i, n)
+      const pg = await doc.getPage(i), v1 = pg.getViewport({ scale: 1 })
+      let sc = Math.max(1, Math.min(2.5, 2400 / Math.max(v1.width, v1.height)))
+      if (v1.width * v1.height * sc * sc > PDF_MAX_AREA) sc = Math.sqrt(PDF_MAX_AREA / (v1.width * v1.height))
+      const vp = pg.getViewport({ scale: sc }), cv = d.createElement("canvas"); cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height)
+      const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height)
+      await pg.render({ canvasContext: x, viewport: vp }).promise
+      const l = A.pages && A.pages[i]
+      if (l && l.length) {
+        const img = new root.Image(), svg = annSvg(l, v1.width, v1.height, { flat: true, pw: cv.width, ph: cv.height })
+        await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error("批註畫不出來")); img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg) })
+        x.drawImage(img, 0, 0, cv.width, cv.height)
+      }
+      const blob = await new Promise(res => cv.toBlob(res, "image/jpeg", 0.88))
+      if (!blob) throw new Error("產生圖片失敗（記憶體不足？）")
+      out.push({ w: v1.width, h: v1.height, pw: cv.width, ph: cv.height, jpg: new Uint8Array(await blob.arrayBuffer()) })
+      cv.width = cv.height = 0
+    }
+    return buildPdf(out)
+  }
+  // ---------- 小對話框：輸入文字、簽名、分享檔案 ----------
+  function huCss() { const d = root.document; if (!d.getElementById("hu-css")) { const st = d.createElement("style"); st.id = "hu-css"; st.textContent = CSS; d.head.appendChild(st) } }
+  function dlgBtn(lb, kind, fn) { const x = root.document.createElement("button"); x.type = "button"; x.className = "hu-btn" + (kind ? " " + kind : ""); x.textContent = lb; x.onclick = fn; return x }
+  function askText(init, title) {   // 回傳輸入的文字；取消回傳 null
+    return new Promise(res => {
+      huCss()
+      const d = root.document, o = d.createElement("div"), b = d.createElement("div"), h = d.createElement("h3"), ta = d.createElement("textarea")
+      o.className = "hu-ov"; b.className = "hu-box"; b.setAttribute("role", "dialog"); h.textContent = title || "輸入文字"; ta.className = "pdfta"; ta.rows = 3; ta.value = init || ""
+      const done = v => { o.remove(); res(v) }
+      b.append(h, ta, dlgBtn("完成", "pri", () => done(ta.value.replace(/\s+$/, ""))), dlgBtn("取消", "", () => done(null)))
+      o.appendChild(b); d.body.appendChild(o); setTimeout(() => ta.focus(), 60)
+    })
+  }
+  function signPad() {   // 手寫簽名板：回傳 { a（高寬比）, st（筆畫，座標 0~1）}；取消回傳 null
+    return new Promise(res => {
+      huCss()
+      const d = root.document, o = d.createElement("div"), b = d.createElement("div"), h = d.createElement("h3"), p = d.createElement("p"), cv = d.createElement("canvas")
+      o.className = "hu-ov"; b.className = "hu-box"; b.setAttribute("role", "dialog"); h.textContent = "簽名"; p.textContent = "用手指或 Apple Pencil 在下面簽名。"
+      cv.className = "pdfsg"; cv.width = 720; cv.height = 320
+      const x = cv.getContext("2d"); x.lineWidth = 5; x.lineCap = "round"; x.lineJoin = "round"; x.strokeStyle = "#111"
+      let strokes = [], cur = null
+      const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height] }
+      cv.addEventListener("pointerdown", e => { if (!e.isPrimary) return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId) } catch (er) {} cur = [pos(e)]; strokes.push(cur); x.beginPath(); x.moveTo(cur[0][0], cur[0][1]); x.lineTo(cur[0][0] + 0.01, cur[0][1]); x.stroke() })
+      cv.addEventListener("pointermove", e => { if (!cur) return; const q = pos(e), l = cur[cur.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) < 1.5) return; cur.push(q); x.beginPath(); x.moveTo(l[0], l[1]); x.lineTo(q[0], q[1]); x.stroke() })
+      const up = () => { cur = null }; cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up)
+      const done = v => { o.remove(); res(v) }
+      const ok = dlgBtn("完成", "pri", () => {
+        if (!strokes.length) { say("還沒有簽名", 2000); return }
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+        for (const s of strokes) for (const q of s) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]) }
+        const bw = Math.max(x1 - x0, 1), n4 = v => Math.round(v * 1e4) / 1e4
+        done({ a: n4((y1 - y0) / bw), st: strokes.map(s => s.map(q => [n4((q[0] - x0) / bw), n4((q[1] - y0) / bw)])) })
+      })
+      b.append(h, p, cv, dlgBtn("清除", "", () => { strokes = []; x.clearRect(0, 0, cv.width, cv.height) }), ok, dlgBtn("取消", "", () => done(null)))
+      o.appendChild(b); d.body.appendChild(o)
+    })
+  }
+  async function sharePdf(file) {   // 有分享選單就開分享選單（可存到「檔案」、寄信）；否則下載。不帶 title／text：iOS 存到「檔案」時會多出「文字.txt」
+    const nav = root.navigator
+    const dl = () => { const u = root.URL.createObjectURL(file), a = root.document.createElement("a"); a.href = u; a.download = file.name; root.document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => root.URL.revokeObjectURL(u), 10000) }
+    if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+      try { await nav.share({ files: [file] }); return } catch (e) {
+        if (e && e.name === "AbortError") return
+        if (e && e.name === "NotAllowedError") {   // 分享選單要「剛按下」才能開；時間過了（例如產生檔案花了一點時間）就再請使用者按一次
+          await modal("PDF 已準備好", file.name, [{ label: "分享／儲存", kind: "pri", onclick: done => nav.share({ files: [file] }).then(() => done(1), err => { if (!(err && err.name === "AbortError")) dl(); done(0) }) }, { label: "取消", value: 0 }])
+          return
+        }
+      }
+    }
+    dl()
+  }
+  const safeName = n => String(n || "PDF").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim().slice(0, 60) || "PDF"
+
   let pdfViewing = false
-  async function openPdfViewer(f, name, start) {   // 全螢幕閱讀：頂欄有關閉鈕、頁碼、放大縮小；雙指也能放大
+  // ---------- PDF 全螢幕閱讀器：頂欄對應 iOS「快速查看」（QuickLook）的功能 ----------
+  // 編者按 / Editor's note：頂欄由左到右和母版（Scriptable 的 QuickLook）一樣：「標題 ⌄」選單、分享、填寫、標記、搜尋、完成。
+  //   標題選單＝放大縮小、跳到頁碼、重新命名、另存含批註的新 PDF；填寫＝文字／勾／叉／日期／簽名；標記＝畫筆／螢光筆／橡皮擦／移動，都有復原、重做。
+  //   平常（沒開填寫或標記）可以長按選取文字，選了之後上方會出現「螢光／底線／刪除線／複製」。
+  //   English: the top bar mirrors the QuickLook one on the master: title ⌄ menu, share, fill, markup, search, done. Text selection works in reading mode; annotations are stored apart from the original (see annSvg above).
+  // 文字層和批註層都用「PDF 點」為單位排好，再整層縮放到頁面寬度（transform: scale），所以放大縮小不用重排；canvas 只管畫 PDF 本身。
+  const PEN_C = ["#111111", "#1565c0", "#d32f2f", "#2e7d32"], HL_C = ["#ffeb3b", "#69f0ae", "#ff80ab", "#80d8ff"], PEN_W = [1.5, 3, 5.5]
+  const ICO = p => '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + "</svg>"
+  const PI = {
+    chev: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+    share: ICO('<path d="M12 3v12M8 7l4-4 4 4"/><path d="M7 10H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/>'),
+    fill: ICO('<rect x="2" y="6" width="15" height="10" rx="2"/><path d="M6 11h.01M9.5 11h.01M13 11h.01"/><path d="M13 21l1-3.5 6.5-6.5 2.5 2.5L16.5 20z"/>'),
+    mark: ICO('<circle cx="12" cy="12" r="9.5"/><path d="M8 16.5l.7-3L14.5 7.5l2 2-5.8 5.8z"/>'),
+    find: ICO('<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/>')
+  }
+  async function openPdfViewer(f, name, start) {
     if (pdfViewing) return
     pdfViewing = true
     let doc
     try { doc = await openPdfDoc(f) } catch (e) { pdfViewing = false; say("打開失敗：" + (e && e.message || e), 4000); return }
-    const d = root.document, ov = d.createElement("div"); ov.className = "pdfv"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "PDF：" + name)
-    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvk" aria-label="關閉">✕</button><span class="pdfvt"></span><span class="pdfvn"></span><button type="button" class="pdfvz" data-z="-" aria-label="縮小">－</button><button type="button" class="pdfvz" data-z="+" aria-label="放大">＋</button></div><div class="pdfvs"><div class="pdfvi"></div></div><div class="pdfvf"><button type="button" class="pdfvm">✎ 標記</button><button type="button" class="pdfvd">🗑 刪除這個 PDF</button></div>'
-    ov.querySelector(".pdfvt").textContent = name
-    const sc = ov.querySelector(".pdfvs"), inner = ov.querySelector(".pdfvi"), num = ov.querySelector(".pdfvn")
+    const d = root.document, s = getStore()
+    let A = null
+    try { A = await s.get("pdfann:" + f) } catch (e) {}
+    if (!A || typeof A !== "object" || !A.pages) A = { pages: {} }
+    let nameNow = name
+    const ov = d.createElement("div"); ov.className = "pdfv"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "PDF：" + name)
+    const ib = (a, lb, ic) => '<button type="button" class="pdfi" data-a="' + a + '" aria-label="' + lb + '">' + ic + "</button>"
+    ov.innerHTML = '<div class="pdfvb"><button type="button" class="pdfvc" data-a="menu" aria-label="選單"><span class="pdfvt"></span>' + PI.chev + '</button><span class="pdfvn"></span>' +
+      ib("share", "分享", PI.share) + ib("fill", "填寫", PI.fill) + ib("mark", "標記", PI.mark) + ib("find", "搜尋", PI.find) + '<button type="button" class="pdfvk" data-a="close" aria-label="完成">完成</button></div>' +
+      '<div class="pdfvq" hidden><input type="search" enterkeyhint="search" placeholder="搜尋文字" aria-label="搜尋"><span class="pdfqn"></span><button type="button" class="pdfi" data-a="q-" aria-label="上一個">▲</button><button type="button" class="pdfi" data-a="q+" aria-label="下一個">▼</button><button type="button" class="pdfvk" data-a="qx">完成</button></div>' +
+      '<div class="pdfsb" hidden><button type="button" data-a="h:h">螢光</button><button type="button" data-a="h:u">底線</button><button type="button" data-a="h:s">刪除線</button><button type="button" data-a="h:c">複製</button></div>' +
+      '<div class="pdfmn" hidden></div><div class="pdfvs"><div class="pdfvi"></div></div><div class="pdfvm" hidden></div>' +
+      '<div class="pdfvf"><button type="button" class="pdfvd">🗑 刪除這個 PDF</button></div>'
+    const q1 = c => ov.querySelector(c)
+    const sc = q1(".pdfvs"), inner = q1(".pdfvi"), num = q1(".pdfvn"), titleEl = q1(".pdfvt"), tr = q1(".pdfvm"), foot = q1(".pdfvf"), fb = q1(".pdfvq"), sb = q1(".pdfsb"), mn = q1(".pdfmn"), qin = fb.querySelector("input"), qn = q1(".pdfqn")
+    titleEl.textContent = name
     const oldHtml = d.documentElement.style.overflow, oldBody = d.body.style.overflow
     d.body.appendChild(ov); d.documentElement.style.overflow = "hidden"; d.body.style.overflow = "hidden"   // 鎖住後面日誌的捲動
-    let ctl = null, z = 1, tmr = 0, raf = 0, pin = null, armT = 0
-    const close = () => { clearTimeout(tmr); clearTimeout(armT); if (ctl) ctl.destroy(); else try { doc.destroy() } catch (e) {} ; ov.remove(); d.documentElement.style.overflow = oldHtml; d.body.style.overflow = oldBody; d.removeEventListener("keydown", onKey, true); pdfViewing = false }
-    const onKey = e => { if (e.key === "Escape") close() }
-    d.addEventListener("keydown", onKey, true)
-    ov.querySelector(".pdfvk").onclick = close
-    // 標記：把原檔交給 iOS 分享選單，選「標記」就是母版 QuickLook 那套工具；檔案先備好，按下的當下才能馬上開分享選單。標記結果存到「檔案」，不寫回日誌
-    let shareFile = null
-    getStore().get("pdf:" + f).then(b => { if (b) shareFile = new root.File([b], (String(name || "PDF").replace(/[\\/:*?"<>|]/g, "_").trim() || "PDF") + ".pdf", { type: "application/pdf" }) }).catch(() => {})
-    ov.querySelector(".pdfvm").onclick = async () => {
-      if (!shareFile) { say("PDF 還在準備，請再按一次", 2500); return }
-      const nav = root.navigator
-      if (!(nav.share && nav.canShare && nav.canShare({ files: [shareFile] }))) { say("這部裝置不支援分享選單", 4000); return }
-      try { await nav.share({ files: [shareFile] }) } catch (e) { if (!e || e.name !== "AbortError") say("無法打開分享選單：" + (e && e.message || e), 4000) }   // 不帶 title／text（和備份一樣）
+    let ctl = null, z = 1, tmr = 0, raf = 0, pin = null, armT = 0, curPage = 1
+    let mode = null, tool = null, penC = 0, hlC = 0, penW = 1, selA = null   // mode：null＝閱讀、"mark"、"fill"；tool：pen／hl／er／sel／txt／chk／crs／dat／sig（null＝閱讀）；selA＝{ pi, i } 被選的批註
+    let hist = [], redo = [], saveT = 0, dirty = false, g = null, lastR = null, lastT = "", selT = 0, qT = 0
+    const lay = new Map(), tc = new Map(), S = { q: "", m: [], cur: -1, pts: new Map(), run: 0 }
+    const list = i => A.pages[i] || (A.pages[i] = [])
+    const hasAnn = () => Object.keys(A.pages).some(k => A.pages[k] && A.pages[k].length)
+
+    // ----- 批註的儲存、復原、重做 -----
+    const save = async () => { clearTimeout(saveT); saveT = 0; if (!dirty) return; dirty = false; try { if (hasAnn()) await s.set("pdfann:" + f, A); else await s.del("pdfann:" + f) } catch (e) {} }
+    const touch = () => { dirty = true; clearTimeout(saveT); saveT = setTimeout(save, 500) }
+    const snap = () => { hist.push(JSON.stringify(A.pages)); if (hist.length > 60) hist.shift(); redo = [] }
+    const paint = i => { const L = lay.get(i); if (L) L.sv.innerHTML = annSvg(list(i), L.W, L.H, { k: L.k, sel: selA && selA.pi === i ? selA.i : -1 }) }
+    const paintAll = () => { for (const i of lay.keys()) paint(i) }
+    const restore = js => { A.pages = JSON.parse(js); selA = null; paintAll(); touch(); tray() }
+    const undo = () => { if (hist.length) { redo.push(JSON.stringify(A.pages)); restore(hist.pop()) } }
+    const redoIt = () => { if (redo.length) { hist.push(JSON.stringify(A.pages)); restore(redo.pop()) } }
+    const selItem = () => selA ? list(selA.pi)[selA.i] : null
+
+    // ----- 文字層（可選取）和搜尋標記 -----
+    const mctx = d.createElement("canvas").getContext("2d")
+    const getTC = i => { if (!tc.has(i)) tc.set(i, doc.getPage(i).then(pg => pg.getTextContent())); return tc.get(i) }
+    function marksFor(i) {   // 這一頁的搜尋結果 → Map(項目序號 → [[起, 訖, 是否目前這個]])
+      const cm = new Map(), pt = S.pts.get(i)
+      if (!S.m.length || !pt) return cm
+      S.m.forEach((m, mi) => {
+        if (m.p !== i) return
+        for (const e of pt.map) {
+          if (e.b <= m.a || e.a >= m.b) continue
+          const a = Math.max(m.a, e.a) - e.a, b = Math.min(m.b, e.b) - e.a
+          if (b <= a) continue
+          if (!cm.has(e.k)) cm.set(e.k, [])
+          cm.get(e.k).push([a, b, mi === S.cur])
+        }
+      })
+      return cm
     }
-    const delB = ov.querySelector(".pdfvd")   // 刪除：要按兩次（第一次變紅，3.5 秒內再按一次才刪）
-    delB.onclick = async () => {
-      if (!delB.classList.contains("arm")) { delB.classList.add("arm"); delB.textContent = "再按一次，確定刪除"; armT = setTimeout(() => { delB.classList.remove("arm"); delB.textContent = "🗑 刪除這個 PDF" }, 3500); return }
-      delB.disabled = true; close(); await doDelPdf(f)
+    function markPage(i) {
+      const L = lay.get(i); if (!L || !L.items.length) return
+      const cm = marksFor(i)
+      L.items.forEach((o, k) => {
+        if (!o) return
+        const m = cm.get(k)
+        if (!m && !o.m) return
+        o.m = !!m; const sp = o.sp; sp.textContent = ""
+        if (!m) { sp.textContent = o.str; return }
+        let at = 0
+        for (const [a, b, cur] of m.sort((x, y) => x[0] - y[0])) {
+          if (a > at) sp.appendChild(d.createTextNode(o.str.slice(at, a)))
+          const mk = d.createElement("mark"); if (cur) mk.className = "cur"; mk.textContent = o.str.slice(a, b); sp.appendChild(mk); at = b
+        }
+        if (at < o.str.length) sp.appendChild(d.createTextNode(o.str.slice(at)))
+      })
     }
-    try { ctl = await makePdfPages(doc, inner, { root: sc }) } catch (e) { close(); say("打開失敗：" + (e && e.message || e), 4000); return }
-    const target = ctl.pages[Math.max(1, Math.min(ctl.n, start || 1)) - 1]
-    if (target) sc.scrollTop = target.el.offsetTop - 8
-    const setNum = () => {   // 頁碼：畫面上半部看到的那一頁
-      raf = 0
-      const y = sc.scrollTop + sc.clientHeight / 2; let cur = 1
-      for (const p of ctl.pages) { if (p.el.offsetTop <= y) cur = p.i; else break }
-      num.textContent = cur + " / " + ctl.n
+    async function decorate(p, pg) {   // 這一頁畫好 canvas 之後呼叫：疊上文字層和批註層
+      const lib = await loadPdfjs(), v1 = pg.getViewport({ scale: 1 }), W = v1.width, H = v1.height
+      const o = d.createElement("div"); o.className = "pdfo"; o.style.width = W + "px"; o.style.height = H + "px"
+      const tl = d.createElement("div"), sv = d.createElement("div"); tl.className = "pdft"; sv.className = "pdfa"; o.append(tl, sv); p.el.appendChild(o)
+      const L = { p, o, tl, sv, W, H, k: 1, items: [], ro: null }
+      const fit = () => { const k = p.el.clientWidth / W; if (k > 0) { L.k = k; o.style.transform = "scale(" + k + ")" } }
+      fit()
+      if (root.ResizeObserver) { L.ro = new root.ResizeObserver(() => { fit(); if (selA && selA.pi === p.i) paint(p.i) }); L.ro.observe(p.el) }
+      lay.set(p.i, L); paint(p.i)
+      let c
+      try { c = await getTC(p.i) } catch (e) { return }
+      if (lay.get(p.i) !== L) return   // 等的時候這頁已經被放掉了
+      const st = c.styles || {}, frag = d.createDocumentFragment()
+      c.items.forEach((it, k) => {
+        L.items[k] = null
+        if (typeof it.str !== "string" || it.str === "") return
+        const tx = lib.Util.transform(v1.transform, it.transform), fh = Math.hypot(tx[2], tx[3])
+        if (!(fh > 0)) return
+        const sty = st[it.fontName] || {}
+        let asc = fh; if (sty.ascent) asc = sty.ascent * fh; else if (sty.descent) asc = (1 + sty.descent) * fh
+        const ang = Math.atan2(tx[1], tx[0]) + (sty.vertical ? Math.PI / 2 : 0)
+        const left = ang ? tx[4] + asc * Math.sin(ang) : tx[4], top = ang ? tx[5] - asc * Math.cos(ang) : tx[5] - asc
+        let sx = 1
+        if (it.width > 0) { mctx.font = fh + "px " + (sty.fontFamily || "sans-serif"); const mw = mctx.measureText(it.str).width; if (mw > 0) sx = Math.max(0.2, Math.min(5, it.width / mw)) }
+        const sp = d.createElement("span"); sp.textContent = it.str
+        sp.style.cssText = "left:" + left.toFixed(2) + "px;top:" + top.toFixed(2) + "px;font-size:" + fh.toFixed(2) + "px;font-family:" + (sty.fontFamily || "sans-serif") + ";transform:" + (ang ? "rotate(" + ang.toFixed(4) + "rad) " : "") + "scaleX(" + sx.toFixed(4) + ")"
+        frag.appendChild(sp); L.items[k] = { sp, str: it.str }
+      })
+      tl.appendChild(frag); markPage(p.i)
     }
-    setNum()
-    sc.addEventListener("scroll", () => { if (!raf) raf = root.requestAnimationFrame(setNum) }, { passive: true })
+    const undecorate = p => { const L = lay.get(p.i); if (!L) return; lay.delete(p.i); if (L.ro) L.ro.disconnect(); L.o.remove() }
+
+    // ----- 選取文字 → 螢光／底線／刪除線／複製 -----
+    function rectsOf(rg) {   // 選取範圍 → { 頁碼: [[x,y,w,h]…] }（PDF 點）
+      const out = {}
+      for (const [i, L] of lay) {
+        if (!rg.intersectsNode(L.tl)) continue
+        const pr = L.p.el.getBoundingClientRect(); if (!pr.width || !pr.height) continue
+        const rs = []
+        for (const o of L.items) {
+          if (!o || !rg.intersectsNode(o.sp)) continue
+          const sub = d.createRange(); sub.selectNodeContents(o.sp)
+          if (rg.compareBoundaryPoints(root.Range.START_TO_START, sub) > 0) sub.setStart(rg.startContainer, rg.startOffset)
+          if (rg.compareBoundaryPoints(root.Range.END_TO_END, sub) < 0) sub.setEnd(rg.endContainer, rg.endOffset)
+          const r = sub.getBoundingClientRect(); if (r.width < 1 || r.height < 1) continue
+          rs.push([(r.left - pr.left) / pr.width * L.W, (r.top - pr.top) / pr.height * L.H, r.width / pr.width * L.W, r.height / pr.height * L.H])
+        }
+        if (rs.length) out[i] = rs
+      }
+      return out
+    }
+    const onSel = () => {
+      if (tool) return
+      const sel = d.getSelection && d.getSelection(), n = sel && sel.anchorNode, el = n && (n.nodeType === 1 ? n : n.parentElement)
+      if (sel && !sel.isCollapsed && sel.rangeCount && el && el.closest && el.closest(".pdft")) { clearTimeout(selT); lastR = sel.getRangeAt(0).cloneRange(); lastT = sel.toString(); sb.hidden = false }
+      else { clearTimeout(selT); selT = setTimeout(() => { lastR = null; sb.hidden = true }, 400) }   // 按「螢光」那一下選取可能先被清掉，所以多留一會兒
+    }
+    d.addEventListener("selectionchange", onSel)
+    async function selAct(k) {
+      if (!lastR) return
+      if (k === "c") { try { await root.navigator.clipboard.writeText(lastT); say("已複製", 1500) } catch (e) { say("複製失敗：請用長按選取後的「拷貝」", 3000) } return }
+      const rs = rectsOf(lastR), pis = Object.keys(rs)
+      if (!pis.length) { say("沒有選到文字", 2000); return }
+      snap()
+      for (const i of pis) list(+i).push({ t: "hl", k, c: k === "h" ? HL_C[hlC] : PEN_C[penC === 0 ? 2 : penC], r: rs[i].map(q => q.map(r1)) })
+      paintAll(); touch(); lastR = null; sb.hidden = true
+      try { d.getSelection().removeAllRanges() } catch (e) {}
+      tray()
+    }
+
+    // ----- 頁面與手勢 -----
+    const pageAt = e => { const el = e.target && e.target.closest && e.target.closest(".pdfpg"); if (!el) return null; for (const L of lay.values()) if (L.p.el === el) return L; return null }
+    const ptOf = (L, e) => { const r = L.p.el.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * L.W, (e.clientY - r.top) / r.height * L.H] }
+    const hitIdx = (L, x, y, t) => { const l = list(L.p.i); for (let k = l.length - 1; k >= 0; k--) if (annHit(l[k], x, y, t)) return k; return -1 }
+    function add(pi, a) { snap(); const l = list(pi); l.push(a); selA = { pi, i: l.length - 1 }; tool = "sel"; paintAll(); touch(); tray() }
+    async function place(L, x, y) {
+      const pi = L.p.i, base = L.W / 595, c = PEN_C[penC]
+      if (tool === "txt" || tool === "sig") await new Promise(r => setTimeout(r, 300))   // 手指剛放開的那一下還會補一個 click：晚一點才彈出對話框，免得誤按到裏面的按鈕
+      if (tool === "txt") { const v = await askText(""); if (v) add(pi, { t: "txt", x: r1(x), y: r1(y - 8 * base), s: r1(13 * base), c, v }) }
+      else if (tool === "chk" || tool === "crs") { const sz = 18 * base; add(pi, { t: "txt", x: r1(x - sz * 0.4), y: r1(y - sz * 0.6), s: r1(sz), c, v: tool === "chk" ? "✓" : "✗" }) }
+      else if (tool === "dat") add(pi, { t: "txt", x: r1(x), y: r1(y - 8 * base), s: r1(13 * base), c, v: new Date().toLocaleDateString("en-GB") })
+      else if (tool === "sig") {
+        let sg = null; try { sg = await s.get("pdfsig") } catch (e) {}
+        if (sg && sg.st) { const v = await modal("簽名", "", [{ label: "使用已存的簽名", kind: "pri", value: "use" }, { label: "重新簽名", value: "new" }, { label: "取消", value: null }]); if (!v) return; if (v === "new") sg = null }
+        if (!sg || !sg.st) { sg = await signPad(); if (!sg) return; try { await s.set("pdfsig", sg) } catch (e) {} }
+        const w = L.W * 0.3; add(pi, { t: "sig", x: r1(x - w / 2), y: r1(y - w * sg.a / 2), w: r1(w), a: sg.a, c: "#111111", st: sg.st })
+      }
+    }
+    function eraseAt(L, x, y) { const l = list(L.p.i), k = hitIdx(L, x, y, 10 / L.k); if (k >= 0) { if (!g.snapped) { snap(); g.snapped = true } l.splice(k, 1); selA = null; g.n++; paint(L.p.i) } }
+    const endG = () => { if (!g) return; if (g.k === "pl") g = null; else pUp(null) }   // 第二根手指放下：目前這一筆就此結束（放置類的手勢直接取消）
+    sc.addEventListener("pointerdown", e => {
+      if (!tool) return
+      if (!e.isPrimary) { endG(); return }   // 第二根手指：交給雙指縮放／平移，不畫
+      if (e.pointerType === "mouse" && e.button !== 0) return
+      const L = pageAt(e); if (!L) return
+      const [x, y] = ptOf(L, e), base = L.W / 595, pi = L.p.i
+      if (tool === "pen" || tool === "hl") {
+        snap()
+        const a = tool === "pen" ? { t: "ink", c: PEN_C[penC], w: r1(PEN_W[penW] * base), p: [[x, y]] } : { t: "ink", c: HL_C[hlC], w: r1(14 * base), p: [[x, y]], o: 0.4, m: 1 }
+        list(pi).push(a); selA = null; g = { k: "ink", L, a, raf: 0 }; paint(pi)
+      } else if (tool === "er") { g = { k: "er", L, n: 0, snapped: false }; eraseAt(L, x, y) }
+      else if (tool === "sel") {
+        const i = hitIdx(L, x, y, 14 / L.k)
+        if (i < 0) { selA = null; paintAll(); tray(); return }
+        const was = !!selA && selA.pi === pi && selA.i === i
+        selA = { pi, i }; g = { k: "mv", L, x, y, moved: false, was, a: list(pi)[i] }; paintAll(); tray()
+      } else g = { k: "pl", L, x, y, cx: e.clientX, cy: e.clientY }   // 放置類：手指放開時才放（中途拖動或加了第二根手指就取消）
+    })
+    sc.addEventListener("pointermove", e => {
+      if (!g || !g.L || !e.isPrimary) return
+      if (g.k === "pl") { if (Math.hypot(e.clientX - g.cx, e.clientY - g.cy) > 10) g = null; return }
+      const [x, y] = ptOf(g.L, e)
+      if (g.k === "ink") {
+        const l = g.a.p[g.a.p.length - 1]
+        if (Math.hypot(x - l[0], y - l[1]) < 0.4) return
+        g.a.p.push([x, y]); const h = g; if (!h.raf) h.raf = root.requestAnimationFrame(() => { h.raf = 0; paint(h.L.p.i) })   // 放開手指後 g 會變 null，所以先留一份
+      } else if (g.k === "er") eraseAt(g.L, x, y)
+      else if (g.k === "mv") {
+        if (!g.moved) { if (Math.hypot(x - g.x, y - g.y) < 3 / g.L.k) return; snap(); g.moved = true }
+        annMove(g.a, x - g.x, y - g.y); g.x = x; g.y = y; paint(g.L.p.i)
+      }
+    })
+    const pUp = async e => {
+      if (!g || (e && !e.isPrimary)) return
+      const h = g; g = null
+      if (h.k === "ink") { h.a.p = h.a.p.map(q => [r1(q[0]), r1(q[1])]); paint(h.L.p.i); touch(); tray() }
+      else if (h.k === "er") { if (h.n) touch(); tray() }
+      else if (h.k === "pl") place(h.L, h.x, h.y)
+      else if (h.k === "mv") {
+        if (h.moved) touch()
+        else if (h.was && h.a.t === "txt") { await new Promise(r => setTimeout(r, 300)); const v = await askText(h.a.v, "修改文字"); if (v != null && v !== "") { snap(); h.a.v = v; paintAll(); touch() } }
+      }
+    }
+    sc.addEventListener("pointerup", pUp); sc.addEventListener("pointercancel", pUp)
+
+    // ----- 工具列（標記、填寫）-----
+    function tray() {
+      ov.classList.toggle("dr", !!tool)
+      ov.querySelectorAll('.pdfvb [data-a="fill"],.pdfvb [data-a="mark"]').forEach(b => b.classList.toggle("on", b.dataset.a === mode))
+      tr.hidden = !mode; foot.hidden = !!mode
+      if (!mode) return
+      const T = (id, ic, lb) => '<button type="button" class="pdfmt' + (tool === id ? " on" : "") + '" data-a="t:' + id + '"><b>' + ic + "</b><i>" + lb + "</i></button>"
+      let h = mode === "mark" ? T("pen", "✏️", "畫筆") + T("hl", "🖍", "螢光筆") + T("er", "⌫", "橡皮擦") + T("sel", "↖", "移動") : T("txt", "Aa", "文字") + T("chk", "✓", "勾") + T("crs", "✗", "叉") + T("dat", "📅", "日期") + T("sig", "✍", "簽名") + T("sel", "↖", "移動")
+      const pal = tool === "hl" ? HL_C : PEN_C, ci = tool === "hl" ? hlC : penC
+      if (tool === "pen" || tool === "hl" || tool === "txt" || tool === "chk" || tool === "crs" || tool === "dat" || (selA && selItem() && selItem().t !== "sig")) h += '<span class="pdfcs">' + pal.map((c, k) => '<button type="button" class="pdfcd' + (k === ci ? " on" : "") + '" style="background:' + c + '" data-a="c:' + k + '" aria-label="顏色"></button>').join("") + "</span>"
+      if (tool === "pen") h += '<button type="button" class="pdfmt" data-a="w"><b>' + ["細", "中", "粗"][penW] + "</b><i>粗細</i></button>"
+      const it = selItem()
+      if (it && (it.t === "txt" || it.t === "sig")) h += '<button type="button" class="pdfmt" data-a="s-"><b>－</b><i>縮小</i></button><button type="button" class="pdfmt" data-a="s+"><b>＋</b><i>放大</i></button>'
+      if (it) h += '<button type="button" class="pdfmt" data-a="del"><b>🗑</b><i>刪除</i></button>'
+      h += '<button type="button" class="pdfmt" data-a="u"' + (hist.length ? "" : " disabled") + "><b>↶</b><i>復原</i></button>" + '<button type="button" class="pdfmt" data-a="r"' + (redo.length ? "" : " disabled") + "><b>↷</b><i>重做</i></button>" + '<button type="button" class="pdfmt pri" data-a="mode"><b>完成</b></button>'
+      tr.innerHTML = h
+    }
+    function setMode(m) {
+      mode = m; tool = m === "mark" ? "pen" : null; selA = null
+      if (tool) { try { d.getSelection().removeAllRanges() } catch (e) {} sb.hidden = true; lastR = null }
+      mn.hidden = true; if (m && !fb.hidden) toggleFind()
+      paintAll(); tray()
+      if (m === "fill") say("選一個工具，再點一下頁面要放的位置", 3000)
+    }
+    function toolPick(v) {
+      selA = null; tool = v; paintAll(); tray()
+      if (["txt", "chk", "crs", "dat", "sig"].includes(v)) say("點一下頁面要放的位置", 2500)
+      else if (v === "sel") say("點批註選取，拖曳移動；兩指捲動或縮放", 3000)
+    }
+
+    // ----- 搜尋 -----
+    function toggleFind() {
+      fb.hidden = !fb.hidden; mn.hidden = true
+      ov.querySelector('.pdfvb [data-a="find"]').classList.toggle("on", !fb.hidden)
+      if (!fb.hidden) { if (mode) setMode(null); setTimeout(() => qin.focus(), 50) }
+      else { qin.blur(); S.run++; S.q = ""; S.m = []; S.cur = -1; qn.textContent = ""; qin.value = ""; for (const i of lay.keys()) markPage(i) }
+    }
+    async function runSearch(raw) {
+      const my = ++S.run; S.q = raw.toLowerCase().trim(); S.m = []; S.cur = -1
+      for (const i of lay.keys()) markPage(i)
+      if (!S.q) { qn.textContent = ""; return }
+      qn.textContent = "搜尋中…"
+      for (let i = 1; i <= doc.numPages; i++) {
+        let pt = S.pts.get(i)
+        if (!pt) { try { pt = pageText(await getTC(i)) } catch (e) { continue } S.pts.set(i, pt) }
+        if (my !== S.run) return
+        for (const [a, b] of findIn(pt, S.q)) S.m.push({ p: i, a, b })
+      }
+      if (my !== S.run) return
+      if (!S.m.length) { qn.textContent = "找不到"; return }
+      let k = S.m.findIndex(m => m.p >= curPage); if (k < 0) k = 0
+      goMatch(k)
+    }
+    function goMatch(mi) {
+      S.cur = mi; qn.textContent = (mi + 1) + " / " + S.m.length
+      for (const i of lay.keys()) markPage(i)
+      const m = S.m[mi], p = ctl.pages[m.p - 1]
+      const place2 = () => {
+        const L = lay.get(m.p), mk = L && L.tl.querySelector("mark.cur")
+        if (!mk) return false
+        const r = mk.getBoundingClientRect(), b = sc.getBoundingClientRect()
+        sc.scrollTop += r.top - b.top - sc.clientHeight / 3; sc.scrollLeft += r.left - b.left - sc.clientWidth / 2
+        return true
+      }
+      if (place2()) return
+      sc.scrollTop = p.el.offsetTop - 8   // 先捲到那一頁，等文字層出現再對準
+      let n = 0; const tick = () => { if (S.cur !== mi || place2() || ++n > 60) return; setTimeout(tick, 50) }; tick()
+    }
+    const step = dir => { if (S.m.length) goMatch((S.cur + dir + S.m.length) % S.m.length) }
+    qin.addEventListener("input", () => { clearTimeout(qT); qT = setTimeout(() => runSearch(qin.value), 350) })
+    qin.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (S.m.length && S.q === qin.value.toLowerCase().trim()) step(e.shiftKey ? -1 : 1); else { clearTimeout(qT); runSearch(qin.value) } } })
+
+    // ----- 標題選單、分享、另存 -----
     const setZ = (nz, cx, cy) => {   // 縮放：改內層寬度，並讓 (cx, cy) 那一點留在原處；放開後（或停下來 0.2 秒）才重畫清楚
       nz = Math.max(1, Math.min(5, nz)); if (Math.abs(nz - z) < 0.001) return
       const fx = (sc.scrollLeft + cx) / sc.scrollWidth, fy = (sc.scrollTop + cy) / sc.scrollHeight
@@ -931,16 +1391,102 @@
       sc.scrollLeft = fx * sc.scrollWidth - cx; sc.scrollTop = fy * sc.scrollHeight - cy
       clearTimeout(tmr); tmr = setTimeout(() => ctl.refresh(), 200)
     }
-    ov.querySelectorAll(".pdfvz").forEach(b => { b.onclick = () => setZ(z + (b.dataset.z === "+" ? 0.5 : -0.5), sc.clientWidth / 2, sc.clientHeight / 2) })
+    function toggleMenu() {
+      if (!mn.hidden) { mn.hidden = true; return }
+      mn.innerHTML = '<div class="pdfmz"><button type="button" data-a="z-" aria-label="縮小">－</button><span>' + Math.round(z * 100) + '%</span><button type="button" data-a="z+" aria-label="放大">＋</button></div>' +
+        '<button type="button" data-a="goto">跳到頁碼…</button><button type="button" data-a="rename">重新命名…</button>' + (hasAnn() ? '<button type="button" data-a="saveas">另存含批註的新 PDF</button>' : "")
+      mn.hidden = false
+    }
+    async function renameIt() {
+      mn.hidden = true
+      const v = root.prompt("重新命名（只改顯示的名稱）", nameNow); if (v == null) return
+      const nn = safeName(v.replace(/\.pdf$/i, "")); if (!nn || nn === nameNow) return
+      try {
+        const idx = await pdfIndex(); await s.set("pdfIndex", idx.map(x => x.f === f ? Object.assign({}, x, { n: nn }) : x))
+        nameNow = nn; titleEl.textContent = nn; pushPdfs(await pdfCardMap([pdfDateOf(f)]), "已重新命名")
+      } catch (e) { say("重新命名失敗：" + (e && e.message || e), 4000) }
+    }
+    async function exportAnn() {   // 回傳含批註的 PDF（File）；失敗回傳 null
+      await save()
+      try { return new root.File([await flattenPdf(doc, A, (i, n) => say("產生含批註的 PDF… " + i + " / " + n, 5000))], safeName(nameNow) + "（批註）.pdf", { type: "application/pdf" }) } catch (e) { say("產生失敗：" + (e && e.message || e), 5000); return null }
+    }
+    async function shareFlow() {
+      mn.hidden = true
+      let ann = false
+      if (hasAnn()) { const v = await modal("分享", "這份 PDF 有批註。", [{ label: "分享含批註的版本（轉成圖片頁）", kind: "pri", value: "ann" }, { label: "分享原檔（不含批註）", value: "orig" }, { label: "取消", value: null }]); if (!v) return; ann = v === "ann" }
+      let file
+      if (ann) { file = await exportAnn(); if (!file) return }
+      else { const b = await s.get("pdf:" + f); if (!b) { say("找不到原檔", 3000); return } file = new root.File([b], safeName(nameNow) + ".pdf", { type: "application/pdf" }) }
+      await sharePdf(file)
+    }
+    async function saveAs() {
+      mn.hidden = true
+      const file = await exportAnn(); if (!file) return
+      await addPdfFiles(pdfDateOf(f), [file])   // 加到同一天的卡片，成為一份新的 PDF（原檔和批註都留著）；它是普通 PDF，會跟著 PDF 備份走
+    }
+
+    // ----- 關閉、動作分派 -----
+    const close = () => { save(); clearTimeout(tmr); clearTimeout(armT); clearTimeout(saveT); clearTimeout(selT); clearTimeout(qT); d.removeEventListener("selectionchange", onSel); if (ctl) ctl.destroy(); else try { doc.destroy() } catch (e) {}; ov.remove(); d.documentElement.style.overflow = oldHtml; d.body.style.overflow = oldBody; d.removeEventListener("keydown", onKey, true); pdfViewing = false }
+    const onKey = e => { if (e.key === "Escape") { if (!mn.hidden) mn.hidden = true; else if (!fb.hidden) toggleFind(); else close() } }
+    d.addEventListener("keydown", onKey, true)
+    const act = code => {
+      const k = code.indexOf(":"), c = k < 0 ? code : code.slice(0, k), v = k < 0 ? "" : code.slice(k + 1)
+      if (c !== "menu" && c !== "z-" && c !== "z+" && !mn.hidden) mn.hidden = true
+      switch (c) {
+        case "close": close(); break
+        case "menu": toggleMenu(); break
+        case "share": shareFlow(); break
+        case "fill": case "mark": setMode(mode === c ? null : c); break
+        case "find": toggleFind(); break
+        case "qx": toggleFind(); break
+        case "q-": step(-1); break
+        case "q+": step(1); break
+        case "h": selAct(v); break
+        case "t": toolPick(v); break
+        case "c": { const i = +v; if (tool === "hl") hlC = i; else penC = i; const it = selItem(); if (it && it.t !== "sig") { snap(); it.c = (tool === "hl" || it.m ? HL_C : PEN_C)[i]; paintAll(); touch() } tray(); break }
+        case "w": penW = (penW + 1) % PEN_W.length; tray(); break
+        case "u": undo(); break
+        case "r": redoIt(); break
+        case "s-": case "s+": { const it = selItem(); if (!it) break; snap(); const m = c === "s+" ? 1.15 : 1 / 1.15; if (it.t === "txt") it.s = r1(Math.max(5, Math.min(200, it.s * m))); else if (it.t === "sig") { const b = annBox(it), nw = Math.max(20, Math.min(2000, it.w * m)); it.x = r1(it.x + (it.w - nw) / 2); it.y = r1(it.y + (b.h - nw * it.a) / 2); it.w = r1(nw) } paintAll(); touch(); break }
+        case "del": { if (!selA) break; snap(); list(selA.pi).splice(selA.i, 1); selA = null; paintAll(); touch(); tray(); break }
+        case "mode": setMode(null); break
+        case "z-": setZ(z - 0.5, sc.clientWidth / 2, sc.clientHeight / 2); mn.querySelector("span").textContent = Math.round(z * 100) + "%"; break
+        case "z+": setZ(z + 0.5, sc.clientWidth / 2, sc.clientHeight / 2); mn.querySelector("span").textContent = Math.round(z * 100) + "%"; break
+        case "goto": { mn.hidden = true; const v2 = root.prompt("跳到第幾頁（1–" + ctl.n + "）", String(curPage)); const n = parseInt(v2, 10); if (n >= 1 && n <= ctl.n) sc.scrollTop = ctl.pages[n - 1].el.offsetTop - 8; break }
+        case "rename": renameIt(); break
+        case "saveas": saveAs(); break
+      }
+    }
+    ov.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-a]"); if (b && ov.contains(b) && !b.disabled) act(b.dataset.a) })
+    sb.addEventListener("mousedown", e => e.preventDefault())   // 按「螢光」不要讓選取消失
+    const delB = ov.querySelector(".pdfvd")   // 刪除：要按兩次（第一次變紅，3.5 秒內再按一次才刪）
+    delB.onclick = async () => {
+      if (!delB.classList.contains("arm")) { delB.classList.add("arm"); delB.textContent = "再按一次，確定刪除"; armT = setTimeout(() => { delB.classList.remove("arm"); delB.textContent = "🗑 刪除這個 PDF" }, 3500); return }
+      delB.disabled = true; dirty = false; close(); await doDelPdf(f)
+    }
+    try { ctl = await makePdfPages(doc, inner, { root: sc, decorate, undecorate }) } catch (e) { close(); say("打開失敗：" + (e && e.message || e), 4000); return }
+    const target = ctl.pages[Math.max(1, Math.min(ctl.n, start || 1)) - 1]
+    if (target) sc.scrollTop = target.el.offsetTop - 8
+    const setNum = () => {   // 頁碼：畫面上半部看到的那一頁
+      raf = 0
+      const y = sc.scrollTop + sc.clientHeight / 2; let cur = 1
+      for (const p of ctl.pages) { if (p.el.offsetTop <= y) cur = p.i; else break }
+      curPage = cur; num.textContent = cur + " / " + ctl.n
+    }
+    setNum()
+    sc.addEventListener("scroll", () => { if (!raf) raf = root.requestAnimationFrame(setNum) }, { passive: true })
+    const mid = t => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]
     const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
-    sc.addEventListener("touchstart", e => { pin = e.touches.length === 2 ? { d: dist(e.touches), z } : null }, { passive: true })
-    sc.addEventListener("touchmove", e => {
+    sc.addEventListener("touchstart", e => { if (e.touches.length === 2) { endG(); pin = { d: dist(e.touches), z, m: mid(e.touches) } } else pin = null }, { passive: true })
+    sc.addEventListener("touchmove", e => {   // 雙指：縮放，同時跟著手指平移（畫筆、移動模式下，單指不捲動，靠雙指捲動）
       if (!pin || e.touches.length !== 2) return
       e.preventDefault()
-      const r = sc.getBoundingClientRect()
-      setZ(pin.z * dist(e.touches) / pin.d, (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top)
+      const r = sc.getBoundingClientRect(), m = mid(e.touches)
+      sc.scrollLeft += pin.m[0] - m[0]; sc.scrollTop += pin.m[1] - m[1]; pin.m = m
+      setZ(pin.z * dist(e.touches) / pin.d, m[0] - r.left, m[1] - r.top)
     }, { passive: false })
     sc.addEventListener("touchend", e => { if (e.touches.length < 2) pin = null }, { passive: true })
+    tray()
   }
   let pdfClickFn = null
   function installPdf() {   // 點卡片裏的 PDF：「展開全部」按鈕＝展開／收起；點頁面或標題列＝全螢幕閱讀
@@ -1152,7 +1698,7 @@
     if (!d) { say("刪除失敗：檔名不對"); return }
     try {
       const s = getStore(), idx = await pdfIndex()
-      await s.set("pdfIndex", idx.filter(x => x.f !== f)); await s.del("pdf:" + f); await s.del("pdfthumb:" + f)
+      await s.set("pdfIndex", idx.filter(x => x.f !== f)); await s.del("pdf:" + f); await s.del("pdfthumb:" + f); await s.del("pdfann:" + f)   // 批註一起刪
       if (pdfThumbUrls.has(f)) { root.URL.revokeObjectURL(pdfThumbUrls.get(f)); pdfThumbUrls.delete(f) }
       const o = pdfOpen.get(f); if (o) { o.ctl.destroy(); pdfOpen.delete(f) }   // 卡片裏已經展開的，順便放掉
       pushPdfs(await pdfCardMap([d]), "已刪除")
@@ -2039,7 +2585,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
