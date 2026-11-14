@@ -504,7 +504,7 @@ function monthInfo(){return year+'年 '+month+'月 共 '+monthRows(year*12+month
 function wxHtml(d){const a=(window.WEATHER||{})[d];if(!a)return '';const t=[];if(a[0])t.push(a[0]);if(typeof a[1]==='number'&&typeof a[2]==='number')t.push(a[1]===a[2]?a[1]+'°':a[1]+'–'+a[2]+'°');if(a[4])t.push('下雪');else if(a[3])t.push('有雨');if(a[5])t.push('大風');if(a[6])t.push('酷熱');return t.length?'<span class="wx'+(a[7]?' fc':'')+'">'+esc(t.join(' '))+'</span>':''}   /* 天氣：window.WEATHER（日期 → [地名,最低,最高,雨,雪,風]），來自「日誌」腳本；沒有資料就不顯示 */
 function cardHtml(d,w,t,k,TD,multi){
  const y=+d.slice(0,4),m=+d.slice(5,7),dd=+d.slice(8),wd=new Date(y,m-1,dd).getDay(),hn=holidayOf(d),vt=viewText(d,t);
- return '<section class="day'+((wd===0||wd===6||hn)?' we':'')+(d===TD?' today':'')+'" id="d'+d+'"><h2><b>'+dd+'</b><span class="ym">'+y+'年'+m+'月</span>'+(hn?'<span class="hol">'+hn+'</span>':'')+wxHtml(d)+'<span class="wk">'+w+'</span></h2>'+(vt?'<pre>'+bhtml(vt,k)+'</pre>':'')+actHtml(d)+'</section>'}
+ return '<section class="day'+((wd===0||wd===6||hn)?' we':'')+(d===TD?' today':'')+'" id="d'+d+'"><h2><b>'+dd+'</b><span class="ym">'+y+'年'+m+'月</span>'+(hn?'<span class="hol">'+hn+'</span>':'')+wxHtml(d)+'<span class="wk">週'+'日一二三四五六'[wd]+'</span></h2>'+(vt?'<pre>'+bhtml(vt,k)+'</pre>':'')+actHtml(d)+'</section>'}
 function render(){
  markMonths();const k=q.value.trim();let n=0,html='';const multi=YEARS.length>1,TD=todayStr(),win=!!(year&&month)&&!k&&!dayF;
  for(const [d,w,t,lab] of DATA){
