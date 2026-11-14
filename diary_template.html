@@ -330,6 +330,31 @@ header .pd-in{max-width:none;margin:0;gap:4px}
 .menu .mi:active{background:var(--chip)}
 .menu .mi.on{background:var(--chip);color:var(--accent)}
 .pills{margin-top:4px}
+</style><style id="acs">
+/* ===== 增加卡片：在日曆裏選一天或一段日期，一次產生空白的日誌卡片 ===== */
+#ac{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+#ac .box{background:var(--card);color:var(--text);width:100%;max-width:560px;max-height:92vh;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+#ac .bd{flex:1 1 auto;min-height:0;overflow:auto}
+#ac .ft{flex:none}
+#ac .nav{display:flex;align-items:center;gap:4px;margin:0 0 8px}
+#ac .nav .ib2{flex:none;width:44px;padding:0}
+#ac .nav .ib2:disabled{opacity:.3}
+#ac .nav .t{flex:1;text-align:center;font-size:18px}
+#ac .wd,#ac .gr{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+#ac .wd span{text-align:center;font-size:13px;color:var(--sub);padding:2px 0 4px}
+#ac .gr{grid-auto-rows:44px;min-height:284px;align-content:start}
+#ac .dc{border:0;border-radius:12px;background:transparent;color:var(--text);font:inherit;font-size:16px;font-weight:600;position:relative;padding:0;-webkit-tap-highlight-color:transparent}
+#ac .dc.td{box-shadow:inset 0 0 0 1.5px var(--accent)}
+#ac .dc.mid{background:var(--chip)}
+#ac .dc.sel{background:var(--accent);color:var(--bg)}
+#ac .dc.off{color:var(--sub);opacity:.45}
+#ac .dc.off::after{content:"";position:absolute;left:50%;bottom:6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:currentColor}
+#ac .sum{margin:12px 0 10px;min-height:46px;font-size:15px}
+#ac .sum b{display:block;font-size:17px;margin-bottom:2px}
+#ac .sum span{color:var(--sub);font-size:14px}
+#ac .sum span.bad{color:var(--bad)}
+#ac .go{width:100%;height:54px;justify-content:center}
+#ac .go:disabled{opacity:.35}
 </style></head><body>
 <header>
  <div class="bar">
@@ -346,6 +371,7 @@ header .pd-in{max-width:none;margin:0;gap:4px}
   <div class="chips" id="ychips" data-t="年份"></div>
   <div class="chips" id="chips" data-t="月份（虛線 = 沒有日誌）"></div>
   <div class="menu">
+   <button class="mi" id="acb" data-lb="增加卡片" type="button" aria-label="增加卡片" title="增加卡片"></button>
    <button class="mi" id="vb4" data-lb="假期" type="button" aria-label="假期" title="假期"></button>
    <button class="mi" id="wxs" data-lb="天氣" type="button" aria-label="天氣設定" title="天氣設定"></button>
    <button class="mi" id="th" data-lb="自動" type="button" aria-label="切換 自動／白天／夜間" title="顯示模式"></button>
@@ -709,7 +735,7 @@ async function mergeICloud(){
    else await putEdit(Object.assign({},r))}}
 }
 /* 空白草稿：按日曆跳到「還沒有日誌的日子」時會先建一張空白卡；沒按儲存就離開，它不是真正的修改，不要算進待同步，也不要同步 */
-function isDraft(r){return !!r&&!r.del&&!r.deleted&&r.isNew===true&&typeof r.text==='string'&&r.text.trim()===''}
+function isDraft(r){return !!r&&!r.del&&!r.deleted&&!r.blank&&r.isNew===true&&typeof r.text==='string'&&r.text.trim()===''}   // blank＝「增加卡片」做出來的空白卡：是真正的日子，要保留、要同步，不算草稿
 async function dropDrafts(except){
  const gone=EDITS.filter(r=>isDraft(r)&&r.date!==except);if(!gone.length)return false;
  EDITS=EDITS.filter(r=>!gone.includes(r));
@@ -816,7 +842,7 @@ async function savePre(y,text){
  await applyEdits();refresh();hdrShow();doSync()}
 async function deleteDay(d){
  lastDate=d;const full=dayTextOf(d),o=RAWBY.has(d)?RAWBY.get(d):null,r=REMMAP.get(d);
- const tomb={date:d,deleted:true,text:full,orig:o,isNew:o===null,t:Date.now()};if(r)tomb.rem={due:r.due,repeat:r.repeat||0,done:!!r.done};await putEdit(tomb);
+ const tomb={date:d,deleted:true,text:full,orig:o,isNew:o===null,t:Date.now()};{const b0=EDITS.find(x=>x.date===d);if(b0&&b0.blank)tomb.blank=1}if(r)tomb.rem={due:r.due,repeat:r.repeat||0,done:!!r.done};await putEdit(tomb);
  await applyEdits();refresh();hdrShow();
  if(r){toast(window.LIVE_ACT?'已刪除，並取消這一天的提醒…':'已刪除，並取消這一天的提醒…畫面會短暫離開再回來');remSend({id:d,date:d,del:true,t:Date.now()});return}
  toast('已刪除 '+(+d.slice(5,7))+'月'+(+d.slice(8))+'日（可在「⋯」→ 垃圾桶 還原或永久刪除）');doSync()}
@@ -847,7 +873,7 @@ async function saveEdit(d,text,rem,noSync){
  lastDate=d;text=text.replace(/\s+$/,'');
  const o=RAWBY.has(d)?RAWBY.get(d):null,ex=EDITS.find(e=>e.date===d);
  if(o!==null&&text===o)await delEdit(d);
- else if(o===null&&text.trim()==='')await delEdit(d);
+ else if(o===null&&text.trim()===''){if(!(ex&&ex.blank))await delEdit(d)}   // 「增加卡片」的空白卡：沒寫字就儲存，卡片照舊留著
  else await putEdit({date:d,text,orig:o,isNew:o===null,t:Date.now(),init:ex&&ex.init});
  await applyEdits();refresh();hdrShow();
  if(rem){const t=Date.now();
@@ -1323,4 +1349,103 @@ addEventListener('resize',fit);
 try{if(window.ResizeObserver)new ResizeObserver(fit).observe(document.body)}catch(e){}
 })();
 </script>
-</body></html>
+<script>
+/* ===== 增加卡片（「⋯」選單第一項）=====
+   在日曆裏點一天、或先後點兩天選一段日期，按「增加」就為每一天做一張空白卡片。
+   只做還沒有卡片的日子：已有卡片的、在垃圾桶裏的日子灰掉不能點；範圍中間遇到的也一律不動。
+   空白卡片的記錄＝{date,text:'',blank:1,t}：blank 讓它不被當成「空白草稿」丟掉（isDraft），而且會照一般修改同步到宿主；
+   寫了字按儲存，就變成一般的日子（blank 標記自然消失）。宿主（日誌.js／網頁版）原樣收發修改記錄，不用改。 */
+(function(){
+IP.calendarPlus='<path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/>';
+IP.chevsL='<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>';
+IP.chevsR='<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>';
+const btn=document.getElementById('acb');btn.insertAdjacentHTML('afterbegin',ico('calendarPlus'));
+const fmt=(y,m,d)=>y+'-'+pad2(m)+'-'+pad2(d),dim=(y,m)=>new Date(y,m,0).getDate(),YMIN=2000,YMAX=2100;
+function span(a,b){const o=[],t=new Date(+a.slice(0,4),+a.slice(5,7)-1,+a.slice(8));let n=0;
+ while(n++<4000){const s=fmt(t.getFullYear(),t.getMonth()+1,t.getDate());if(s>b)break;o.push(s);t.setDate(t.getDate()+1)}
+ return o}
+/* 已經有卡片（含空白草稿）或在垃圾桶裏（含永久刪除的原稿日子）的日子：不能再加 */
+function taken(){const s=new Set(DATA.filter(r=>!r[3]).map(r=>r[0]));for(const e of EDITS)if(e.deleted)s.add(e.date);return s}
+const mkRec=(d,t)=>({date:d,text:'',blank:1,t});
+/* 靠網址傳訊息的宿主（Scriptable）一次送得出去的修改有長度上限：算出現在最多還能一次增加幾張；網頁版不受限 */
+function maxBlank(){
+ if(window.HOST_NO_LIMIT)return 1100;
+ const per=encodeURIComponent(JSON.stringify(mkRec('2027-01-05',Date.now()))).length+3;
+ const used=encodeURIComponent(JSON.stringify({edits:pendingList()})).length;
+ return Math.max(0,Math.floor((hostMax(15000)-used-80)/per))}
+async function ePutMany(recs){const d=await eOpen();return new Promise((res,rej)=>{const t=d.transaction('e','readwrite'),o=t.objectStore('e');recs.forEach(r=>o.put(r));t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})}
+async function addBlank(ds){
+ const t=Date.now(),recs=ds.map(d=>mkRec(d,t)),set=new Set(ds);
+ TOMBS=TOMBS.filter(x=>!set.has(x.date));
+ EDITS=EDITS.filter(e=>!set.has(e.date)).concat(recs);
+ if(canE){try{await ePutMany(recs)}catch(e){canE=false}}
+ await applyEdits()}
+let ov=null,st=null,busy=false;
+function close(){if(ov){ov.remove();ov=null}}
+function open(){
+ const top=(typeof topCardDate==='function'&&topCardDate())||todayStr();
+ st={y:+top.slice(0,4),m:+top.slice(5,7),a:null,b:null};
+ close();ov=document.createElement('div');ov.id='ac';
+ ov.addEventListener('click',e=>{
+  if(e.target===ov){close();return}
+  const t=e.target.closest('button');if(!t||t.disabled||!ov.contains(t))return;
+  const a=t.dataset.a;
+  if(a==='x')close();
+  else if(a==='py')nav(-12);else if(a==='pm')nav(-1);else if(a==='nm')nav(1);else if(a==='ny')nav(12);
+  else if(a==='ok')go();
+  else if(t.dataset.d)pick(t.dataset.d)});
+ document.body.appendChild(ov);draw()}
+function nav(dm){const n=Math.max(YMIN*12,Math.min(YMAX*12+11,st.y*12+st.m-1+dm));st.y=Math.floor(n/12);st.m=n%12+1;draw()}
+function pick(d){
+ if(!st.a||(st.a&&st.b)){st.a=d;st.b=null}
+ else if(d===st.a)st.a=null;
+ else{st.b=d;if(st.b<st.a){const t=st.a;st.a=st.b;st.b=t}}
+ draw()}
+function plan(){   // 目前選的範圍：全部日子、真正會增加的日子、略過的天數
+ if(!st||!st.a)return null;
+ const lo=st.a,hi=st.b||st.a,T=taken(),all=span(lo,hi),ds=all.filter(s=>!T.has(s));
+ return {lo,hi,ds,skip:all.length-ds.length}}
+function draw(){
+ if(!ov)return;
+ const T=taken(),td=todayStr(),y=st.y,m=st.m,pl=plan(),lo=pl&&pl.lo,hi=pl&&pl.hi;
+ const bt=(a,ic,lb,dis)=>'<button type="button" class="ib2" data-a="'+a+'" aria-label="'+lb+'" title="'+lb+'"'+(dis?' disabled':'')+'>'+ico(ic)+'</button>';
+ const atMin=y*12+m-1<=YMIN*12+11,atMax=y*12+m-1>=YMAX*12;
+ let h='<div class="box"><div class="shd"><i class="grab"></i>'+bt('x','x','關閉')+'</div>';
+ h+='<div class="bd"><div class="nav">'+bt('py','chevsL','上一年',y<=YMIN)+bt('pm','chevL','上個月',y*12+m-1<=YMIN*12)+'<b class="t">'+y+'年'+m+'月</b>'+bt('nm','chevR','下個月',y*12+m-1>=YMAX*12+11)+bt('ny','chevsR','下一年',y>=YMAX)+'</div>';
+ h+='<div class="wd">'+[...'日一二三四五六'].map(c=>'<span>'+c+'</span>').join('')+'</div><div class="gr">';
+ for(let i=new Date(y,m-1,1).getDay();i>0;i--)h+='<i></i>';
+ for(let d=1,n=dim(y,m);d<=n;d++){
+  const s=fmt(y,m,d),off=T.has(s);let c='';
+  if(off)c+=' off';if(s===td)c+=' td';
+  const sel=lo&&s>=lo&&s<=hi;if(sel)c+=(s===lo||s===hi)?' sel':' mid';
+  h+='<button type="button" class="dc'+c+'" data-d="'+s+'"'+(off?' disabled':'')+' aria-label="'+y+'年'+m+'月'+d+'日'+(off?'（已有卡片）':'')+'"'+((sel&&(s===lo||s===hi))?' aria-pressed="true"':'')+'>'+d+'</button>'}
+ h+='</div></div>';
+ let ok=false,n=0,sum;
+ if(!pl)sum='<b>選日期</b><span>點一天；要一段日期，再點結束的那天。灰色的已有卡片，不會動。</span>';
+ else{
+  const lab=lo===hi?dayLabel(lo)+' '+wkOf(lo):dayLabel(lo)+' – '+(hi.slice(0,4)===lo.slice(0,4)?(+hi.slice(5,7))+'月'+(+hi.slice(8))+'日':dayLabel(hi));
+  n=pl.ds.length;const lim=maxBlank();
+  if(!n)sum='<b>'+lab+'</b><span class="bad">這段日期都已經有卡片了</span>';
+  else if(n>lim)sum='<b>'+lab+'</b><span class="bad">'+(lim>0?'一次最多增加 '+lim+' 張，請縮短日期範圍':'還有修改沒有同步，請先同步，再增加卡片')+'</span>';
+  else{ok=true;sum='<b>'+lab+'</b><span>增加 '+n+' 張空白卡片'+(pl.skip?'（另有 '+pl.skip+' 天已有卡片，不動）':'')+'</span>'}}
+ h+='<div class="ft"><div class="sum">'+sum+'</div><button type="button" class="ib2 pri go" data-a="ok"'+(ok?'':' disabled')+'>'+ico('calendarPlus')+'<span>增加'+(ok?' '+n+' 張':'')+'</span></button></div></div>';
+ ov.innerHTML=h}
+async function go(){
+ if(busy)return;const pl=plan();if(!pl)return;
+ if(!pl.ds.length){toast('這段日期都已經有卡片了');return}
+ const lim=maxBlank();if(pl.ds.length>lim){toast(lim>0?'一次最多增加 '+lim+' 張，請縮短日期範圍':'還有修改沒有同步，請先同步，再增加卡片');return}
+ busy=true;
+ try{
+  close();pdClose();
+  await addBlank(pl.ds);
+  lastDate=pl.ds[0];
+  const el=goDay(pl.ds[0]);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(pl.ds[0])}
+  doSync();
+  toast('已增加 '+pl.ds.length+' 張空白卡片'+(pl.skip?'（'+pl.skip+' 天已有卡片，沒動）':''),3800)
+ }finally{busy=false}}
+btn.onclick=()=>{
+ if(document.querySelector('.ed')){toast('請先儲存或取消正在編輯的卡片');return}
+ pdClose();open()};
+addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+})();
+</script></body></html>
