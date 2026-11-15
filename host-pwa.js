@@ -2528,7 +2528,10 @@
   //     - 地址：…
   //     - 備註：…（備註是網頁格式，轉成純文字；住宿列的 ArrivalDateTime 常是舊資料，不用）
   // 那一天沒有卡片就先新增；已有內容就放在原內容的上方（原內容一個字都不動；原稿卡片開頭的「5. 星期二」標題行仍留在最上面，頁面照舊把它藏起來）。
-  // 同一份 CSV 再匯入一次不會重複：某一列的條列已經在那張卡片裏，就略過那一列。垃圾桶裏的日子（含永久刪除的原稿日子）不碰。
+  // 再匯入同一份（或有新增、有改動的）CSV：每一筆行程的標題行尾有看不見的識別記號（見下面「識別記號」），靠它認得「是哪一筆」和「匯入之後你有沒有改過」：
+  //   已經有、沒變 → 略過；CSV 裏這筆變了而你沒改過 → 換成新版本；你改過 → 不動（不重複、不蓋掉你寫的）；沒有 → 新增在卡片上方。
+  //   舊版匯入的（沒有記號）：內容一模一樣就補上記號；你改過但標題行還在，就當作已經有、不動。
+  // 垃圾桶裏的日子（含永久刪除的原稿日子）不碰。
   // 匯入前先把「已有內容被加上去」的那幾年存一份自動備份（還原視窗的「還原前的備份」，每年最多留 5 份）。寫入的是修改（edits），格式和頁面自己存的修改一樣，所以備份、同步、還原都照常。
   const isCsvFile = f => /\.csv$/i.test(f && f.name || "") || /csv/i.test(f && f.type || "")
   function parseCsv(text) {   // 標準 CSV：欄位可以用雙引號包起來（裏面可有逗號、換行；兩個引號＝一個引號）；分隔符號自動判斷（逗號、分號、Tab）；回傳二維陣列（略過全空的列）
@@ -2636,26 +2639,93 @@
     }
     return block + "\n\n" + cur.replace(/^\n+/, "")
   }
-  function buildCsvPlan(parsed, rows, edits, now) {   // 純計算（不寫入）：parsed＝csvTravelRows 的結果（可以多份）。回傳 { items（要寫入的日子：{date,text,orig,had}）, total, bad, dup（之前匯入過）, trash（在垃圾桶）, topYears（已有內容被加上去的年份）, years }
+  // ---- 識別記號：每一筆行程的標題行尾，接一段看不見的字元（U+2060 開頭，後面 40 個 U+200C／U+200D 代表 0／1：20 位元是「這一筆是哪一筆」，20 位元是「匯入時這一筆的內容」的指紋）----
+  // 為什麼要有：之後再匯入同一份（或改過的）CSV，靠它認得「這一筆已經匯入過」，即使你在日誌裏改過那幾行也不會重複；
+  //   也靠指紋分辨「你改過」和「CSV 裏的行程改了」：沒改過的，換成新版本；你改過的，一律不動。
+  // 記號是 U+200C／U+200D（接在標題最後一個字後面，游標不用多按幾下）加 U+2060，畫面、搜尋、複製都看不到；標題行以外的地方不放。
+  const MARK_RE = /\u2060([\u200c\u200d]{40})/
+  const markStr = (id, hc) => "\u2060" + [id, hc].map(v => v.toString(2).padStart(20, "0")).join("").replace(/0/g, "\u200c").replace(/1/g, "\u200d")
+  const stripMark = x => String(x).replace(/\u2060[\u200c\u200d]{40}/g, "")
+  function readMark(line) {
+    const m = MARK_RE.exec(line); if (!m) return null
+    const bits = m[1].split("").map(c => c === "\u200d" ? 1 : 0), num = a => a.reduce((x, y) => x * 2 + y, 0)
+    return { id: num(bits.slice(0, 20)), hc: num(bits.slice(20)) }
+  }
+  function fnv20(str) {   // 20 位元的指紋（FNV-1a 取低 20 位）
+    let h = 0x811c9dc5
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 }
+    return h & 0xfffff
+  }
+  function findBlocks(cur) {   // 找出一張卡片裏的條列區塊：從「• 」開頭的行，到下一個「• 」行、或第一個沒縮排的非空行之前（備註裏的空行，後面還有縮排的行就算在區塊裏）。回傳 [{ start, end（不含）, text, mark }]
+    const L = cur.split("\n"), out = []
+    for (let i = 0; i < L.length; i++) {
+      if (!L[i].startsWith("• ")) continue
+      let end = i + 1
+      while (end < L.length) {
+        const l = L[end]
+        if (l.startsWith("• ")) break
+        if (l.trim() === "") { let j = end; while (j < L.length && L[j].trim() === "") j++; if (j < L.length && /^\s+\S/.test(L[j])) { end = j; continue } break }
+        if (/^\s/.test(l)) end++; else break
+      }
+      out.push({ start: i, end, text: L.slice(i, end).join("\n"), mark: readMark(L[i]) })
+      i = end - 1
+    }
+    return out
+  }
+  function buildCsvPlan(parsed, rows, edits, now) {   // 純計算（不寫入）：parsed＝csvTravelRows 的結果（可以多份）。回傳 { items（要寫入的日子：{date,text,orig,had}）, total, bad, topYears, st（統計）}
     const raw = new Map((rows || []).filter(r => !r[3]).map(r => [r[0], r[2]]))
     const by = new Map((edits || []).filter(e => e && DATERE.test(e.date || "")).map(e => [e.date, e]))
     const perDate = new Map(); let total = 0, bad = 0, seq = 0
     for (const p of parsed) { total += p.total; bad += p.bad; for (const r of p.rows) { const x = Object.assign({}, r, { idx: seq++ }); if (!perDate.has(r.date)) perDate.set(r.date, []); perDate.get(r.date).push(x) } }
-    const items = [], topYears = new Set(), years = {}; let dup = 0, trash = 0
+    const items = [], topYears = new Set(), years = {}, st = { newDays: 0, topDays: 0, added: 0, updated: 0, upgraded: 0, kept: 0, same: 0, trash: 0 }
+    const nk = x => String(x || "").replace(/[\s,，.。]/g, "").toLowerCase()
     for (const d of [...perDate.keys()].sort()) {
+      const list = perDate.get(d).sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : b.idx - a.idx)   // 同一天依時間排；時間一樣就照檔案由下往上（檔案是新的在上）
       const e = by.get(d)
-      if (e && e.deleted) { trash++; continue }   // 垃圾桶裏（含永久刪除的原稿日子）：不碰
+      if (e && e.deleted) { st.trash += list.length; continue }   // 垃圾桶裏（含永久刪除的原稿日子）：不碰
       const cur = e && !e.del ? (typeof e.text === "string" ? e.text : "") : (raw.has(d) ? raw.get(d) : "")   // 這一天現在看到的內容：修改優先，其次原稿
-      const chunks = []
-      for (const r of perDate.get(d).sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : b.idx - a.idx)) { const c = travelLines(r).join("\n"); if (!chunks.includes(c)) chunks.push(c) }   // 同一天依時間排；時間一樣就照檔案由下往上（檔案是新的在上）
-      const fresh = chunks.filter(c => !cur.includes(c))   // 已經在卡片裏的那一列：略過，所以重複匯入不會寫兩次
-      if (!fresh.length) { dup++; continue }
+      const cnt = new Map(), ids = new Set(), seen = new Set(), ents = []
+      for (const r of list) {   // 每一筆行程的身分＝日期＋名稱＋航班號（同一天同名、內容不同的第二筆另外編號）；名稱改了就算另一筆
+        const lines = travelLines(r), body = lines.join("\n"), kb = d + "|" + nk(r.trip) + "|" + nk(r.flight)
+        if (seen.has(body)) continue   // 內容完全一樣的兩列（同一份檔案選了兩次、或檔案裏重複的列）：算一筆
+        seen.add(body)
+        const n = (cnt.get(kb) || 0) + 1
+        cnt.set(kb, n)
+        let id = fnv20(kb + "#" + n); while (ids.has(id)) id = (id + 1) & 0xfffff
+        ids.add(id)
+        const hc = fnv20(body)
+        ents.push({ id, hc, body, first: lines[0], marked: [lines[0] + markStr(id, hc)].concat(lines.slice(1)).join("\n") })
+      }
+      const blocks = findBlocks(cur), claimed = new Set(), ops = [], adds = []
+      const take = pred => { const b = blocks.find(x => !claimed.has(x) && pred(x)); if (b) claimed.add(b); return b }
+      let same = 0, kept = 0, upd = 0, upg = 0
+      for (const en of ents) {
+        const mk = take(b => b.mark && b.mark.id === en.id)
+        if (mk) {
+          if (fnv20(stripMark(mk.text)) !== mk.mark.hc) kept++   // 匯入之後你改過這幾行：不動
+          else if (mk.mark.hc === en.hc) same++   // 沒改過、CSV 也沒變
+          else { ops.push({ b: mk, rep: en.marked }); upd++ }   // 沒改過、CSV 裏這筆行程變了：換成新版本
+          continue
+        }
+        const um = take(b => !b.mark && b.text === en.body)   // 舊版匯入的（沒有記號），內容一模一樣：補上記號，畫面不變
+        if (um) { ops.push({ b: um, rep: en.marked }); upg++; continue }
+        const tm = take(b => !b.mark && b.text.split("\n")[0] === en.first)   // 舊版匯入的、你改過內容（標題行還在）：當作已經有，不動
+        if (tm) { kept++; continue }
+        adds.push(en.marked)
+      }
+      st.same += same; st.kept += kept
+      if (!ops.length && !adds.length) continue
+      let text = cur
+      if (ops.length) { const L = cur.split("\n"); for (const o of ops.sort((a, b) => b.b.start - a.b.start)) L.splice(o.b.start, o.b.end - o.b.start, ...o.rep.split("\n")); text = L.join("\n") }
+      if (adds.length) text = insertAbove(text, adds.join("\n"), d, raw.has(d))
       const had = cur.trim() !== ""
-      items.push({ date: d, text: insertAbove(cur, fresh.join("\n"), d, raw.has(d)), orig: raw.has(d) ? raw.get(d) : null, had })
+      items.push({ date: d, text, orig: raw.has(d) ? raw.get(d) : null, had })
+      st.added += adds.length; st.updated += upd; st.upgraded += upg
+      if (adds.length) { if (had) st.topDays++; else st.newDays++ }
       const y = d.slice(0, 4); years[y] = (years[y] || 0) + 1
       if (had) topYears.add(y)
     }
-    return { items, total, bad, dup, trash, topYears: [...topYears].sort(), years }
+    return { items, total, bad, topYears: [...topYears].sort(), years, st }
   }
   function pageUnsynced() {   // 頁面上還沒送到宿主的修改（正常是空的：儲存之後馬上同步）；算進去，才不會蓋掉
     try { const l = typeof root.pendingList === "function" ? root.pendingList() : []; return Array.isArray(l) ? l.filter(r => r && typeof r === "object" && DATERE.test(r.date || "")) : [] } catch (e) { return [] }
@@ -2686,19 +2756,22 @@
     return p
   }
   function csvSummary(p, done) {   // 對話框用的條列：done＝已經寫入了
-    const nNew = p.items.filter(i => !i.had).length, nTop = p.items.length - nNew, L = []
+    const st = p.st, L = []
     L.push("共 " + p.total + " 筆行程，" + (p.items.length ? (done ? "已寫入 " : "會寫入 ") + p.items.length + " 天：" : "沒有需要寫入的日子："))
-    if (nNew) L.push("• 新增卡片（或填入空白卡片）：" + nNew + " 天")
-    if (nTop) L.push("• 加到已有內容上方：" + nTop + " 天（原內容不動）")
-    if (p.dup) L.push("• 之前匯入過，略過：" + p.dup + " 天")
-    if (p.trash) L.push("• 在垃圾桶裏，略過：" + p.trash + " 天")
+    if (st.newDays) L.push("• 新增卡片（或填入空白卡片）：" + st.newDays + " 天")
+    if (st.topDays) L.push("• 加到已有內容上方：" + st.topDays + " 天（原內容不動）")
+    if (st.updated) L.push("• 行程有變動、換成新版本（你沒改過的）：" + st.updated + " 筆")
+    if (st.upgraded) L.push("• 之前匯入過、補上識別記號（畫面不變）：" + st.upgraded + " 筆")
+    if (st.same) L.push("• 之前匯入過、沒有變動，略過：" + st.same + " 筆")
+    if (st.kept) L.push("• 之前匯入過、你在日誌裏改過，不動：" + st.kept + " 筆")
+    if (st.trash) L.push("• 在垃圾桶裏，略過：" + st.trash + " 筆")
     if (p.bad) L.push("• 開始日期看不懂，略過：" + p.bad + " 筆")
     return L.join("\n")
   }
   async function importCsvFiles(files) {   // 「匯入資料檔」選到 .csv：算 → 問 → 備份並寫入 → 重新載入頁面
     const { parsed, plan } = await planCsvAdd(files)
     if (!plan.items.length) { await modal("沒有需要匯入的內容", csvSummary(plan, false) + "\n沒有動任何東西。", [{ label: "好", value: 1 }]); return }
-    const ok = await modal("匯入行程 CSV？", csvSummary(plan, false) + "\n每一筆排成「•」條列；備註裡的網頁格式會轉成純文字。" +
+    const ok = await modal("匯入行程 CSV？", csvSummary(plan, false) + "\n每一筆排成「•」條列；備註裡的網頁格式會轉成純文字。標題行尾會有看不見的識別記號，之後再匯入才認得出哪一筆是哪一筆。" +
       (plan.topYears.length ? "\n匯入前會先自動備份有改動的已有日子所在的年份（" + plan.topYears.join("、") + " 年）。" : "") +
       "\n匯入後頁面會重新載入一次，請先確認沒有編輯到一半的卡片。", [{ label: "匯入", kind: "pri", value: true }, { label: "取消", value: false }])
     if (!ok) { say("已取消，沒有匯入任何東西"); return }
@@ -2787,7 +2860,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore, parseCsv, parseDT, htmlToText, csvTravelRows, travelLines, insertAbove, buildCsvPlan, planCsvAdd, commitCsvAdd, importCsvFiles, csvSummary, isCsvFile,
+  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore, parseCsv, parseDT, htmlToText, csvTravelRows, travelLines, insertAbove, findBlocks, readMark, stripMark, markStr, fnv20, buildCsvPlan, planCsvAdd, commitCsvAdd, importCsvFiles, csvSummary, isCsvFile,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
