@@ -2698,18 +2698,33 @@
       }
       const blocks = findBlocks(cur), claimed = new Set(), ops = [], adds = []
       const take = pred => { const b = blocks.find(x => !claimed.has(x) && pred(x)); if (b) claimed.add(b); return b }
+      // 編者按 / Editor's note：比對、取代的範圍只看「CSV 現在算出來應該有幾行」（en.body 的行數），不管 findBlocks 找到的區塊實際多長——
+      //   findBlocks 認定一個區塊的辦法是「只要還是縮排、或空一行後面接著縮排，就算同一塊」；如果使用者自己緊接在匯入內容後面寫別的筆記，
+      //   剛好也用縮排、而且中間只隔一行空行，就會被 findBlocks 一起吃進同一個區塊，比對時怎樣都對不起來，每次都被誤判成「你改過，不動」，
+      //   而且就算真的需要換成新版本，也不能整塊取代，不然會連使用者自己寫的那段一起蓋掉。改成只取前面 bodyLen 行來比對、也只取代前面 bodyLen
+      //   行，後面（不管是不是使用者自己接著寫的）一律不動，就不會有這個問題。
+      //   English: comparison and replacement are scoped to exactly as many lines as the freshly computed body has (en.body's
+      //   own line count), never to findBlocks' full (possibly over-extended) span. findBlocks keeps extending a block as long
+      //   as the lines stay indented, or a blank line is followed by more indented text — so if the user writes their own notes
+      //   right after an imported entry, indented and separated only by a blank line, findBlocks swallows that into the same
+      //   block, the comparison never matches, and it gets permanently misread as "you edited this". Worse, a genuine update
+      //   (CSV content changed) would then overwrite that swallowed tail too. Comparing and replacing only the first bodyLen
+      //   lines fixes both: the tail is left alone either way.
+      const headText = (text, n) => text.split("\n").slice(0, n).join("\n")
       let same = 0, kept = 0, upd = 0, upg = 0
       for (const en of ents) {
+        const bodyLen = en.body.split("\n").length
         const mk = take(b => b.mark && b.mark.id === en.id)
         if (mk) {
-          if (fnv20(stripMark(mk.text)) !== mk.mark.hc) kept++   // 匯入之後你改過這幾行：不動
+          const head = headText(stripMark(mk.text), bodyLen)
+          if (fnv20(head) !== mk.mark.hc) kept++   // 前面這幾行（去掉記號）跟記號裏記的指紋對不上：你改過，不動
           else if (mk.mark.hc === en.hc) same++   // 沒改過、CSV 也沒變
-          else { ops.push({ b: mk, rep: en.marked }); upd++ }   // 沒改過、CSV 裏這筆行程變了：換成新版本
+          else { ops.push({ b: { start: mk.start, end: Math.min(mk.start + bodyLen, mk.end) }, rep: en.marked }); upd++ }   // 沒改過、CSV 裏這筆行程變了：只換前面這幾行，後面不動
           continue
         }
-        const um = take(b => !b.mark && b.text === en.body)   // 舊版匯入的（沒有記號），內容一模一樣：補上記號，畫面不變
-        if (um) { ops.push({ b: um, rep: en.marked }); upg++; continue }
-        const tm = take(b => !b.mark && b.text.split("\n")[0] === en.first)   // 舊版匯入的、你改過內容（標題行還在）：當作已經有，不動
+        const um = take(b => !b.mark && headText(b.text, bodyLen) === en.body)   // 舊版匯入的（沒有記號），前面這幾行內容一模一樣：補上記號（只動前面這幾行，後面不動），畫面不變
+        if (um) { ops.push({ b: { start: um.start, end: Math.min(um.start + bodyLen, um.end) }, rep: en.marked }); upg++; continue }
+        const tm = take(b => !b.mark && b.text.split("\n")[0] === en.first)   // 標題行還在、但前面幾行對不起來：當作已經有、不動（可能你真的改了，也可能是更早期、格式不同的舊匯入，分不出來）
         if (tm) { kept++; continue }
         adds.push(en.marked)
       }
