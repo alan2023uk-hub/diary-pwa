@@ -254,7 +254,7 @@ header .tools #bkp{--c:var(--k5)}
 #pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
 #pn .qs.cf{gap:12px}
 #pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
-/* 備份與還原：在選單裡原地展開（年份選擇器＋備份／還原兩個按鈕） */
+/* 備份與還原：在選單裡原地展開（種類／動作／執行；文字的備份、還原不分年份，只有照片、PDF 的備份才要選年份） */
 #bkx{padding:4px 4px 8px}#bkx[hidden]{display:none}
 #bkx .yp{display:flex;align-items:center;gap:6px;margin:2px 0 12px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 #bkx .yp .ib2{flex:none;width:44px;padding:0}
@@ -281,6 +281,8 @@ header .tools #bkp{--c:var(--k5)}
 #bkx.wk .bka .ib2{height:36px;min-width:76px;padding:0 14px;font-size:14px;border-radius:10px}
 #bkx.wk .bka.bkw .bks{margin-top:0}
 #bkx .ib2:disabled{opacity:.35}
+#bkx .yp[hidden],#bkx .rt[hidden]{display:none}
+#bkx .rt.sm{margin:2px 4px 10px;text-align:center}#bkx.wk .rt.sm{margin:0 4px 8px}   /* 不選年份時，年份那排收起來，換成一行說明 */
 .menu #bkp .cv{order:2;margin-left:auto;display:flex;transition:transform .18s}
 .menu #bkp[aria-expanded=true] .cv{transform:rotate(180deg)}
 #bkx .bka{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 4px 0;border-top:1px solid var(--line)}
@@ -934,17 +936,18 @@ function openPanel(){   // 垃圾桶：單日還原／永久刪除、全部還�
  document.body.appendChild(o);
 }
 
-/* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 manual_backup 資料夾存取（以前叫 diary_backups）（內容＋提醒）；還原前會自動先備份目前內容 ===== */
+/* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 diary_backups 資料夾存取（內容＋提醒）；還原前會自動先備份目前內容 ===== */
 function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
-function backupYear(y,n){if(!n){toast(y+' 年沒有日誌可備份');return}toast(window.LIVE_BK?y+' 年備份中…':y+' 年備份中…畫面會短暫離開再回來');scriptRun('backup',y)}
+function backupAllYears(n){if(!n){toast('沒有日誌可備份');return}toast(window.LIVE_BK?'備份中…':'備份中…畫面會短暫離開再回來');scriptRun('backup','1')}   /* 文字備份：全部年份合成一個檔，不分年份（網址的值不重要，宿主一律備份全部） */
 function backupPhotoYear(y){toast(y+' 年照片：準備中…');hostSend({backupphotos:y},{go:lastDate||'',pend:'skip'})}   /* 只有網頁版（宿主設了 PWA_PHOTOBK）才有「備份照片」按鈕 */
 function restorePhotos(){if(window.MASTER_PHOTORS)toast('照片：掃描中…',1500);hostSend({restorephotos:'1'},{go:lastDate||'',pend:'skip'})}
 function backupPdfYear(y){toast(y+' 年 PDF：準備中…');hostSend({backuppdfs:y},{go:lastDate||'',pend:'skip'})}   /* 只有網頁版（宿主設了 PWA_PDFBK）才有「PDF」 */
 function restorePdfs(){hostSend({restorepdfs:'1'},{go:lastDate||'',pend:'skip'})}   /* 網頁版「PDF → 還原」：直接開選 PDF 的視窗（不分年份，依檔名放回原來的日子） */   /* 網頁版「照片」那排的「還原」：直接開選照片的視窗（不分年份，依檔名放回原來的日子） */
-function restoreYear(y){toast(window.LIVE_RS?y+' 年：開啟備份清單…':y+' 年：開啟備份清單…畫面會短暫離開再回來');scriptRun('restore',y)}
-/* 備份／還原：直接作用在「目前正在看的那一年」（不再先彈出「更多」選單選年份） */
+function restoreAllYears(){toast(window.LIVE_RS?'開啟備份清單…':'開啟備份清單…畫面會短暫離開再回來');scriptRun('restore','1')}   /* 文字還原：從備份清單選一份，備份裏有的每一年都會還原，不分年份 */
+function allTotals(){const ys=new Set();let days=0;for(const x of DATA)if(!x[3]&&String(x[2]).trim()!==''){days++;ys.add(x[0].slice(0,4))}return{days,years:ys.size}}   /* 全部年份的日誌天數、有內容的年數（文字備份用） */
+/* 文字的備份／還原不分年份（全部年份一個檔）；照片、PDF 的備份才作用在選好的那一年（預設是目前正在看的那一年） */
 function curYear(){const y=year||(+(lastDate||'').slice(0,4))||0;return YEARS.includes(y)?y:YEARS[YEARS.length-1]}
-/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕（網頁版分成「文字」「照片」兩排，各有備份／還原）。還原選年後，腳本會再列出該年的備份清單，並在還原前自動備份目前內容 */
+/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；標題行是年份選擇器（點兩邊箭頭，或在標題上左右滑動換年份），底下「備份」「還原…」兩個按鈕（網頁版和母版分成「種類」「動作」兩排選擇器）。年份只在照片、PDF 的「備份」才需要，其他情況那一排會收起來；文字的還原，腳本會列出備份清單，並在還原前自動備份目前內容 */
 function yearDays(y){return DATA.filter(x=>!x[3]&&+x[0].slice(0,4)===y&&String(x[2]).trim()!=='').length}
 function bkxClose(){const bx=document.getElementById('bkx');if(!bx)return;bx.hidden=true;bx.replaceChildren();document.getElementById('bkp').setAttribute('aria-expanded','false')}
 function yearDialog(){
@@ -960,9 +963,10 @@ function yearDialog(){
  const yp=document.createElement('div');yp.className='yp';yp.append(prev,yc,next);
  let x0=null;yp.onpointerdown=e=>{x0=e.clientX};yp.onpointercancel=()=>{x0=null};
  yp.onpointerup=e=>{if(x0==null)return;const dx=e.clientX-x0;x0=null;if(Math.abs(dx)>40)go(dx<0?1:-1)};
- const bkB=mkb('備份','download','pri',()=>{const y=ys[i];pdClose();backupYear(y,yearDays(y))});
+ const sm=document.createElement('div');sm.className='rt sm';sm.hidden=true;   /* 年份那排收起來時顯示的一行說明 */
+ const bkB=mkb('備份','download','pri',()=>{pdClose();backupAllYears(allTotals().days)});
  bkB.append('備份');
- const rsB=mkb('還原','undo','',()=>{const y=ys[i];pdClose();restoreYear(y)});
+ const rsB=mkb('還原','undo','',()=>{pdClose();restoreAllYears()});
  rsB.append('還原…');
  /* 網頁版：三排選擇器（年份／種類／動作），每一排一次只顯示一個選項（點兩邊箭頭，或在中間左右滑動換），選好了按最底下的「執行」才動手，不會因為滑過頭而誤做。
     編者按 / Editor's note：選了就直接執行會有危險：滑動時會一路經過其他選項（尤其「還原」）。所以一定要有獨立的「執行」鈕；動作的預設永遠是「備份」，不記住上次選過還原。
@@ -987,17 +991,19 @@ function yearDialog(){
   return row};
  const tp=PICK?mkpick(TYPES,()=>ti,v=>{ti=v;if(MPH)ai=0}):null,ap=PICK?mkpick(acts,()=>ai,v=>{ai=v}):null;   /* 母版換種類時，動作回到第一個（文字＝備份、照片＝還原） */
  const goB=PICK?mkb('執行','check','pri',()=>{const y=ys[i],t=typ(),a=act();pdClose();
-  if(t==='text'){if(a==='bk')backupYear(y,yearDays(y));else restoreYear(y)}
+  if(t==='text'){if(a==='bk')backupAllYears(allTotals().days);else restoreAllYears()}
   else if(t==='photo'){if(a==='bk')backupPhotoYear(y);else restorePhotos()}
   else{if(a==='bk')backupPdfYear(y);else restorePdfs()}}):null;
  if(goB)goB.append('執行');
- const draw=()=>{const y=ys[i],n=yearDays(y);yb.textContent=y+' 年';prev.disabled=i===0;next.disabled=i===ys.length-1;
-  if(!PICK){sp.textContent=n?n+' 天':'沒有日誌';bkB.disabled=!n;return}
-  const t=typ(),a=act();   /* 年份那排的小字：依選的種類顯示那一年有多少；還原照片／PDF 不分年份，所以直接這樣寫 */
-  let sub;if(a==='rs'&&t!=='text')sub='全部還原';else if(t==='text')sub=n?n+' 天':'沒有日誌';else{const c=cnt(t==='photo'?window.CARD_PHOTOS:window.CARD_PDFS,y);sub=c==null?'':(c+(t==='photo'?' 張':' 個'))}
-  sp.textContent=sub;tp.upd();ap.upd();goB.disabled=a==='bk'&&t==='text'&&!n;goB.setAttribute('aria-label',acts()[ai][1]+' '+y+' 年 '+TYPES[ti][1])};draw();
+ const draw=()=>{const y=ys[i],T=allTotals();yb.textContent=y+' 年';prev.disabled=i===0;next.disabled=i===ys.length-1;
+  if(!PICK){yp.hidden=true;sm.hidden=false;sm.textContent=T.days?'全部 '+T.years+' 年、'+T.days+' 天日誌，備份成一個檔':'沒有日誌可備份';bkB.disabled=!T.days;return}
+  const t=typ(),a=act(),needY=t!=='text'&&a==='bk';   /* 只有照片、PDF 的「備份」還按年份；文字（備份、還原）和照片／PDF 的還原都不分年份，所以年份那排收起來，換成一行說明 */
+  yp.hidden=!needY;sm.hidden=needY;
+  if(needY){const c=cnt(t==='photo'?window.CARD_PHOTOS:window.CARD_PDFS,y);sp.textContent=c==null?'':(c+(t==='photo'?' 張':' 個'))}
+  else sm.textContent=t==='text'?(a==='bk'?(T.days?'全部 '+T.years+' 年、'+T.days+' 天日誌，備份成一個檔':'沒有日誌可備份'):'從備份清單選一份，備份裏有的每一年都會還原'):'不分年份，依檔名日期放回原來的卡片';
+  tp.upd();ap.upd();goB.disabled=a==='bk'&&t==='text'&&!T.days;goB.setAttribute('aria-label',acts()[ai][1]+(needY?' '+y+' 年 ':' ')+TYPES[ti][1])};draw();
  const mkrow=(...bs)=>{const r=document.createElement('div');r.className='cf';r.append(...bs);return r};
- const kids=PICK?[yp,tp,ap,mkrow(goB)]:[yp,mkrow(bkB,rsB)];
+ const kids=PICK?[sm,yp,tp,ap,mkrow(goB)]:[sm,yp,mkrow(bkB,rsB)];
  if(window.BKCFG){   // 自動備份的間隔：點一下輪流切換（Scriptable 宿主和網頁版宿主會注入 BKCFG；其他宿主沒有這一行）。網頁版（PWA_AUTOCP）的自動備份是悄悄存在這部裝置，所以第二行照實寫「存在這部裝置」
   const MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
   const ar=document.createElement('div');ar.className='bka';
