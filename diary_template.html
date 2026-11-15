@@ -352,10 +352,12 @@ header .pd-in{max-width:none;margin:0;gap:4px}
 #ac .dc.off.tr::after{display:none}
 #ac .dc.off.jp{opacity:1;background:var(--accent);color:var(--bg)}
 #ac .dc.off::after{content:"";position:absolute;left:50%;bottom:6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:currentColor}
-#ac .sum{margin:12px 0 10px;min-height:46px;font-size:15px}
+#ac .sum{margin:12px 0 10px;min-height:92px;font-size:15px}   /* 固定高度：沒選日期時有兩段說明，選了日期後只有兩行，面板不會跳動 */
 #ac .sum b{display:block;font-size:17px;margin-bottom:2px}
 #ac .sum span{color:var(--sub);font-size:14px}
 #ac .sum span.bad{color:var(--bad)}
+#ac .how{margin:0 0 6px;line-height:1.45}
+#ac .how b{display:inline;font-size:15px;margin:0 6px 0 0}
 #ac .go{width:100%;height:54px;justify-content:center}
 #ac .go:disabled{opacity:.35}
 </style></head><body>
@@ -364,7 +366,7 @@ header .pd-in{max-width:none;margin:0;gap:4px}
   <button class="ib" id="vb3" type="button" aria-label="提醒清單" title="提醒清單"></button>
   <button class="ib" id="sb" type="button" aria-label="搜尋" title="搜尋"></button>
   <button class="ib" id="ly" type="button" aria-label="當年今日" title="當年今日"></button>
-  <span class="cal"><button class="ib" id="nd" type="button" aria-label="日曆：跳到某一天、增加卡片" title="日曆：跳到某一天、增加卡片"></button></span>
+  <span class="cal"><button class="ib" id="nd" type="button" aria-label="日曆：跳轉、新增卡片" title="日曆：跳轉、新增卡片"></button></span>
   <button class="ib" id="gt" type="button" aria-label="回到今天" title="回到今天"></button>
   <button class="ib" id="pdb" type="button" aria-label="更多" title="更多" aria-expanded="false"></button>
  </div>
@@ -1352,10 +1354,10 @@ try{if(window.ResizeObserver)new ResizeObserver(fit).observe(document.body)}catc
 })();
 </script>
 <script>
-/* ===== 日曆：增加卡片＋跳轉（頂欄的日曆按鈕）=====
-   在日曆裏點一天、或先後點兩天選一段日期，按「增加」就為每一天做一張空白卡片。
+/* ===== 日曆：跳轉＋新增卡片（頂欄的日曆按鈕）=====
+   在日曆裏點一天、或先後點兩天選一段日期，按「新增卡片」就為每一天做一張空白卡片。
    只做還沒有卡片的日子：範圍中間遇到已有卡片、在垃圾桶裏的日子，一律不動。
-   灰色的日子（已有卡片）點一下，「增加」變成「跳轉」，按下去就跳到那一天的卡片（取代以前的日期欄）；垃圾桶裏的日子更淡、點不到（要還原請用垃圾桶）。
+   沒點日期時按鈕是「跳轉 / 新增卡片」；點灰色的日子（已有卡片）變「跳轉」，按下去就跳到那一天的卡片（取代以前的日期欄）；垃圾桶裏的日子更淡、點不到（要還原請用垃圾桶）。
    空白卡片的記錄＝{date,text:'',blank:1,t}：blank 讓它不被當成「空白草稿」丟掉（isDraft），而且會照一般修改同步到宿主；
    寫了字按儲存，就變成一般的日子（blank 標記自然消失）。宿主（日誌.js／網頁版）原樣收發修改記錄，不用改。 */
 (function(){
@@ -1430,21 +1432,21 @@ function draw(){
  h+='</div></div>';
  let ok=false,n=0,sum;const jump=!!st.j;
  if(jump)sum='<b>'+dayLabel(st.j)+' '+wkOf(st.j)+'</b><span>已有卡片，按「跳轉」過去</span>';
- else if(!pl)sum='<b>選日期</b><span>點一天；要一段日期，再點結束的那天。灰色的已有卡片：點它可以跳轉。</span>';
+ else if(!pl)sum='<div class="how"><b>跳轉</b><span>點灰色的日子（已有卡片），再按「跳轉」。</span></div><div class="how"><b>新增卡片</b><span>點白色的日子；要一段日期，再點結束的那天，按「新增卡片」。</span></div>';
  else{
   const lab=lo===hi?dayLabel(lo)+' '+wkOf(lo):dayLabel(lo)+' – '+(hi.slice(0,4)===lo.slice(0,4)?(+hi.slice(5,7))+'月'+(+hi.slice(8))+'日':dayLabel(hi));
   n=pl.ds.length;const lim=maxBlank();
   if(!n)sum='<b>'+lab+'</b><span class="bad">這段日期都已經有卡片了</span>';
-  else if(n>lim)sum='<b>'+lab+'</b><span class="bad">'+(lim>0?'一次最多增加 '+lim+' 張，請縮短日期範圍':'還有修改沒有同步，請先同步，再增加卡片')+'</span>';
-  else{ok=true;sum='<b>'+lab+'</b><span>增加 '+n+' 張空白卡片'+(pl.skip?'（另有 '+pl.skip+' 天已有卡片，不動）':'')+'</span>'}}
- h+='<div class="ft"><div class="sum">'+sum+'</div><button type="button" class="ib2 pri go" data-a="ok"'+((ok||jump)?'':' disabled')+'>'+(jump?ico('move')+'<span>跳轉</span>':ico('calendarPlus')+'<span>增加'+(ok?' '+n+' 張':'')+'</span>')+'</button></div></div>';
+  else if(n>lim)sum='<b>'+lab+'</b><span class="bad">'+(lim>0?'一次最多新增 '+lim+' 張，請縮短日期範圍':'還有修改沒有同步，請先同步，再新增卡片')+'</span>';
+  else{ok=true;sum='<b>'+lab+'</b><span>新增 '+n+' 張空白卡片'+(pl.skip?'（另有 '+pl.skip+' 天已有卡片，不動）':'')+'</span>'}}
+ h+='<div class="ft"><div class="sum">'+sum+'</div><button type="button" class="ib2 pri go" data-a="ok"'+((ok||jump)?'':' disabled')+'>'+(jump?ico('move')+'<span>跳轉</span>':(pl?ico('calendarPlus')+'<span>新增卡片</span>':ico('calendar')+'<span>跳轉 / 新增卡片</span>'))+'</button></div></div>';
  ov.innerHTML=h}
 async function go(){
  if(busy)return;
  if(st&&st.j){const d=st.j;close();pdClose();const el=goDay(d);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(d)}else toast('找不到這一天的卡片');return}   // 跳轉：只看、不進編輯；點卡片才編輯
  const pl=plan();if(!pl)return;
  if(!pl.ds.length){toast('這段日期都已經有卡片了');return}
- const lim=maxBlank();if(pl.ds.length>lim){toast(lim>0?'一次最多增加 '+lim+' 張，請縮短日期範圍':'還有修改沒有同步，請先同步，再增加卡片');return}
+ const lim=maxBlank();if(pl.ds.length>lim){toast(lim>0?'一次最多新增 '+lim+' 張，請縮短日期範圍':'還有修改沒有同步，請先同步，再新增卡片');return}
  busy=true;
  try{
   close();pdClose();
@@ -1452,7 +1454,7 @@ async function go(){
   lastDate=pl.ds[0];
   const el=goDay(pl.ds[0]);if(el){el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),2500);holdLanding(pl.ds[0])}
   doSync();
-  toast('已增加 '+pl.ds.length+' 張空白卡片'+(pl.skip?'（'+pl.skip+' 天已有卡片，沒動）':''),3800)
+  toast('已新增 '+pl.ds.length+' 張空白卡片'+(pl.skip?'（'+pl.skip+' 天已有卡片，沒動）':''),3800)
  }finally{busy=false}}
 btn.onclick=()=>{
  if(document.querySelector('.ed')){toast('請先儲存或取消正在編輯的卡片');return}
