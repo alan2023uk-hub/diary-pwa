@@ -4,7 +4,7 @@
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
    目前支援：同步（修改存進宿主）、打開連結、全年備份與還原（內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整年改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以用「⋯」選單的「匯入資料檔」把 Scriptable 版的 weather.json 補進來（可以和日誌資料檔、備份檔一起選，程式依內容自己分；只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
-   自動備份（存在這部裝置）：到期（距這一年上次存超過設定的天數、而且之後有修改）時，打開日誌後悄悄把這一年的完整備份存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。間隔在「⋯」→「備份與還原」裏的「自動備份」切換。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「文字」那排的「備份」把備份檔存進 iCloud。
+   自動備份（存在這部裝置）：到期（距上次自動備份超過設定的天數、而且之後有修改——任何一年的日誌或提醒）時，打開日誌後悄悄把全部年份的完整備份合成一份，存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。「還原」視窗另有「全年份還原…」，一次還原備份裏的所有年份。間隔在「⋯」→「備份與還原」裏的「自動備份」切換。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「文字」那排的「備份」把備份檔存進 iCloud。
    注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：選單「照片」那排的「備份」把照片存成一張張 .jpg（經分享選單或下載存成檔案），「還原…」依檔名放回原來的卡片（日誌文字的還原做完就結束，不再追問照片）；網頁版讀不到資料夾，照片檔要自己選取。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
@@ -164,6 +164,10 @@
   // 舊格式（v1，沒有 gone）的備份也認得：每一天的時間一律當作備份建立的時間，也不含刪除記錄。
   const BK_KIND = "diary-pwa-backup", SCRIPTABLE_KIND = "diary-backup", PWA_PHOTO_PREFIX = "diary-pwa_"
   const okKind = k => k === BK_KIND || k === SCRIPTABLE_KIND
+// 全年份備份：全部年份合成一份。內容＝{ v: 3, kind: "diary-pwa-backup-all"（Scriptable 的是 "diary-backup-all"）, created, years: [每一年一份，格式和單年備份（v2）完全一樣] }。
+// 單年還原遇到這種備份，只取出那一年那一份，交給原本的還原流程；全年份還原（doRestoreAll）才一次處理所有年份。
+const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k === "diary-backup-all"
+const yearBody = (b, year) => (b && isAllKind(b.kind) && Array.isArray(b.years)) ? (b.years.find(x => x && x.year === year) || null) : null
   const p2 = n => String(n).padStart(2, "0")
   const stampOf = t => String(t.getFullYear()).slice(2) + p2(t.getMonth() + 1) + p2(t.getDate()) + "_" + p2(t.getHours()) + p2(t.getMinutes())   // 檔名用：yymmdd_hhmm（建立日期）
   const fmtShort = ms => { const t = new Date(ms); return p2(t.getDate()) + "/" + p2(t.getMonth() + 1) + " " + p2(t.getHours()) + ":" + p2(t.getMinutes()) }   // 按鈕上用的短格式（英式 日/月 時:分，例：十一月九日 19:01＝09/11 19:01）
@@ -188,6 +192,16 @@
     const body = { v: 2, kind: BK_KIND, app: "pwa", year, created: now, pre, preT: tOf.get(preKey(year)) || 0, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text, t: tOf.get(date) || 0 })), gone, reminders: rl, remGone }
     if (Array.isArray(photoNames)) body.photos = photoNames
     return { name, body, days: days.size, rems: rl.length }
+  }
+  // 全年份備份：全部年份合成一份（自動備份、全年份還原前的備份用）。自動備份只收有內容的年份；「還原前」的備份每一年都收（要退回去時，連現在沒內容的年份也要退回）。回傳 null＝沒有任何可備份的年份
+  function makeBackupBodyAll(rows, edits, now, isPre, rems, isAuto) {
+    const years = new Set((rows || []).map(r => +String(r[0]).slice(0, 4)).filter(y => y > 1999))
+    for (const e of edits || []) { const m = /^(\d{4})-/.exec(e && e.date || ""); if (m) years.add(+m[1]) }
+    const items = []
+    for (const y of [...years].sort()) { const r = makeBackupBody(y, rows, edits, now, isPre, rems, undefined, isAuto); if (isPre || r.days > 0) items.push(r) }
+    if (!items.length) return null
+    const yrs = items.map(x => ({ year: x.body.year, days: x.days, rems: x.rems }))
+    return { name: "pwa_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + (isAuto ? "_auto" : "") + "_all.json", body: { v: 3, kind: ALL_KIND, app: "pwa", created: now, years: items.map(x => x.body) }, yrs, years: yrs.length, days: items.reduce((a, x) => a + x.days, 0), rems: items.reduce((a, x) => a + x.rems, 0) }
   }
   function planRestore(year, rows, edits, b, now, rems) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法（日誌＋提醒）
     if (!b || !okKind(b.kind) || !Array.isArray(b.days)) return { ok: false, error: "這不是日誌的備份檔" }
@@ -365,6 +379,10 @@
     const s = getStore(), list = await s.get("pre:" + year) || []
     await s.set("pre:" + year, [item, ...list].slice(0, PRE_KEEP))
   }
+  async function savePreAll(item) {   // 全年份還原前的自動備份：存在這部裝置，最多留 5 份（和每一年的「還原前」分開放）
+    const s = getStore(), list = await s.get("preall") || []
+    await s.set("preall", [item, ...list].slice(0, PRE_KEEP))
+  }
   async function doBackup(yearStr) {
     if (!/^\d{4}$/.test(yearStr || "")) { say("備份失敗：年份不對"); return false }
     const year = +yearStr, s = getStore()
@@ -384,12 +402,13 @@
     return saved   // 照片不在這裏問了：用選單的「備份照片」按鈕另外備份
   }
   // ---------- 自動備份（存在這部裝置）----------
-  // 編者按 / Editor's note：網頁版的「自動備份」＝悄悄把每一年的完整備份存在這部裝置裏（IndexedDB）：不彈提示、不叫使用者存檔；數量不設上限，要刪由使用者在「還原」視窗的「整理備份…」自己勾選。
+  // 編者按 / Editor's note：網頁版的「自動備份」＝悄悄把全部年份合成一份完整備份，存在這部裝置裏（IndexedDB）：不彈提示、不叫使用者存檔；數量不設上限，要刪由使用者在「還原」視窗的「整理備份…」自己勾選。（以前是每一年各存一份；現在改成全年份一份，以前存下的逐年備份不動、不再新增，還原視窗照樣認得。）
   //   不要改回「提示使用者儲存」，也不要加張數上限或自動刪舊的（使用者明確要求不限、自己刪）。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機——那要靠「備份」按鈕存進 iCloud 的檔案；面板上的說明要照實寫「存在這部裝置」。
   //   English: the web version's "auto backup" silently keeps full per-year copies on this device (IndexedDB): no prompts, no cap, nothing auto-pruned; the user deletes copies by hand via "整理備份…" in the restore window. Do not go back to prompt-to-save and do not add a cap or auto-delete (explicitly requested).
   //   It guards against bad edits/restores, NOT against cleared browser data or a lost device; only the manual 備份 file saved to iCloud does that, so the panel text must say "存在這部裝置" honestly.
-  // 儲存方式：每一份獨立一個鍵（autocp:<id>，內容＝{ created, body }），另有一份清單（autocp:index：[{ id, year, created, days, rems, bytes }]，新到舊），列清單、算空間不用把整份備份讀出來。id＝年份-建立時間（毫秒）。
-  // 什麼時候存：設定的間隔（autobk:cfg，天數，0＝關閉）過了、而且這一年上次存完之後有修改（或這一年還沒有任何一份）→ 存一份。「上次」以清單裏這一年最新一份為準（刪掉了就不算），所以刪光之後下次檢查會再存一份。
+  // 儲存方式：每一份獨立一個鍵（autocp:<id>，內容＝{ created, body }），另有一份清單（autocp:index，新到舊），列清單、算空間不用把整份備份讀出來。
+    //   全年份備份：id＝all-建立時間（毫秒），清單項目 { id, all: true, created, yrs: [{ year, days, rems }], days, rems, bytes }（days、rems＝全部年份的合計）；以前逐年的備份：id＝年份-建立時間，清單項目 { id, year, created, days, rems, bytes }。
+  // 什麼時候存：設定的間隔（autobk:cfg，天數，0＝關閉）過了、而且上次自動備份之後有修改（任何一年的日誌或提醒），或還沒有任何全年份自動備份 → 存一份。「上次」以清單裏最新一份全年份備份為準（刪掉了就不算），所以刪光之後下次檢查會再存一份；以前逐年的備份不算。
   // 以前的「提示式」自動備份（autobk:last、autobk:snooze、autobackup 資料夾的檔案）不再使用；舊的記錄留在原處不動，Scriptable 版的還原選單仍然認得那些舊檔案。
   const AUTO_BK_DAYS = 7
   const okBkDays = n => Number.isInteger(n) && n >= 0 && n <= 365
@@ -398,9 +417,9 @@
   const AC_INDEX = "autocp:index", acKey = id => "autocp:" + id
   let acChain = Promise.resolve()   // 清單的讀改寫排成一條隊：自動存和整理刪除同時進行時，不會互相蓋掉
   function acTask(fn) { const p = acChain.then(fn); acChain = p.then(() => {}, () => {}); return p }
-  async function readAcIndex() {   // [{ id, year, created, days, rems, bytes }]，新到舊
+  async function readAcIndex() {   // 全年份：{ id, all, created, yrs, days, rems, bytes }；逐年（舊）：{ id, year, created, days, rems, bytes }；新到舊
     const v = await getStore().get(AC_INDEX)
-    return (Array.isArray(v) ? v : []).filter(x => x && typeof x.id === "string" && Number.isInteger(x.year) && Number.isFinite(x.created)).sort((a, b) => b.created - a.created || b.year - a.year)
+    return (Array.isArray(v) ? v : []).filter(x => x && typeof x.id === "string" && Number.isFinite(x.created) && (Number.isInteger(x.year) || (x.all === true && Array.isArray(x.yrs)))).sort((a, b) => b.created - a.created || (b.year || 0) - (a.year || 0))
   }
   async function readAcBody(id) { const v = await getStore().get(acKey(id)); return v && v.body && typeof v.body === "object" ? v.body : null }
   async function deleteAutoCopies(ids) {   // 回傳刪完後的清單。先改清單、再刪內容：中途出錯，最多留下看不到的舊內容，不會留下「點了卻讀不到」的項目
@@ -423,22 +442,15 @@
     say("自動備份：" + bkDaysLabel(days))
     if (days > 0) autoBackupCheck().catch(() => {})   // 剛開啟（或改短）：不用等下次打開，現在就看有沒有該存的
   }
-  async function autoBackupItems(now) {   // 現在該存的年份（沒開啟、或都還不到期，回傳空陣列）
+  async function autoBackupItems(now) {   // 現在該存的全年份備份（沒開啟、還不到期、或沒有任何內容，回傳空陣列；最多一份）
     const days = await readBkDays()
     if (days <= 0) return []
     const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), idx = await readAcIndex()
-    const years = new Set(rows.map(r => +String(r[0]).slice(0, 4)).filter(y => y > 1999))
-    for (const e of edits) { const m = /^(\d{4})-/.exec(e && e.date || ""); if (m) years.add(+m[1]) }
-    const out = []
-    for (const y of [...years].sort()) {
-      const lastMs = idx.filter(x => x.year === y).reduce((a, x) => Math.max(a, x.created), 0)
-      if (lastMs && now - lastMs < days * 864e5) continue
-      if (lastMs && ![...edits, ...rems].some(r => r && String(r.date || "").startsWith(y + "-") && (Number(r.t) || 0) > lastMs)) continue   // 上次存完之後沒有修改
-      if (!effectiveDays(y, rows, edits).days.size) continue   // 這一年沒有內容
-      const r = makeBackupBody(y, rows, edits, now, false, rems, undefined, true)
-      out.push({ year: y, name: r.name, body: r.body, text: JSON.stringify(r.body), days: r.days, rems: r.rems })
-    }
-    return out
+    const lastMs = idx.filter(x => x.all).reduce((a, x) => Math.max(a, x.created), 0)   // 只看全年份備份（以前逐年的不算）
+    if (lastMs && now - lastMs < days * 864e5) return []
+    if (lastMs && ![...edits, ...rems].some(r => r && (Number(r.t) || 0) > lastMs)) return []   // 上次存完之後沒有修改
+    const r = makeBackupBodyAll(rows, edits, now, false, rems, true)   // 沒有任何年份有內容就是 null
+    return r ? [{ name: r.name, body: r.body, text: JSON.stringify(r.body), yrs: r.yrs, days: r.days, rems: r.rems }] : []
   }
   let autoBusy = false
   async function autoBackupCheck() {   // 回傳 true＝這次有存新的（悄悄存，沒有任何提示；存失敗才提醒，而且一天最多一次）
@@ -450,9 +462,9 @@
       await acTask(async () => {
         const s = getStore(), idx = await readAcIndex()
         for (const it of items) {
-          const id = it.year + "-" + now
+          const id = "all-" + now
           await s.set(acKey(id), { created: now, body: it.body })
-          idx.push({ id, year: it.year, created: now, days: it.days, rems: it.rems, bytes: it.text.length })
+          idx.push({ id, all: true, created: now, yrs: it.yrs, days: it.days, rems: it.rems, bytes: it.text.length })
           await s.set(AC_INDEX, idx)   // 每存好一份就更新清單：中途出錯，已存好的也都在清單裏
         }
       })
@@ -464,7 +476,8 @@
     } finally { autoBusy = false }
   }
   const fmtMB = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + " KB" : (n / 1048576).toFixed(1) + " MB"
-  const acLabel = x => fmtShort(x.created) + " · " + x.days + "天" + (typeof x.rems === "number" ? " · " + x.rems + "提醒" : "")   // 還原視窗按鈕上用的（和「還原前…」同一個格式）
+  const acLabel = (x, year) => { const y = x.all ? (x.yrs.find(r => r.year === year) || {}) : x; return fmtShort(x.created) + (x.all ? " · 全年份" : "") + " · " + (y.days || 0) + "天" + (typeof y.rems === "number" ? " · " + y.rems + "提醒" : "") }   // 還原視窗按鈕上用的（和「還原前…」同一個格式）；全年份備份顯示的是這一年的天數、提醒數
+  const acLabelAll = x => fmtShort(x.created) + " · " + x.yrs.length + "年 · " + x.days + "天 · " + x.rems + "提醒"   // 全年份還原視窗按鈕上用的
   async function manageAutoCopies() {   // 「還原」視窗的「整理備份…」：勾選要刪的自動備份（所有年份），按「刪除」再按一次確認才真的刪；刪完留在清單裏，可以接著整理
     const d = root.document
     if (!d.getElementById("hu-css")) { const st = d.createElement("style"); st.id = "hu-css"; st.textContent = CSS; d.head.appendChild(st) }
@@ -490,7 +503,7 @@
           const lb = d.createElement("label"), cb = d.createElement("input"), tx = d.createElement("span"), sm = d.createElement("small")
           lb.className = "hu-row"; cb.type = "checkbox"; cb.checked = sel.has(x.id)
           cb.onchange = () => { if (cb.checked) sel.add(x.id); else sel.delete(x.id); armed = false; sync() }
-          tx.textContent = x.year + " 年　" + fmtTime(x.created) + " · " + x.days + " 天" + (typeof x.rems === "number" ? " · " + x.rems + " 提醒" : ""); sm.textContent = fmtMB(x.bytes || 0); tx.appendChild(sm)
+          tx.textContent = (x.all ? "全年份（" + x.yrs.length + " 年）" : x.year + " 年") + "　" + fmtTime(x.created) + " · " + x.days + " 天" + (typeof x.rems === "number" ? " · " + x.rems + " 提醒" : ""); sm.textContent = fmtMB(x.bytes || 0); tx.appendChild(sm)
           lb.append(cb, tx); return lb
         }))
         sync()
@@ -519,23 +532,27 @@
   async function doRestore(yearStr) {   // 回傳 true＝有改動（呼叫端要把最新的修改推回頁面）
     if (!/^\d{4}$/.test(yearStr || "")) { say("還原失敗：年份不對"); return false }
     const year = +yearStr, s = getStore(), pres = await s.get("pre:" + year) || []
-    // 編者按 / Editor's note：還原視窗只做「還原」：選備份檔、這一年的自動備份、還原前自動留下的備份，加上「整理備份…」。不要把「還原照片」「匯入天氣」放回來（照片在選單「照片」那排、天氣和資料檔在「匯入資料檔」），
+    const presAll = (await s.get("preall") || []).filter(x => x && x.body && yearBody(x.body, year))   // 全年份還原前留下的備份裏有這一年的（選了只還原這一年）
+    // 編者按 / Editor's note：還原視窗只做「還原」：選備份檔、這一年的自動備份（含全年份備份裏有這一年的）、還原前自動留下的備份，加上「全年份還原…」（一次還原一份全年份備份裏的所有年份，見 doRestoreAll）和「整理備份…」。不要把「還原照片」「匯入天氣」放回來（照片在選單「照片」那排、天氣和資料檔在「匯入資料檔」），
     //   也不要在日誌還原完之後自動追問要不要還原照片（使用者要求拿掉）。還原前自動留下的備份（固定 5 份）和自動備份分開，不放進「整理備份…」。
     //   English: this window only restores (file / this year's auto copies / pre-restore copies) plus "整理備份…". Do not put photo restore or weather import back here, and do not re-add the automatic "restore photos too?" prompt after a restore (removed on request). The 5 pre-restore copies stay separate from the auto copies.
     const AC_SHOW = 5   // 視窗裏先列最近幾份自動備份；更多的放進「更多自動備份…」
     let pick
     for (;;) {
-      const all = await readAcIndex(), acs = all.filter(x => x.year === year)
+      const all = await readAcIndex(), acs = all.filter(x => x.all ? x.yrs.some(r => r.year === year) : x.year === year)   // 全年份備份：有包含這一年的也列在這裏（選了只還原這一年）
       const buttons = [{ label: "從檔案…", kind: "pri", onclick: pickFile }]
-      acs.slice(0, AC_SHOW).forEach(x => buttons.push({ label: "自動 " + acLabel(x), value: { auto: x.id } }))
+      acs.slice(0, AC_SHOW).forEach(x => buttons.push({ label: "自動 " + acLabel(x, year), value: { auto: x.id } }))
       if (acs.length > AC_SHOW) buttons.push({ label: "更多自動備份（共 " + acs.length + " 份）…", value: "more" })
       pres.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + x.body.days.length + "天" + (Array.isArray(x.body.reminders) ? " · " + x.body.reminders.length + "提醒" : ""), value: { pre: i } }))
+      presAll.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · 全年份 · " + yearBody(x.body, year).days.length + "天", value: { preall: i } }))
+      buttons.push({ label: "全年份還原…", value: "all" })   // 一次還原一份全年份備份裏的所有年份
       if (all.length) buttons.push({ label: "整理備份…", value: "manage" })
       buttons.push({ label: "取消", value: null })
       const got = await modal("還原 " + year + " 年日誌", "選一份備份檔（.json）" + (acs.length || pres.length ? "，或下面自動留存、還原前自動留下的備份" : ""), buttons)
+      if (got === "all") return await doRestoreAll()   // 全年份還原：見下面 doRestoreAll
       if (got === "manage") { await manageAutoCopies(); continue }   // 整理完回到這個視窗（清單已經更新）
       if (got === "more") {
-        const m = await modal("選一份自動備份", year + " 年的自動備份，新到舊", [...acs.map(x => ({ label: acLabel(x), value: { auto: x.id } })), { label: "返回", value: null }])
+        const m = await modal("選一份自動備份", year + " 年的自動備份，新到舊", [...acs.map(x => ({ label: acLabel(x, year), value: { auto: x.id } })), { label: "返回", value: null }])
         if (m) { pick = m; break }
         continue
       }
@@ -544,8 +561,9 @@
     if (!pick) return false
     let b
     try {
-      b = pick.file ? JSON.parse(await pick.file.text()) : pick.auto ? await readAcBody(pick.auto) : pres[pick.pre].body
+      b = pick.file ? JSON.parse(await pick.file.text()) : pick.auto ? await readAcBody(pick.auto) : pick.preall !== undefined ? presAll[pick.preall].body : pres[pick.pre].body
       if (!b) throw new Error("這份自動備份讀不到（可能已經刪除了）")
+      if (b && isAllKind(b.kind)) { b = yearBody(b, year); if (!b) throw new Error("這份全年份備份沒有 " + year + " 年") }   // 全年份備份：只取這一年那一份，後面和單年備份一模一樣
     } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
     const rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), now = Date.now()
     const plan = planRestore(year, rows, edits, b, now, rems)
@@ -576,6 +594,74 @@
     await s.set("edits", plan.edits)
     if (plan.remTouch) { await saveRems(plan.rems); await markFired(plan.rems, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
     say("已還原 " + year + " 年：" + plan.target.size + " 天" + (plan.remTouch ? "、" + plan.remTarget + " 則提醒" : "") + "（還原前已自動備份）")
+    return true
+  }
+
+  // ---------- 全年份還原：選一份全年份備份，對裏面的每一年各做一次「合併」或「完全還原」；一次確認、一次還原前備份 ----------
+  // 每一年用的規則和 doRestore 一模一樣：合併＝planMerge；完全還原＝planRestore。備份裏沒有的年份完全不動。回傳 true＝有改動（呼叫端要把最新的修改推回頁面）
+  async function doRestoreAll() {
+    const s = getStore(), presAll = await s.get("preall") || [], ACA_SHOW = 5
+    let pick
+    for (;;) {
+      const acs = (await readAcIndex()).filter(x => x.all)
+      const buttons = [{ label: "從檔案…", kind: "pri", onclick: pickFile }]
+      acs.slice(0, ACA_SHOW).forEach(x => buttons.push({ label: "自動 " + acLabelAll(x), value: { auto: x.id } }))
+      if (acs.length > ACA_SHOW) buttons.push({ label: "更多自動備份（共 " + acs.length + " 份）…", value: "more" })
+      presAll.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + (Array.isArray(x.body.years) ? x.body.years.length : 0) + "年", value: { pre: i } }))
+      buttons.push({ label: "取消", value: null })
+      const got = await modal("還原全年份日誌", "選一份全年份備份。備份裏有的每一年都會還原，沒有的年份不會動" + (acs.length || presAll.length ? "" : "。還沒有全年份的自動備份（開啟自動備份後會自動做一份），也可以從檔案選"), buttons)
+      if (got === "more") {
+        const m = await modal("選一份自動備份", "全年份的自動備份，新到舊", [...acs.map(x => ({ label: acLabelAll(x), value: { auto: x.id } })), { label: "返回", value: null }])
+        if (m) { pick = m; break }
+        continue
+      }
+      pick = got; break
+    }
+    if (!pick) return false
+    let b
+    try {
+      b = pick.file ? JSON.parse(await pick.file.text()) : pick.auto ? await readAcBody(pick.auto) : presAll[pick.pre].body
+      if (!b) throw new Error("這份自動備份讀不到（可能已經刪除了）")
+      if (!isAllKind(b.kind) || !Array.isArray(b.years)) throw new Error("這不是全年份備份。單年的備份請用年份的「還原」")
+    } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
+    const bodies = b.years.filter(x => x && okKind(x.kind) && Number.isInteger(x.year) && Array.isArray(x.days)).sort((x, y) => x.year - y.year)
+    if (!bodies.length) { await modal("沒辦法還原", "這份備份裏沒有可以還原的年份", [{ label: "好", value: 1 }]); return false }
+    const rows = await s.get("rows") || [], edits0 = await s.get("edits") || [], rems0 = await readRems(), now = Date.now()
+    let mE = edits0, mR = rems0, fE = edits0, fR = rems0   // m＝合併的結果，f＝完全還原的結果；一年接著一年算（不同年份的日期不會互相影響）
+    const per = []
+    for (const yb of bodies) {
+      const y = yb.year
+      const fp = planRestore(y, rows, fE, yb, now, fR)
+      if (!fp.ok) { await modal("沒辦法還原", fp.error, [{ label: "好", value: 1 }]); return false }
+      fE = fp.edits; if (fp.remTouch) fR = fp.rems
+      const mp = planMerge(y, effectiveDays(y, rows, mE), mE, mR, readBackupBody(yb, y), now); mE = mp.edits; mR = mp.rems
+      per.push({ y, fp, mp, ms: mergeSummary(mp) })
+    }
+    const sum = f => per.reduce((a, x) => a + f(x), 0)
+    if (per.every(x => x.fp.same)) { await modal("不需要還原", "目前的日誌和提醒，與這份備份完全相同。", [{ label: "好", value: 1 }]); return false }
+    const curDays = sum(x => x.fp.cur.size), tgtDays = sum(x => x.fp.target.size)
+    const fAdd = sum(x => x.fp.add), fChg = sum(x => x.fp.chg), fDel = sum(x => x.fp.del), fPre = sum(x => x.fp.preChange ? 1 : 0)
+    const parts = [fAdd && "新增 " + fAdd + " 天", fChg && "改回備份內容 " + fChg + " 天", fDel && "刪除 " + fDel + " 天", fPre && "前言改回備份內容"].filter(Boolean)
+    const remTouch = per.some(x => x.fp.remTouch), remDiff = sum(x => x.fp.remDiff), changed = per.filter(x => x.ms), still = per.length - changed.length
+    const choice = await modal("還原全年份（" + bodies.length + " 年）？", "備份 " + fmtTime(b.created || now) + (b.kind === ALL_KIND ? "（網頁版）" : "") +
+      "\n\n合併：" + curDays + " → " + sum(x => x.mp.days) + " 天" + (changed.length ? "\n" + changed.map(x => "　" + x.y + "：" + x.ms).join("\n") + (still ? "\n　其餘 " + still + " 年沒有變動" : "") : "（沒有變動）") +
+      "\n\n完全還原：" + curDays + " → " + tgtDays + " 天" + (parts.length ? "（" + parts.join("、") + "）" : "（內容相同）") +
+      (remTouch ? "\n提醒：" + sum(x => x.fp.remCur) + " → " + sum(x => x.fp.remTarget) + " 則" + (remDiff ? "（" + remDiff + " 則有變動）" : "") : "") + "\n\n還原前會自動備份目前內容（全年份一份）。",
+      [{ label: "合併（留較新的）", kind: "pri", value: "merge" }, { label: "完全還原（以備份為準）", kind: "dng", value: "full" }, { label: "取消", value: null }])
+    if (!choice) return false
+    const savePreNow = async () => { const pre = makeBackupBodyAll(rows, edits0, now, true, rems0); if (pre) await savePreAll({ created: now, body: pre.body }) }
+    if (choice === "merge") {
+      if (per.every(x => x.mp.same)) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); return false }
+      await savePreNow()   // 合併前先存一份
+      await s.set("edits", mE)
+      if (per.some(x => x.mp.remDiff)) { await saveRems(mR); await markFired(per.flatMap(x => x.mp.remChanged), now) }   // 備份裏已經過去的提醒時間，不要合併完馬上又響
+      say("已合併全年份（" + bodies.length + " 年）：" + sum(x => x.mp.days) + " 天、" + sum(x => x.mp.remCount) + " 則提醒（合併前已自動備份）")
+      return true
+    }
+    await savePreNow()   // 還原前先存一份
+    await s.set("edits", fE)
+    if (remTouch) { await saveRems(fR); await markFired(fR, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
+    say("已還原全年份（" + bodies.length + " 年）：" + tgtDays + " 天" + (remTouch ? "、" + sum(x => x.fp.remTarget) + " 則提醒" : "") + "（還原前已自動備份）")
     return true
   }
 
