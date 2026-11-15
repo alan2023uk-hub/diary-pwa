@@ -1432,7 +1432,7 @@ function draw(){
  h+='</div></div>';
  let ok=false,n=0,sum;const jump=!!st.j;
  if(jump)sum='<b>'+dayLabel(st.j)+' '+wkOf(st.j)+'</b><span>已有卡片，按「跳轉」過去</span>';
- else if(!pl)sum='<div class="how"><b>跳轉</b><span>點灰色的日子（已有卡片），再按「跳轉」。</span></div><div class="how"><b>新增卡片</b><span>點白色的日子；要一段日期，再點結束的那天，按「新增卡片」。</span></div>';
+ else if(!pl)sum='<div class="how"><b>跳轉</b><span>點灰色的日子（已有卡片），再按「跳轉」。</span></div><div class="how"><b>新增卡片</b><span>點深色的日子；選一天，或選多天時點首、尾兩天，再按「新增卡片」。</span></div>';
  else{
   const lab=lo===hi?dayLabel(lo)+' '+wkOf(lo):dayLabel(lo)+' – '+(hi.slice(0,4)===lo.slice(0,4)?(+hi.slice(5,7))+'月'+(+hi.slice(8))+'日':dayLabel(hi));
   n=pl.ds.length;const lim=maxBlank();
