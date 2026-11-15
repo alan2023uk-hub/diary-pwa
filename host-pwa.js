@@ -2485,6 +2485,7 @@
   // 為什麼需要：還原只能還原「目前正在看的那一年」，而年份選單是依已匯入的資料產生的。改用主畫面 App 之後（它的儲存和 Safari 是分開的）如果只匯入了今年，就選不到其他年份；
   // 「第一次使用」的匯入畫面又只在完全沒有資料時才出現。所以在日誌頁補一個入口，把 data2025.json 或 2025 年的備份檔補進來。
   // 可選：dataXXXX.json（Scriptable 版的資料檔）、備份檔（.json，網頁版和 Scriptable 版的都行）；天氣檔（weather.json）也可以一起選：程式依內容自己分（日誌、備份、天氣），天氣檔走 importWeatherData（只收已經發生的日子）。照片不在這些檔案裏。
+  // 例外：行程 CSV（.csv）要單獨選，走下面「匯入行程 CSV」那一節——它是使用者明確要求「已有內容的卡片，把匯入的文字加在原內容上方」，所以會改到已有的日子（只加不刪、原內容不動，而且先自動備份）。JSON 這一條路仍然只加不蓋。
   async function planDataAdd(files) {   // 讀檔、算出「會加入什麼」；這一步不寫入任何東西。回傳 { add（要加的列）, rems（要加的提醒）, skip（已經有、略過的天數）, wxs（選到的天氣檔內容，由呼叫端另外匯入）, years（年 → 天數）}
     const s = getStore(), found = new Map(), remsIn = [], wxs = []
     for (const f of files) {   // 讀檔的規則和 importFiles 相同
@@ -2519,12 +2520,205 @@
     if (p.rems.length) { await saveRems(mergeRems(await readRems(), p.rems)); await markFired(p.rems, Date.now()) }
     return add.length
   }
+  // ---------- 匯入行程 CSV（日誌頁「⋯」→「匯入資料檔」選到 .csv）----------
+  // 格式：旅遊行程 App 匯出的 CSV（欄：TripName、StartDateTime、End Time(Arrival/Check-out)、NumberOfNights、DepartureAirport、FlightNumber、AirlineName、ArrivalDateTime、ArrivalAirport、HotelAddressFull、Notes；欄名不分大小寫、依欄名找，欄的順序不重要）。
+  // 每一列放進「開始日期」（StartDateTime 的日期）那一天的卡片，排成條列（同一天好幾列，依時間排）：
+  //   • 標題（TripName）
+  //     - 住宿：入住 15:00，12月4日退房（33 晚）　　航班：航空公司 航班號／起飛 18:55 LHR T5 → 抵達 1月5日 15:50 HKG T1
+  //     - 地址：…
+  //     - 備註：…（備註是網頁格式，轉成純文字；住宿列的 ArrivalDateTime 常是舊資料，不用）
+  // 那一天沒有卡片就先新增；已有內容就放在原內容的上方（原內容一個字都不動；原稿卡片開頭的「5. 星期二」標題行仍留在最上面，頁面照舊把它藏起來）。
+  // 同一份 CSV 再匯入一次不會重複：某一列的條列已經在那張卡片裏，就略過那一列。垃圾桶裏的日子（含永久刪除的原稿日子）不碰。
+  // 匯入前先把「已有內容被加上去」的那幾年存一份自動備份（還原視窗的「還原前的備份」，每年最多留 5 份）。寫入的是修改（edits），格式和頁面自己存的修改一樣，所以備份、同步、還原都照常。
+  const isCsvFile = f => /\.csv$/i.test(f && f.name || "") || /csv/i.test(f && f.type || "")
+  function parseCsv(text) {   // 標準 CSV：欄位可以用雙引號包起來（裏面可有逗號、換行；兩個引號＝一個引號）；分隔符號自動判斷（逗號、分號、Tab）；回傳二維陣列（略過全空的列）
+    text = String(text || "").replace(/^\uFEFF/, "")
+    const first = text.split(/\r\n|\n|\r/, 1)[0] || "", cnt = c => first.split(c).length - 1
+    let delim = ",", best = cnt(",")
+    for (const c of [";", "\t"]) if (cnt(c) > best) { best = cnt(c); delim = c }
+    const out = []; let row = [], f = "", q = false
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i]
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++ } else q = false } else f += c }
+      else if (c === '"' && f === "") q = true
+      else if (c === delim) { row.push(f); f = "" }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); f = ""; out.push(row); row = [] }
+      else f += c
+    }
+    if (f !== "" || row.length) { row.push(f); out.push(row) }
+    return out.filter(r => r.some(x => String(x).trim() !== ""))
+  }
+  function parseDT(str) {   // "2027-03-28 10:45:00 pm"（pm 前面可能是特殊空格）、"2027-03-29"、"2027-03-28T22:45" → { date: "2027-03-28", time: "22:45"（沒有時間就是空字串）}；看不懂回傳 null
+    const m = /(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s\u202f\u00a0]+(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp])\.?[Mm]\.?)?)?/.exec(String(str || "").trim())
+    if (!m) return null
+    const y = +m[1], mo = +m[2], d = +m[3], dt = new Date(y, mo - 1, d)
+    if (y < 2000 || y > 2100 || dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null
+    let time = ""
+    if (m[4] !== undefined) {
+      let h = +m[4]; const ap = (m[6] || "").toLowerCase()
+      if (ap === "p" && h < 12) h += 12
+      if (ap === "a" && h === 12) h = 0
+      if (h <= 23 && +m[5] <= 59) time = p2(h) + ":" + m[5]
+    }
+    return { date: y + "-" + p2(mo) + "-" + p2(d), time }
+  }
+  function htmlToText(str) {   // 備註常是網頁格式（<p>、<br>、&nbsp;、表格…）：轉成純文字；不是網頁格式的文字原樣保留（只統一換行）。每行去掉頭尾空白，連續空行只留一行
+    let s = String(str || "").replace(/\r\n?/g, "\n")
+    const html = /<\/?[a-zA-Z][^>]*>|&(?:nbsp|amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);/.test(s)
+    if (html) {
+      s = s.replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi, "")
+        .replace(/[\n\t]+/g, " ")   // 網頁原始碼裏的換行只是空白；真正的換行是 <br> 和區塊標籤
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<li\b[^>]*>/gi, "\u0001- ")   // \u0001＝區塊的邊界：連續幾個邊界只算一次換行，所以段落之間不會多出空行；真正的空行（<br><br>、<p><br></p>）才保留
+        .replace(/<\/?(?:p|div|h[1-6]|li|tr|blockquote|ul|ol|table|section|article|pre)\b[^>]*>/gi, "\u0001")
+        .replace(/<\/(?:td|th)\s*>/gi, " ")
+        .replace(/<\/?[a-zA-Z][^>]*>/g, "")
+      const cp = n => { try { return String.fromCodePoint(n) } catch (e) { return "" } }
+      s = s.replace(/&nbsp;/gi, " ").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&apos;/gi, "'")
+        .replace(/&#(\d+);/g, (m, n) => cp(+n)).replace(/&#x([0-9a-fA-F]+);/g, (m, n) => cp(parseInt(n, 16))).replace(/&amp;/gi, "&")
+      s = s.replace(/\u0001(?:[ \u00a0]*\u0001)*/g, "\n")
+      s = s.replace(/[ \u00a0]{2,}/g, " ")
+    }
+    const lines = s.split("\n").map(l => html ? l.replace(/^[ \u00a0]+|[ \u00a0]+$/g, "") : l.replace(/[ \u00a0]+$/g, ""))
+    const out = []
+    for (const l of lines) { if (l === "" && (!out.length || out[out.length - 1] === "")) continue; out.push(l) }
+    while (out.length && out[out.length - 1] === "") out.pop()
+    return out.join("\n")
+  }
+  function csvTravelRows(text, name) {   // 解析一份行程 CSV → { rows（每列一個物件）, bad（開始日期看不懂、略過的列數）, total（資料列數）}
+    const t = parseCsv(text)
+    if (t.length < 2) throw new Error("「" + name + "」裏沒有資料列")
+    const norm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+    const H = t[0].map(norm), at = k => H.indexOf(k), atp = k => H.findIndex(h => h.startsWith(k))
+    const ix = { trip: at("tripname"), start: at("startdatetime"), end: atp("endtime"), nights: at("numberofnights"), dep: at("departureairport"), flight: at("flightnumber"), airline: at("airlinename"), arr: at("arrivaldatetime"), arrAp: at("arrivalairport"), addr: at("hoteladdressfull"), notes: at("notes") }
+    if (ix.trip < 0 || ix.start < 0) throw new Error("「" + name + "」不是行程 CSV（找不到 TripName、StartDateTime 這兩欄）")
+    const g = (r, k) => ix[k] >= 0 && r[ix[k]] != null ? String(r[ix[k]]).trim() : ""
+    const rows = []; let bad = 0
+    t.slice(1).forEach((r, n) => {
+      const st = parseDT(g(r, "start"))
+      if (!st) { bad++; return }
+      const en = parseDT(g(r, "end")), ar = parseDT(g(r, "arr"))
+      rows.push({ idx: n, date: st.date, time: st.time, trip: g(r, "trip"), end: en ? en.date : "", nights: parseInt(g(r, "nights"), 10), dep: g(r, "dep"), flight: g(r, "flight"), airline: g(r, "airline"), arrDate: ar ? ar.date : "", arrTime: ar ? ar.time : "", arrAp: g(r, "arrAp"), addr: g(r, "addr"), notes: ix.notes >= 0 && r[ix.notes] != null ? String(r[ix.notes]) : "" })
+    })
+    return { rows, bad, total: t.length - 1 }
+  }
+  const fmtMD = (d, ref) => (d.slice(0, 4) === ref.slice(0, 4) ? "" : (+d.slice(0, 4)) + "年") + (+d.slice(5, 7)) + "月" + (+d.slice(8)) + "日"   // 和參照日同一年就省略年份
+  function travelLines(r) {   // 一列行程 → 條列的每一行
+    const L = [], title = r.trip || "（未命名）"
+    L.push("• " + title)
+    const flight = !!(r.flight || r.dep || /^✈/.test(r.trip))
+    if (flight) {
+      const al = [r.airline, r.flight].filter(Boolean).join(" ")
+      if (al) L.push("  - " + al)
+      const dep = [r.time, r.dep].filter(Boolean).join(" ")
+      const arr = [r.arrDate && r.arrDate !== r.date ? fmtMD(r.arrDate, r.date) : "", r.arrTime, r.arrAp].filter(Boolean).join(" ")
+      const route = [dep && "起飛 " + dep, arr && "抵達 " + arr].filter(Boolean).join(" → ")
+      if (route) L.push("  - " + route)
+    } else {
+      const out = r.end ? fmtMD(r.end, r.date) + "退房" : "", n = r.nights > 0 ? r.nights + " 晚" : ""
+      L.push("  - 入住" + (r.time ? " " + r.time : "") + (out ? "，" + out : "") + (n ? "（" + n + "）" : ""))
+    }
+    const key = x => String(x || "").replace(/[\s,，.。]/g, "").toLowerCase()
+    if (r.addr && key(r.addr) !== key(r.trip)) L.push("  - 地址：" + r.addr)
+    const note = htmlToText(r.notes)
+    if (note) { const nl = note.split("\n"); L.push("  - 備註：" + nl[0]); for (const l of nl.slice(1)) L.push(l === "" ? "" : "    " + l) }
+    return L
+  }
+  function insertAbove(cur, block, d, isRaw) {   // 把 block 放在這一天原內容的上方。原稿的日子（isRaw）開頭有「5. 星期二」標題行，頁面看卡片時會把它藏起來；標題行留在最上面，block 接在它下面，原內容一字不動
+    if (cur.trim() === "") return block
+    if (isRaw) {
+      const re = new RegExp("^\\s{0,3}" + (+d.slice(8)) + "\\s*[.．]\\s*(星期[一二三四五六日])?\\s*"), lines = cur.split("\n")   // 和模板的 viewText 找標題行的規則一樣
+      for (let i = 0; i < lines.length && i < 8; i++) {
+        const m = re.exec(lines[i]); if (!m) continue
+        const head = lines.slice(0, i).concat([m[0].replace(/\s+$/, "")]), rest = [lines[i].slice(m[0].length)].filter(x => x.trim() !== "").concat(lines.slice(i + 1)).join("\n").replace(/^\n+/, "")
+        return head.join("\n") + "\n" + block + (rest ? "\n\n" + rest : "")
+      }
+    }
+    return block + "\n\n" + cur.replace(/^\n+/, "")
+  }
+  function buildCsvPlan(parsed, rows, edits, now) {   // 純計算（不寫入）：parsed＝csvTravelRows 的結果（可以多份）。回傳 { items（要寫入的日子：{date,text,orig,had}）, total, bad, dup（之前匯入過）, trash（在垃圾桶）, topYears（已有內容被加上去的年份）, years }
+    const raw = new Map((rows || []).filter(r => !r[3]).map(r => [r[0], r[2]]))
+    const by = new Map((edits || []).filter(e => e && DATERE.test(e.date || "")).map(e => [e.date, e]))
+    const perDate = new Map(); let total = 0, bad = 0, seq = 0
+    for (const p of parsed) { total += p.total; bad += p.bad; for (const r of p.rows) { const x = Object.assign({}, r, { idx: seq++ }); if (!perDate.has(r.date)) perDate.set(r.date, []); perDate.get(r.date).push(x) } }
+    const items = [], topYears = new Set(), years = {}; let dup = 0, trash = 0
+    for (const d of [...perDate.keys()].sort()) {
+      const e = by.get(d)
+      if (e && e.deleted) { trash++; continue }   // 垃圾桶裏（含永久刪除的原稿日子）：不碰
+      const cur = e && !e.del ? (typeof e.text === "string" ? e.text : "") : (raw.has(d) ? raw.get(d) : "")   // 這一天現在看到的內容：修改優先，其次原稿
+      const chunks = []
+      for (const r of perDate.get(d).sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : b.idx - a.idx)) { const c = travelLines(r).join("\n"); if (!chunks.includes(c)) chunks.push(c) }   // 同一天依時間排；時間一樣就照檔案由下往上（檔案是新的在上）
+      const fresh = chunks.filter(c => !cur.includes(c))   // 已經在卡片裏的那一列：略過，所以重複匯入不會寫兩次
+      if (!fresh.length) { dup++; continue }
+      const had = cur.trim() !== ""
+      items.push({ date: d, text: insertAbove(cur, fresh.join("\n"), d, raw.has(d)), orig: raw.has(d) ? raw.get(d) : null, had })
+      const y = d.slice(0, 4); years[y] = (years[y] || 0) + 1
+      if (had) topYears.add(y)
+    }
+    return { items, total, bad, dup, trash, topYears: [...topYears].sort(), years }
+  }
+  function pageUnsynced() {   // 頁面上還沒送到宿主的修改（正常是空的：儲存之後馬上同步）；算進去，才不會蓋掉
+    try { const l = typeof root.pendingList === "function" ? root.pendingList() : []; return Array.isArray(l) ? l.filter(r => r && typeof r === "object" && DATERE.test(r.date || "")) : [] } catch (e) { return [] }
+  }
+  async function readCsvText(f) {   // 先當 UTF-8 讀；出現亂碼符號才試 Big5（Excel 在繁體中文系統存的 CSV）
+    if (typeof f.arrayBuffer !== "function") return await f.text()
+    const buf = await f.arrayBuffer(); let t = new TextDecoder("utf-8").decode(buf)
+    if (t.includes("\uFFFD")) { try { const b = new TextDecoder("big5").decode(buf); if (!b.includes("\uFFFD")) t = b } catch (e) {} }
+    return t
+  }
+  async function planCsvAdd(files) {   // 讀檔、算出「會寫入什麼」；這一步不寫入任何東西。回傳 { parsed（讀好的列，交給 commitCsvAdd）, plan }
+    const parsed = []
+    for (const f of files) parsed.push(csvTravelRows(await readCsvText(f), f.name))
+    const s = getStore(); let edits = await s.get("edits") || []; const pend = pageUnsynced()
+    if (pend.length) edits = mergeEdits(edits, pend)
+    return { parsed, plan: buildCsvPlan(parsed, await s.get("rows") || [], edits, Date.now()) }
+  }
+  async function commitCsvAdd(parsed) {   // 寫入前用最新的資料再算一次（這中間如果有變動，以最新的為準）；先備份、再寫；回傳實際寫入的計畫
+    const s = getStore(), now = Date.now(), rows = await s.get("rows") || []
+    let edits = await s.get("edits") || []; const pend = pageUnsynced()
+    if (pend.length) edits = mergeEdits(edits, pend)
+    const p = buildCsvPlan(parsed, rows, edits, now)
+    if (!p.items.length) return p
+    const rems = await readRems()
+    for (const y of p.topYears) await savePre(+y, { created: now, body: makeBackupBody(+y, rows, edits, now, true, rems).body })   // 有已有內容被加上去的年份：先留一份
+    const recs = p.items.map(it => ({ date: it.date, text: it.text, orig: it.orig, isNew: it.orig === null, t: now }))   // 和頁面存修改的格式一樣（見模板 saveEdit）
+    await s.set("edits", mergeEdits(edits, recs))
+    return p
+  }
+  function csvSummary(p, done) {   // 對話框用的條列：done＝已經寫入了
+    const nNew = p.items.filter(i => !i.had).length, nTop = p.items.length - nNew, L = []
+    L.push("共 " + p.total + " 筆行程，" + (p.items.length ? (done ? "已寫入 " : "會寫入 ") + p.items.length + " 天：" : "沒有需要寫入的日子："))
+    if (nNew) L.push("• 新增卡片（或填入空白卡片）：" + nNew + " 天")
+    if (nTop) L.push("• 加到已有內容上方：" + nTop + " 天（原內容不動）")
+    if (p.dup) L.push("• 之前匯入過，略過：" + p.dup + " 天")
+    if (p.trash) L.push("• 在垃圾桶裏，略過：" + p.trash + " 天")
+    if (p.bad) L.push("• 開始日期看不懂，略過：" + p.bad + " 筆")
+    return L.join("\n")
+  }
+  async function importCsvFiles(files) {   // 「匯入資料檔」選到 .csv：算 → 問 → 備份並寫入 → 重新載入頁面
+    const { parsed, plan } = await planCsvAdd(files)
+    if (!plan.items.length) { await modal("沒有需要匯入的內容", csvSummary(plan, false) + "\n沒有動任何東西。", [{ label: "好", value: 1 }]); return }
+    const ok = await modal("匯入行程 CSV？", csvSummary(plan, false) + "\n每一筆排成「•」條列；備註裡的網頁格式會轉成純文字。" +
+      (plan.topYears.length ? "\n匯入前會先自動備份有改動的已有日子所在的年份（" + plan.topYears.join("、") + " 年）。" : "") +
+      "\n匯入後頁面會重新載入一次，請先確認沒有編輯到一半的卡片。", [{ label: "匯入", kind: "pri", value: true }, { label: "取消", value: false }])
+    if (!ok) { say("已取消，沒有匯入任何東西"); return }
+    const done = await commitCsvAdd(parsed)
+    await modal("已匯入", csvSummary(done, true) + "\n按「好」會重新載入頁面。", [{ label: "好", kind: "pri", value: 1 }])
+    await launch()
+  }
   function startDataImport() {   // 「匯入資料檔」按鈕按下的當下呼叫：先打開檔案選單（瀏覽器只准許在剛按下時打開），選完再算、再問。日誌資料檔、備份檔、天氣檔可以一起選，程式依內容自己分
     const d = root.document, inp = d.createElement("input")
-    inp.type = "file"; inp.accept = ".json,application/json"; inp.multiple = true; inp.hidden = true
+    inp.type = "file"; inp.accept = ".json,application/json,.csv,text/csv,text/comma-separated-values"; inp.multiple = true; inp.hidden = true
     inp.onchange = async () => {
       const fs = [...(inp.files || [])]; inp.remove()
       if (!fs.length) return
+      if (fs.some(isCsvFile)) {   // 行程 CSV：單獨處理（見「匯入行程 CSV」）
+        try {
+          if (!fs.every(isCsvFile)) { await modal("CSV 要分開匯入", "行程 CSV 請單獨選取，不要和日誌資料檔、備份檔、天氣檔一起選。\n先匯入其中一種，再從選單重選另一種。", [{ label: "好", value: 1 }]); return }
+          await importCsvFiles(fs)
+        } catch (e) { say("匯入失敗：" + (e && e.message || e), 7000) }
+        return
+      }
       try {
         const p = await planDataAdd(fs)   // 問答不放進訊息佇列：對話框開著的時候，頁面的同步、備份照常進行
         const yrs = Object.keys(p.years).sort().map(y => y + " 年 " + p.years[y] + " 天").join("、"), nWx = p.wxs.length
@@ -2557,7 +2751,7 @@
       const d = root.document, menu = d && d.querySelector && d.querySelector("#pd .menu")
       if (!menu || d.getElementById("dix")) return
       const b = d.createElement("button")
-      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("data-lb", "匯入資料檔"); b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子，也可以匯入天氣檔（已有的不會動）"); b.title = "補進缺的年份或日子，也可以匯入天氣檔（已有的不會動）"
+      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("data-lb", "匯入資料檔"); b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子、匯入天氣檔，或匯入行程 CSV（CSV 會加到對應日子的卡片上方）"); b.title = "補進缺的年份或日子、匯入天氣檔、匯入行程 CSV"
       const ref = menu.querySelector("svg")   // 借用選單裏現有圖示的外框（class、大小），只換圖案；找不到（模板改過）就沒有圖示
       if (ref) { const ic = ref.cloneNode(false); ic.innerHTML = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></g>'; b.appendChild(ic) }
       b.onclick = () => { startDataImport(); if (typeof root.pdClose === "function") root.pdClose() }   // 先打開檔案選單（要在按下的當下），再收起選單
@@ -2593,7 +2787,7 @@
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore,
+  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore, parseCsv, parseDT, htmlToText, csvTravelRows, travelLines, insertAbove, buildCsvPlan, planCsvAdd, commitCsvAdd, importCsvFiles, csvSummary, isCsvFile,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
