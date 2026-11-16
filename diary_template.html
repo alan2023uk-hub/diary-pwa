@@ -253,7 +253,7 @@ header .tools #palb.ib{width:auto;margin:0;padding:0;--c:var(--k1)}
 #pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
 #pn .qs.cf{gap:12px}
 #pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
-/* 備份、還原、自動備份：各佔「⋯」選單的一行（和其他選單項目同高同字級）；自動備份那一行是兩行字（名字＋上次時間）所以高度自動 */
+/* 備份、還原、自動備份：各佔「⋯」選單的一行（和其他選單項目同高同字級）；自動備份那一行是兩行字（名字＋上次時間）所以高度自動；右邊是目前間隔的按鈕樣子（有底色） */
 .menu .mi[hidden]{display:none}
 .menu .mi:disabled{opacity:.35}
 .menu #bka::after{content:none}
@@ -261,6 +261,7 @@ header .tools #palb.ib{width:auto;margin:0;padding:0;--c:var(--k1)}
 .menu .bkc{display:flex;flex-direction:column;gap:2px;min-width:0}
 .menu .bkc b{font-size:16px;font-weight:600}
 .menu .bkc small{font-size:12.5px;font-weight:400;color:var(--sub);line-height:1.3}
+.menu #bka .ib2{flex:none;margin-left:auto;min-width:76px;height:36px;padding:0 14px;font-size:14px;border-radius:10px;pointer-events:none}   /* 目前的間隔：有底色的按鈕樣子，表示點一下可以切換；開著時深色底，關閉時淺色底 */
 /* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
 #pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
 #pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
@@ -352,7 +353,7 @@ header .pd-in{max-width:none;margin:0;gap:4px}
    <button class="mi" id="fw" data-lb="粗細" type="button" aria-label="切換字體粗細" title="切換字體粗細"></button>
    <button class="mi" id="bkb" data-lb="備份" type="button" aria-label="備份" title="備份"></button>
    <button class="mi" id="rsb" data-lb="還原…" type="button" aria-label="還原" title="還原"></button>
-   <button class="mi" id="bka" type="button" hidden><span class="bkc"><b></b><small></small></span></button>
+   <button class="mi" id="bka" type="button" hidden><span class="bkc"><b>自動備份</b><small></small></span><span class="ib2"></span></button>
   </div>
   <div class="pills"><div id="bk" hidden></div><button id="off" type="button" hidden></button><button id="dl" type="button" hidden></button></div>
  </div></div>
@@ -912,13 +913,13 @@ function allTotals(){const ys=new Set();let days=0;for(const x of DATA)if(!x[3]&
 /* 一鍵備份／還原，不分年份：「備份」把全部年份的日誌（網頁版還有照片、PDF）合成一個檔；「還原」由腳本列出備份清單，選一份就全部放回去，並在還原前自動備份目前內容。 */
 /* 備份、還原、自動備份：各佔「⋯」選單的一行。點「備份」「還原…」直接執行（確認與說明在按下去之後的提示視窗：備份顯示內容與大小，還原說明怎麼選備份）；「自動備份」點一下輪流切換間隔。 */
 const BK_MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
-function bkRefresh(){   /* 每次打開選單時重算：沒有日誌就不能備份；自動備份那一行只有 Scriptable 宿主和網頁版宿主會注入 BKCFG，其他宿主沒有，就不顯示。網頁版（PWA_AUTOCP）的自動備份是悄悄存在這部裝置，所以第二行照實寫「存在這部裝置」 */
+function bkRefresh(){   /* 每次打開選單時重算：沒有日誌就不能備份；自動備份那一行只有 Scriptable 宿主和網頁版宿主會注入 BKCFG，其他宿主沒有，就不顯示。右邊的有底色按鈕＝目前的間隔（開著＝深色底，關閉＝淺色底），點整行輪流切換 */
  const b=document.getElementById('bkb'),a=document.getElementById('bka');
  b.disabled=!allTotals().days;
  const c=window.BKCFG;a.hidden=!c;if(!c)return;
- const m=BK_MODES.find(x=>x[0]===c.days),nm=m?m[1]:'每 '+c.days+' 天';
- a.querySelector('b').textContent='自動備份：'+nm;
- a.querySelector('small').textContent=c.days===0?'已關閉':(c.last?(window.PWA_AUTOCP?'存在這部裝置　':'')+'上次 '+c.last:'尚未自動備份');
+ const m=BK_MODES.find(x=>x[0]===c.days),nm=m?m[1]:'每 '+c.days+' 天',pill=a.querySelector('.ib2');
+ pill.textContent=nm;pill.classList.toggle('pri',c.days>0);
+ a.querySelector('small').textContent=c.days===0?'已關閉':(c.last?'上次 '+c.last:'尚未自動備份');
  a.setAttribute('aria-label','自動備份：'+nm+'（點一下切換）')}
 document.getElementById('bkb').onclick=()=>{pdClose();backupAllYears(allTotals().days)};
 document.getElementById('rsb').onclick=()=>{pdClose();restoreAllYears()};
