@@ -243,7 +243,6 @@ header .tools #palb.ib{width:auto;margin:0;padding:0;--c:var(--k1)}
 #pn .pnh svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 #pn .yr .yl b{font-size:18px}
 #pn .yr .yl .n{margin-left:10px;color:var(--sub);font-size:13px}
-header .tools #bkp{--c:var(--k5)}
 .pills{display:flex;justify-content:center;gap:10px}
 .pills:not(:has(>:not([hidden]))){display:none}
 #dl,#off{display:flex;align-items:center;gap:6px;cursor:pointer;padding:7px 22px;border-radius:12px;font:inherit;font-size:17px;font-weight:700;color:var(--sub);background:var(--chip);background:color-mix(in srgb,var(--sub) 12%,var(--pd-bg));border:1.5px solid var(--line)}
@@ -254,45 +253,14 @@ header .tools #bkp{--c:var(--k5)}
 #pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
 #pn .qs.cf{gap:12px}
 #pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
-/* 備份與還原：在選單裡原地展開（說明＋「備份」「還原…」兩個按鈕；一鍵備份、一鍵還原，不分年份） */
-#bkx{padding:4px 4px 8px}#bkx[hidden]{display:none}
-#bkx .yp{display:flex;align-items:center;gap:6px;margin:2px 0 12px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
-#bkx .yp .ib2{flex:none;width:44px;padding:0}
-#bkx .yc{flex:1;text-align:center}
-#bkx .yc b{display:block;font-size:16px;font-weight:600;line-height:1.3}   /* 和上面選單項目同一個字級 */
-#bkx .yc span{display:block;font-size:13px;color:var(--sub);margin-top:2px}
-#bkx .cf{display:flex;gap:8px}
-#bkx .cf .ib2{flex:1;height:48px;padding:0 8px;justify-content:center}
-/* 網頁版的備份與還原面板：「文字」「照片」各一排（每排只有兩顆按鈕，放得下大字體）；小標題在按鈕上面，不佔橫向空間。Scriptable 母版沒有照片那排，也就沒有小標題 */
-#bkx .rt{margin:2px 4px 6px;font-size:13px;color:var(--sub)}
-#bkx .cf+.rt{margin-top:14px}
-#bkx .cf .ib2{min-width:0;white-space:nowrap}
-/* 網頁版（#bkx.wk）：按鈕和間距縮小，整個選單不那麼擠（Scriptable 母版沒有 .wk，維持原樣） */
-#bkx.wk .yp{margin:0 0 6px}
-#bkx.wk .yp .ib2{width:40px;height:38px}
-#bkx.wk .yc b{font-size:15px}
-#bkx.wk .yc span{font-size:12.5px;margin-top:0}
-#bkx.wk .rt{margin:0 4px 4px;font-size:12.5px}
-#bkx.wk .cf+.rt{margin-top:8px}
-#bkx.wk .cf{gap:6px}
-#bkx.wk .cf .ib2{height:38px;font-size:14px;gap:5px;border-radius:10px}
-#bkx.wk .ib2 svg{width:18px;height:18px}
-#bkx.wk .bka{margin-top:8px;padding-top:6px}
-#bkx.wk .bka .ib2{height:36px;min-width:76px;padding:0 14px;font-size:14px;border-radius:10px}
-#bkx.wk .bka.bkw .bks{margin-top:0}
-#bkx .ib2:disabled{opacity:.35}
-#bkx .rt.sm{margin:2px 4px 10px;text-align:center}   /* 備份、還原各一句說明（不分年份） */
-.menu #bkp .cv{order:2;margin-left:auto;display:flex;transition:transform .18s}
-.menu #bkp[aria-expanded=true] .cv{transform:rotate(180deg)}
-#bkx .bka{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 4px 0;border-top:1px solid var(--line)}
-#bkx .bka .bkl{min-width:0;display:flex;flex-direction:column;gap:2px;font-size:16px;font-weight:600;color:var(--text)}
-#bkx .bka small{font-size:12.5px;font-weight:400;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#bkx .bka .ib2{flex:none;min-width:84px;padding:0 16px}
-/* 網頁版的「自動備份」：第一行＝名字＋切換按鈕；第二行＝整行的「存在這部裝置　上次…」（以前被兩顆按鈕擠成「上次 10/1…」） */
-#bkx .bka.bkw{display:block}
-#bkx .bka.bkw .bkt{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:16px;font-weight:600;color:var(--text)}
-#bkx .bka.bkw .bks{margin-top:6px}
-#bkx .bka.bkw small{white-space:normal;overflow:visible}
+/* 備份、還原、自動備份：各佔「⋯」選單的一行（和其他選單項目同高同字級）；自動備份那一行是兩行字（名字＋上次時間）所以高度自動 */
+.menu .mi[hidden]{display:none}
+.menu .mi:disabled{opacity:.35}
+.menu #bka::after{content:none}
+.menu #bka{height:auto;min-height:48px;padding-top:6px;padding-bottom:6px}
+.menu .bkc{display:flex;flex-direction:column;gap:2px;min-width:0}
+.menu .bkc b{font-size:16px;font-weight:600}
+.menu .bkc small{font-size:12.5px;font-weight:400;color:var(--sub);line-height:1.3}
 /* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
 #pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
 #pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
@@ -382,8 +350,9 @@ header .pd-in{max-width:none;margin:0;gap:4px}
    <button class="mi" id="th" data-lb="自動" type="button" aria-label="切換 自動／白天／夜間" title="顯示模式"></button>
    <button class="mi" id="fz" data-lb="文字" type="button" aria-label="切換文字大小" title="切換文字大小"></button>
    <button class="mi" id="fw" data-lb="粗細" type="button" aria-label="切換字體粗細" title="切換字體粗細"></button>
-   <button class="mi" id="bkp" data-lb="備份與還原" type="button" aria-label="備份與還原" title="備份與還原" aria-expanded="false"></button>
-   <div id="bkx" hidden></div>
+   <button class="mi" id="bkb" data-lb="備份" type="button" aria-label="備份" title="備份"></button>
+   <button class="mi" id="rsb" data-lb="還原…" type="button" aria-label="還原" title="還原"></button>
+   <button class="mi" id="bka" type="button" hidden><span class="bkc"><b></b><small></small></span></button>
   </div>
   <div class="pills"><div id="bk" hidden></div><button id="off" type="button" hidden></button><button id="dl" type="button" hidden></button></div>
  </div></div>
@@ -937,46 +906,23 @@ function openPanel(){   // 垃圾桶：單日還原／永久刪除、全部還�
 
 /* ===== 全年日誌備份與還原：由「日誌」腳本在 iCloud 的 diary_backups 資料夾存取（內容＋提醒）；還原前會自動先備份目前內容 ===== */
 function scriptRun(act,y){if(!hostSend({[act]:y},{go:lastDate||'',pend:'strict'}))toast('有太多未同步的修改，請先按「同步到 iCloud」，再試一次')}
-function backupAllYears(n){if(!n){toast('沒有日誌可備份');return}toast(window.LIVE_BK?'備份中…':'備份中…畫面會短暫離開再回來');scriptRun('backup','1')}   /* 文字備份：全部年份合成一個檔，不分年份（網址的值不重要，宿主一律備份全部） */
+function backupAllYears(n){if(!n){toast('沒有日誌可備份');return}toast(window.LIVE_BK?'準備備份…':'準備備份…畫面會短暫離開再回來');scriptRun('backup','1')}   /* 文字備份：全部年份合成一個檔，不分年份（網址的值不重要，宿主一律備份全部） */
 function restoreAllYears(){toast(window.LIVE_RS?'開啟備份清單…':'開啟備份清單…畫面會短暫離開再回來');scriptRun('restore','1')}   /* 文字還原：從備份清單選一份，備份裏有的每一年都會還原，不分年份 */
 function allTotals(){const ys=new Set();let days=0;for(const x of DATA)if(!x[3]&&String(x[2]).trim()!==''){days++;ys.add(x[0].slice(0,4))}return{days,years:ys.size}}   /* 全部年份的日誌天數、有內容的年數（文字備份用） */
 /* 一鍵備份／還原，不分年份：「備份」把全部年份的日誌（網頁版還有照片、PDF）合成一個檔；「還原」由腳本列出備份清單，選一份就全部放回去，並在還原前自動備份目前內容。 */
-/* 備份與還原：在「⋯」選單裡原地展開（按一下展開、再按一下收起）；第一行是兩句說明（備份、還原各一句），底下是「備份」「還原…」兩個按鈕，再下面是自動備份的間隔。 */
-function bkxClose(){const bx=document.getElementById('bkx');if(!bx)return;bx.hidden=true;bx.replaceChildren();document.getElementById('bkp').setAttribute('aria-expanded','false')}
-function yearDialog(){
- const bx=document.getElementById('bkx');
- if(!bx.hidden){bkxClose();return}
- if(!YEARS.length){toast('沒有日誌可備份');return}
- const mkb=(t,ic,cls,fn)=>{const b=document.createElement('button');b.type='button';b.className='ib2'+(cls?' '+cls:'');b.innerHTML=ic?ico(ic):'';b.title=t;b.setAttribute('aria-label',t);b.onclick=fn;return b};
- const sm=document.createElement('div');sm.className='rt sm';   /* 備份、還原各一句說明 */
- const bkB=mkb('備份','download','pri',()=>{pdClose();backupAllYears(allTotals().days)});
- bkB.append('備份');
- const rsB=mkb('還原','undo','',()=>{pdClose();restoreAllYears()});
- rsB.append('還原…');
- const WEB=!!window.PWA_PHOTOBK;   /* 網頁版：備份檔含日誌、照片、PDF；母版（Scriptable）的備份只有日誌（照片、PDF 的原檔本來就存在 iCloud 的 diary_photos、diary_pdfs），但還原時網頁版備份檔裡的照片、PDF 也會放回去 */
- const cnt=m=>{if(!m)return null;let n=0;for(const k in m)if(m[k]&&m[k].length)n+=m[k].length;return n};   /* 全部年份的張數／個數（頁面上卡片的） */
- sm.style.whiteSpace='pre-line';
- const draw=()=>{const T=allTotals(),ph=cnt(window.CARD_PHOTOS),pf=cnt(window.CARD_PDFS);bkB.disabled=!T.days;
-  sm.textContent=(T.days?'備份：全部 '+T.years+' 年、'+T.days+' 天日誌'+(WEB&&ph!=null?'、'+ph+' 張照片':'')+(WEB&&pf!=null?'、'+pf+' 個 PDF':'')+'，合成一個檔':'沒有日誌可備份')+'\n還原：選一份備份，'+(WEB?'日誌、照片、PDF 一起放回去':'把日誌放回去；網頁版備份檔裡的照片、PDF 也會放回去')};draw();
- const mkrow=(...bs)=>{const r=document.createElement('div');r.className='cf';r.append(...bs);return r};
- const kids=[sm,mkrow(bkB,rsB)];
- if(window.BKCFG){   // 自動備份的間隔：點一下輪流切換（Scriptable 宿主和網頁版宿主會注入 BKCFG；其他宿主沒有這一行）。網頁版（PWA_AUTOCP）的自動備份是悄悄存在這部裝置，所以第二行照實寫「存在這部裝置」
-  const MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
-  const ar=document.createElement('div');ar.className='bka';
-  const l=document.createElement('div');l.className='bkl';const t1=document.createElement('span'),t2=document.createElement('small');t1.textContent='自動備份';l.append(t1,t2);
-  const pill=document.createElement('button');pill.type='button';pill.className='ib2';
-  if(window.PWA_AUTOCP){   // 網頁版：第一行＝名字＋切換按鈕，第二行＝整行的「存在這部裝置　上次…」
-   ar.classList.add('bkw');
-   const top=document.createElement('div');top.className='bkt';top.append(t1,pill);
-   const sub=document.createElement('div');sub.className='bks';
-   sub.append(t2);ar.append(top,sub)}else ar.append(l,pill);
-  const info=()=>{const c=window.BKCFG,m=MODES.find(x=>x[0]===c.days);pill.textContent=m?m[1]:'每 '+c.days+' 天';pill.classList.toggle('pri',c.days>0);pill.setAttribute('aria-label','自動備份：'+pill.textContent+'（點一下切換）');t2.textContent=c.days===0?'已關閉':(c.last?(window.PWA_AUTOCP?'存在這部裝置　':'')+'上次 '+c.last:'尚未自動備份')};info();
-  pill.onclick=()=>{const c=window.BKCFG,i=MODES.findIndex(x=>x[0]===c.days);c.days=MODES[(i+1)%MODES.length][0];info();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
-  kids.push(ar)}
- bx.replaceChildren(...kids);bx.hidden=false;document.getElementById('bkp').setAttribute('aria-expanded','true');
- try{bx.scrollIntoView({block:'nearest'})}catch(e){}}
-document.getElementById('bkp').insertAdjacentHTML('beforeend','<i class="cv">'+ico('chevDown')+'</i>');
-document.getElementById('bkp').onclick=()=>yearDialog();
+/* 備份、還原、自動備份：各佔「⋯」選單的一行。點「備份」「還原…」直接執行（確認與說明在按下去之後的提示視窗：備份顯示內容與大小，還原說明怎麼選備份）；「自動備份」點一下輪流切換間隔。 */
+const BK_MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
+function bkRefresh(){   /* 每次打開選單時重算：沒有日誌就不能備份；自動備份那一行只有 Scriptable 宿主和網頁版宿主會注入 BKCFG，其他宿主沒有，就不顯示。網頁版（PWA_AUTOCP）的自動備份是悄悄存在這部裝置，所以第二行照實寫「存在這部裝置」 */
+ const b=document.getElementById('bkb'),a=document.getElementById('bka');
+ b.disabled=!allTotals().days;
+ const c=window.BKCFG;a.hidden=!c;if(!c)return;
+ const m=BK_MODES.find(x=>x[0]===c.days),nm=m?m[1]:'每 '+c.days+' 天';
+ a.querySelector('b').textContent='自動備份：'+nm;
+ a.querySelector('small').textContent=c.days===0?'已關閉':(c.last?(window.PWA_AUTOCP?'存在這部裝置　':'')+'上次 '+c.last:'尚未自動備份');
+ a.setAttribute('aria-label','自動備份：'+nm+'（點一下切換）')}
+document.getElementById('bkb').onclick=()=>{pdClose();backupAllYears(allTotals().days)};
+document.getElementById('rsb').onclick=()=>{pdClose();restoreAllYears()};
+document.getElementById('bka').onclick=()=>{const c=window.BKCFG;if(!c)return;const i=BK_MODES.findIndex(x=>x[0]===c.days);c.days=BK_MODES[(i+1)%BK_MODES.length][0];bkRefresh();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
 document.getElementById('wxs').onclick=()=>{pdClose();wxDialog()};
 /* 天氣設定：預報天數（0–16）、酷熱溫度（25–50°C）；按確定後交給「日誌」腳本存進 weather.json 並重查預報 */
 function wxDialog(){
@@ -1234,8 +1180,8 @@ const rc=document.createElement('span');rc.className='chip';rc.textContent='提�
 
 /* ===== UI v2：頂部圖標列、拉下菜單、搜尋、手勢 ===== */
 const HD=document.querySelector('header'),pdb=document.getElementById('pdb'),sbtn=document.getElementById('sb'),scrim=document.getElementById('scrim');
-[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkp','download']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
-function pdOpen(){try{bannerUpdate()}catch(e){}try{bkxClose()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
+[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkb','download'],['rsb','undo'],['bka','history']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
+function pdOpen(){try{bannerUpdate()}catch(e){}try{bkRefresh()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
 function pdClose(){HD.classList.remove('open');document.body.classList.remove('pdo');pdb.setAttribute('aria-expanded','false')}
 function pdToggle(){HD.classList.contains('open')?pdClose():pdOpen()}
 /* 跳到某一天之後收起頂欄（往回滑一下就再出現） */
