@@ -1604,12 +1604,6 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     for (const n of names) cur[n] = now
     await getStore().set(PHOTO_DONE_KEY, cur)
   }
-  async function unmarkPhotoDone(names) {   // 核對備份資料夾發現缺了：把這些改回「未備份」
-    if (!names.length) return
-    const cur = await readPhotoDone()
-    for (const n of names) delete cur[n]
-    await getStore().set(PHOTO_DONE_KEY, cur)
-  }
   async function photoFilesOf(only) {   // only＝只要這些內部檔名（Set）；不給＝全部
     const s = getStore(), out = []
     for (const f of allPhotoNames(await photoIndex())) {
@@ -1663,32 +1657,12 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     let msg, buttons
     if (!had) { msg = "共 " + names.length + " 張照片，都還沒備份過。"; buttons = [{ label: "全部備份（" + names.length + " 張）", kind: "pri", value: "new" }, { label: "不用了", value: "" }] }
     else if (fresh.length) { msg = "共 " + names.length + " 張照片：\n\n• 已備份過 " + had + " 張（不會重複存）\n• 新增 " + fresh.length + " 張"; buttons = [{ label: "只備份新增的（" + fresh.length + " 張）", kind: "pri", value: "new" }, { label: "不用了", value: "" }] }
-    else { msg = names.length + " 張照片都已經備份過了，沒有新增的。\n\n「已備份」只代表這部裝置按過「儲存照片」，不保證檔案真的在資料夾裡。懷疑有漏的，可以核對備份資料夾。"; buttons = [{ label: "好", kind: "pri", value: "" }, { label: "核對備份資料夾…", onclick: pickPhotoFolder }] }
+    else { msg = names.length + " 張照片都已經備份過了，沒有新增的。"; buttons = [{ label: "好", kind: "pri", value: "" }, { label: "仍要全部重新備份（" + names.length + " 張，會重複存）", value: "all" }] }
     const pick = await modal("備份照片", msg, buttons)
     if (!pick) return
-    if (pick.files) { await verifyPhotoBackup(names, pick.files); return }   // 按了「核對備份資料夾…」
     const files = await photoFilesOf(pick === "new" ? new Set(fresh) : null), saved = files.length ? await backupPhotos(files) : 0
     say(saved ? "已備份 " + saved + " 張照片" : "沒有備份照片")
     if (saved && isIOS()) await offerMasterImport()   // 編者按／Editor's note：這一批（所有批次）都存進 pwa_photos 之後才問，不要在「加入照片」那一刻問——那時候可能還要繼續加，問了很煩。只有 iOS 才有 Scriptable，其他裝置不問。
-  }
-  // 編者按 / Editor's note：「核對備份資料夾…」只出現在「都已經備份過了」的視窗，平常備份新增照片的流程完全不變。它做的事：選備份資料夾，用檔名比對這部裝置上的照片，找出資料夾裡沒有、但記錄說已備份的，只把這些改回「未備份」再備份，不會重複存其他的。
-  //   使用者之前要求拿掉的是「備份前先核對」（每次備份都要選資料夾）；這個是使用者主動按才核對的，不要改成每次備份都先核對。
-  //   English: the verify button appears only in the "everything already backed up" window; normal backup is unchanged. It compares file names in the chosen folder with the photos on this device, un-marks only the ones missing from the folder, and backs up just those (no duplicates). The earlier-removed feature was verification before every backup; this one runs only when the user presses it, so do not turn it into an automatic pre-check.
-  async function verifyPhotoBackup(names, files) {
-    const have = new Set()
-    for (const f of files) { const nm = photoInternalName(f.name.startsWith(PWA_PHOTO_PREFIX) ? f.name.slice(PWA_PHOTO_PREFIX.length) : f.name); if (okName(nm)) have.add(nm) }
-    const missing = names.filter(n => !have.has(n))
-    if (!missing.length) { await modal("核對完成", "這部裝置上的 " + names.length + " 張照片，在你選的資料夾裡都找得到（資料夾裡共 " + have.size + " 張），備份記錄沒有問題。", [{ label: "好", kind: "pri", value: "" }]); return }
-    const days = new Map()
-    for (const n of missing) { const k = dateOf(n) || n.slice(0, 4) + " 年"; days.set(k, (days.get(k) || 0) + 1) }
-    const list = [...days].sort((a, b) => a[0] < b[0] ? -1 : 1), shown = list.slice(0, 10).map(([k, c]) => "• " + k + "（" + c + " 張）").join("\n")
-    const pick = await modal("資料夾裡缺 " + missing.length + " 張", "這部裝置上有 " + names.length + " 張照片，你選的資料夾裡找得到 " + (names.length - missing.length) + " 張；缺的 " + missing.length + " 張，記錄卻說已備份過。\n\n缺的照片在這些日子：\n" + shown + (list.length > 10 ? "\n…等 " + list.length + " 天" : "") + "\n\n只會備份缺的這 " + missing.length + " 張，其他不會重複存。", [{ label: "備份缺的 " + missing.length + " 張", kind: "pri", value: "fix" }, { label: "不用了", value: "" }])
-    if (pick !== "fix") return
-    const files2 = await photoFilesOf(new Set(missing)), lost = missing.length - files2.length
-    await unmarkPhotoDone(files2.map(f => photoInternalName(f.name)))   // 先改回「未備份」；中途停下的，沒存到的就維持未備份
-    const saved = files2.length ? await backupPhotos(files2) : 0
-    say((saved ? "已補備份 " + saved + " 張照片" : "沒有備份照片") + (lost ? "；另有 " + lost + " 張在這部裝置找不到照片資料，沒辦法備份" : ""))
-    if (saved && isIOS()) await offerMasterImport()
   }
   // 編者按／Editor's note：按「要」之後一定會短暫切到 Scriptable（母版沒辦法在背景被偷偷叫起，iOS 不允許），這裡只負責問一次、按下去才切過去；不要改成自動切過去不問。
   //   English: tapping "要" always switches to Scriptable for a moment (iOS has no way to call the master silently in the background) — this just asks once and only switches on confirmation; don't make it jump automatically without asking.
