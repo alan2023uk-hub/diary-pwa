@@ -3,9 +3,9 @@
      · 儲存：日誌資料（rows）和修改（edits）存在這部裝置的瀏覽器裏（IndexedDB），不上傳到任何地方
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
-   目前支援：同步（修改存進宿主）、打開連結、備份與還原（全部年份合成一個檔、不用選年份；內容格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整份改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以用「⋯」選單的「匯入資料檔」把 Scriptable 版的 weather.json 補進來（可以和日誌資料檔、備份檔一起選，程式依內容自己分；只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
-   自動備份（存在這部裝置）：到期（距上次自動備份超過設定的天數、而且之後有修改——任何一年的日誌或提醒）時，打開日誌後悄悄把全部年份的完整備份合成一份，存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。「還原」視窗一次還原備份裏的所有年份（不用選年份）。間隔在「⋯」→「備份與還原」裏的「自動備份」切換。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「文字」那排的「備份」把備份檔存進 iCloud。
-   注意：照片存在這部裝置的瀏覽器裏；備份檔（.json）只含日誌文字和提醒，不含照片（和 Scriptable 版的備份檔相同）。照片另外備份：選單「照片」那排的「備份」把照片存成一張張 .jpg（經分享選單或下載存成檔案），「還原…」依檔名放回原來的卡片（日誌文字的還原做完就結束，不再追問照片）；網頁版讀不到資料夾，照片檔要自己選取。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
+   目前支援：同步（修改存進宿主）、打開連結、一鍵備份與還原（日誌、提醒、照片、PDF，全部年份合成一個檔、不用選年份；日誌的格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整份改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以用「⋯」選單的「匯入資料檔」把 Scriptable 版的 weather.json 補進來（可以和日誌資料檔、備份檔一起選，程式依內容自己分；只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
+   自動備份（存在這部裝置）：到期（距上次自動備份超過設定的天數、而且之後有修改——任何一年的日誌或提醒）時，打開日誌後悄悄把全部年份的完整備份合成一份，存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。「還原」視窗一次還原備份裏的所有年份（不用選年份）。間隔在「⋯」→「備份與還原」裏的「自動備份」切換。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「備份」把備份檔存進 iCloud（自動備份只含日誌文字和提醒，不含照片、PDF）。
+   注意：照片和 PDF 存在這部裝置的瀏覽器裏；按「備份」存出的備份檔（.json）一次含日誌文字、提醒、照片、PDF，「還原…」選一份備份就全部放回去（照片、PDF 只補沒有的，不會刪現有的；日誌文字才分合併和完全還原）。以前分開的「照片備份」「PDF 備份」入口已經從面板拿掉。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -378,23 +378,63 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const s = getStore(), list = await s.get("preall") || []
     await s.set("preall", [item, ...list].slice(0, PRE_KEEP))
   }
-  async function doBackup() {   // 手動備份：全部年份合成一個檔（不用選年份）
+  // ---------- 一鍵備份／還原：日誌文字、照片、PDF 合成一個檔（不分年份）----------
+  // 編者按 / Editor's note：手動備份只有一個動作：把全部年份的日誌文字、提醒、照片、PDF 合成一個 .json（pwa_…_all.json），只存一次。照片和 PDF 是原檔轉成 base64 放在同一個檔案裏（photos、pdfs 兩個欄位）；沒有這兩個欄位的舊備份照樣能還原。
+  //   還原時照片和 PDF 只補沒有的，不會刪現有的（合併、完全還原都一樣）；日誌文字才分合併和完全還原。不再有「已備份記錄」（photobk:done、pdfbk:done 不再用來判斷），每次都是完整一份。
+  //   自動備份和還原前的備份（存在這部裝置）只收日誌文字，不收照片和 PDF（照片和 PDF 很佔空間，而且備份和原資料在同一個瀏覽器裏防不了什麼）。
+  //   English: manual backup is now one action: all years of text + reminders + photos + PDFs in one .json (pwa_…_all.json), saved once. Photos/PDFs are base64 originals in the same file (fields photos, pdfs); older backups without these fields still restore. Restore only adds missing photos/PDFs (never deletes), for both merge and full restore; only the text has merge vs full. The per-item "already backed up" records are no longer used. Auto and pre-restore copies (stored on this device) stay text-only.
+  const b64Of = blob => new Promise((res, rej) => { const fr = new root.FileReader(); fr.onload = () => { const t = String(fr.result); res(t.slice(t.indexOf(",") + 1)) }; fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob) })
+  const fileOfB64 = (d, name, type) => { const bin = root.atob(d), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new root.File([u], name, { type }) }
+  const MEDIA_MAX = 60 * 1048576   // 照片和 PDF 合起來超過這個大小（原檔）就不放進同一個檔案（手機記憶體有限）
+  const mbOf = n => (n / 1048576).toFixed(1)
+  async function mediaNewOf(b) {   // 這份備份裏的照片和 PDF，哪些這部裝置目前還沒有
+    const ph = (Array.isArray(b.photos) ? b.photos : []).filter(x => x && typeof x.f === "string" && typeof x.d === "string")
+    const pf = (Array.isArray(b.pdfs) ? b.pdfs : []).filter(x => x && typeof x.f === "string" && typeof x.d === "string")
+    const haveP = new Set((await photoIndex()).map(x => x.f)), haveD = new Set((await pdfIndex()).map(x => x.f))
+    return {
+      total: { photos: ph.length, pdfs: pf.length },
+      photos: ph.filter(x => !haveP.has(photoInternalName(x.f))),
+      pdfs: pf.filter(x => { const q = pdfParseExport(x.f); return q && !haveD.has(q.f) })
+    }
+  }
+  async function restoreMedia(mn) {   // 只補沒有的；回傳實際補回幾張、幾個
+    const p0 = (await photoIndex()).length, d0 = (await pdfIndex()).length
+    if (mn.photos.length) await importPhotoFiles(mn.photos.map(x => fileOfB64(x.d, x.f, "image/jpeg")), null)
+    if (mn.pdfs.length) await importPdfFiles(mn.pdfs.map(x => fileOfB64(x.d, x.f, "application/pdf")))
+    return { photos: (await photoIndex()).length - p0, pdfs: (await pdfIndex()).length - d0 }
+  }
+  const mediaTail = r => r && (r.photos || r.pdfs) ? "；補回 " + r.photos + " 張照片、" + r.pdfs + " 個 PDF" : ""
+  async function doBackup() {   // 手動備份：日誌文字＋提醒＋照片＋PDF，全部年份合成一個檔
     const s = getStore()
     const r = makeBackupBodyAll(await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems(), false)
-    if (!r) { say("沒有可備份的日誌內容"); return false }
-    // 編者按 / Editor's note：文字備份和照片、PDF 備份一致：每次都先彈出一個訊息視窗（有「備份」和「不用了」），按了「備份」才開分享選單；「存到哪裏」的說明只在第一次出現、而且併在這個視窗裡（不要另外再彈一個視窗）。
-    //   English: text backup now matches photo and PDF backup: a message window first (備份 / 不用了), the share sheet opens only after 備份; the "where to save" explanation appears only the first time and lives inside this same window (no second window).
+    if (!r) { say("沒有日誌可備份"); return false }
+    say("準備備份…", 3000)
+    const ph = await photoFilesOf(null), pf = await pdfFilesOf(null), bytes = [...ph, ...pf].reduce((a, f) => a + f.size, 0)
+    let withMedia = true
+    if (bytes > MEDIA_MAX) {
+      const c = await modal("照片和 PDF 太大", "照片和 PDF 共 " + mbOf(bytes) + " MB，合成一個備份檔太大（上限約 " + mbOf(MEDIA_MAX) + " MB），手機可能撐不住。", [{ label: "只備份日誌文字", kind: "pri", value: "text" }, { label: "取消", value: null }])
+      if (c !== "text") return false
+      withMedia = false
+    }
+    if (withMedia) {
+      r.body.photos = []; r.body.pdfs = []
+      for (const f of ph) r.body.photos.push({ f: f.name, d: await b64Of(f) })
+      for (const f of pf) r.body.pdfs.push({ f: f.name, d: await b64Of(f) })
+    }
+    const json = JSON.stringify(r.body)
+    // 編者按 / Editor's note：先把備份準備好，再彈出訊息視窗（有「備份」和「不用了」）；按了「備份」才開分享選單（iOS 只允許在剛按下的當下打開）。「存到哪裏」的說明只在第一次出現、而且併在這個視窗裡（不要另外再彈一個視窗）。
+    //   English: the file is prepared first, then the message window (備份 / 不用了); the share sheet opens only after 備份 (iOS only allows it right after a tap). The "where to save" text appears only the first time, inside this same window.
     const seen = !!await s.get("hint:backup")
-    const msg = "全部 " + r.years + " 年：" + r.days + " 天日誌、" + r.rems + " 則提醒，合成一個備份檔。" + (seen ? "" : "\n\n備份會存到你接著選的位置。" + (isIOS()
-      ? "\n\n日誌（.json）：兩邊通用，請存進 iCloud Drive › Scriptable › diary_backups（Scriptable 版的還原選單認得），第一次選好之後 iOS 會記住這個位置。\n照片（.jpg）：請存進 iCloud Drive › Scriptable › pwa_photos（和 Scriptable 版的 diary_photos 分開，不要混在一起）。\nPDF：請存進 iCloud Drive › Scriptable › pwa_pdfs。"
-      : "\n\n照片（.jpg）和 PDF 建議另建專用資料夾（例如「日誌網頁版備份」），之後比較好找。"))
-    const go = await modal("備份日誌", msg, [{ label: "備份（" + r.years + " 年、" + r.days + " 天）", kind: "pri", value: true }, { label: "不用了", value: false }])
+    const desc = "全部 " + r.years + " 年：" + r.days + " 天日誌、" + r.rems + " 則提醒" + (withMedia ? "、" + ph.length + " 張照片、" + pf.length + " 個 PDF" : "") + "，合成一個備份檔（約 " + mbOf(json.length) + " MB）。"
+    const msg = desc + (seen ? "" : "\n\n備份會存到你接著選的位置。" + (isIOS()
+      ? "\n\n請存進 iCloud Drive › Scriptable › diary_backups（Scriptable 版的還原選單認得），第一次選好之後 iOS 會記住這個位置。"
+      : "\n\n建議另建一個專用資料夾（例如「日誌網頁版備份」），之後比較好找。"))
+    const go = await modal("備份", msg, [{ label: "備份", kind: "pri", value: true }, { label: "不用了", value: false }])
     if (!go) return false
     if (!seen) await s.set("hint:backup", 1)
-    const how = await deliverFile(r.name, JSON.stringify(r.body))
-    say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份全部日誌（" + r.years + " 年）：" + r.days + " 天、" + r.rems + " 則提醒" + (how === "downloaded" ? "（已下載 " + r.name + "）" : ""))
-    const saved = how === "shared" || how === "downloaded"
-    return saved   // 照片不在這裏問了：用選單的「備份照片」按鈕另外備份
+    const how = await deliverFile(r.name, json)
+    say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份（" + r.years + " 年、" + r.days + " 天日誌" + (withMedia ? "、" + ph.length + " 張照片、" + pf.length + " 個 PDF" : "") + "）" + (how === "downloaded" ? "：已下載 " + r.name : ""))
+    return how === "shared" || how === "downloaded"
   }
   // ---------- 自動備份（存在這部裝置）----------
   // 編者按 / Editor's note：網頁版的「自動備份」＝悄悄把全部年份合成一份完整備份，存在這部裝置裏（IndexedDB）：不彈提示、不叫使用者存檔；數量不設上限，要刪由使用者在「還原」視窗的「整理備份…」自己勾選。（以前是每一年各存一份；現在改成全年份一份，以前存下的逐年備份不動、不再新增，還原視窗不再列出，只留在「整理備份…」裏可以刪掉。）
@@ -539,7 +579,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       presAll.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + (Array.isArray(x.body.years) ? x.body.years.length : 0) + "年", value: { pre: i } }))
       if (all.length) buttons.push({ label: "整理備份…", value: "manage" })
       buttons.push({ label: "取消", value: null })
-      const got = await modal("還原日誌", "選一份備份。備份裏有的每一年都會還原，沒有的年份不會動。" + (acs.length || presAll.length ? "" : "\n還沒有自動備份（開啟自動備份後會自動做一份），可以從檔案選。"), buttons)
+      const got = await modal("還原日誌", "選一份備份。備份裏有的每一年都會還原，沒有的年份不會動；備份檔裏的照片和 PDF 會補回沒有的。" + (acs.length || presAll.length ? "" : "\n還沒有自動備份（開啟自動備份後會自動做一份），可以從檔案選。"), buttons)
       if (got === "manage") { await manageAutoCopies(); continue }   // 整理完回到這個視窗（清單已經更新）
       if (got === "more") {
         const m = await modal("選一份自動備份", "自動備份，新到舊", [...acs.map(x => ({ label: acLabelAll(x), value: { auto: x.id } })), { label: "返回", value: null }])
@@ -557,6 +597,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     } catch (e) { await modal("備份檔讀取失敗", String(e && e.message || e), [{ label: "好", value: 1 }]); return false }
     const bodies = b.years.filter(x => x && okKind(x.kind) && Number.isInteger(x.year) && Array.isArray(x.days)).sort((x, y) => x.year - y.year)
     if (!bodies.length) { await modal("沒辦法還原", "這份備份裏沒有可以還原的年份", [{ label: "好", value: 1 }]); return false }
+    const mn = await mediaNewOf(b), nMedia = mn.photos.length + mn.pdfs.length   // 備份裏的照片和 PDF：只補這部裝置還沒有的
     const rows = await s.get("rows") || [], edits0 = await s.get("edits") || [], rems0 = await readRems(), now = Date.now()
     let mE = edits0, mR = rems0, fE = edits0, fR = rems0   // m＝合併的結果，f＝完全還原的結果；一年接著一年算（不同年份的日期不會互相影響）
     const per = []
@@ -569,7 +610,12 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       per.push({ y, fp, mp, ms: mergeSummary(mp) })
     }
     const sum = f => per.reduce((a, x) => a + f(x), 0)
-    if (per.every(x => x.fp.same)) { await modal("不需要還原", "目前的日誌和提醒，與這份備份完全相同。", [{ label: "好", value: 1 }]); return false }
+    if (per.every(x => x.fp.same)) {
+      if (!nMedia) { await modal("不需要還原", "目前的日誌和提醒，與這份備份完全相同。", [{ label: "好", value: 1 }]); return false }
+      const go = await modal("補回照片和 PDF？", "日誌文字和提醒與這份備份相同。\n\n備份裏有 " + mn.total.photos + " 張照片、" + mn.total.pdfs + " 個 PDF，目前沒有的 " + mn.photos.length + " 張、" + mn.pdfs.length + " 個可以補回（只補沒有的，不會刪除現有的）。", [{ label: "補回", kind: "pri", value: true }, { label: "取消", value: null }])
+      if (!go) return false
+      const mr = await restoreMedia(mn); say("已補回 " + mr.photos + " 張照片、" + mr.pdfs + " 個 PDF"); return false   // 日誌文字沒有變動，不用推回頁面（照片、PDF 已經自己推了）
+    }
     const curDays = sum(x => x.fp.cur.size), tgtDays = sum(x => x.fp.target.size)
     const fAdd = sum(x => x.fp.add), fChg = sum(x => x.fp.chg), fDel = sum(x => x.fp.del), fPre = sum(x => x.fp.preChange ? 1 : 0)
     const parts = [fAdd && "新增 " + fAdd + " 天", fChg && "改回備份內容 " + fChg + " 天", fDel && "刪除 " + fDel + " 天", fPre && "前言改回備份內容"].filter(Boolean)
@@ -577,22 +623,28 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const choice = await modal("還原日誌（" + bodies.length + " 年）？", "備份 " + fmtTime(b.created || now) + (b.kind === ALL_KIND ? "（網頁版）" : "") +
       "\n\n合併：" + curDays + " → " + sum(x => x.mp.days) + " 天" + (changed.length ? "\n" + changed.map(x => "　" + x.y + "：" + x.ms).join("\n") + (still ? "\n　其餘 " + still + " 年沒有變動" : "") : "（沒有變動）") +
       "\n\n完全還原：" + curDays + " → " + tgtDays + " 天" + (parts.length ? "（" + parts.join("、") + "）" : "（內容相同）") +
-      (remTouch ? "\n提醒：" + sum(x => x.fp.remCur) + " → " + sum(x => x.fp.remTarget) + " 則" + (remDiff ? "（" + remDiff + " 則有變動）" : "") : "") + "\n\n還原前會自動備份目前的全部日誌。",
+      (remTouch ? "\n提醒：" + sum(x => x.fp.remCur) + " → " + sum(x => x.fp.remTarget) + " 則" + (remDiff ? "（" + remDiff + " 則有變動）" : "") : "") +
+      (mn.total.photos || mn.total.pdfs ? "\n\n照片和 PDF：備份裏有 " + mn.total.photos + " 張照片、" + mn.total.pdfs + " 個 PDF，目前沒有的 " + mn.photos.length + " 張、" + mn.pdfs.length + " 個會補回（只補沒有的，不會刪除現有的）。" : "") + "\n\n還原前會自動備份目前的全部日誌。",
       [{ label: "合併（留較新的）", kind: "pri", value: "merge" }, { label: "完全還原（以備份為準）", kind: "dng", value: "full" }, { label: "取消", value: null }])
     if (!choice) return false
     const savePreNow = async () => { const pre = makeBackupBodyAll(rows, edits0, now, true, rems0); if (pre) await savePreAll({ created: now, body: pre.body }) }
     if (choice === "merge") {
-      if (per.every(x => x.mp.same)) { await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); return false }
+      if (per.every(x => x.mp.same)) {
+        if (nMedia) { const mr = await restoreMedia(mn); say("日誌文字不需要合併；已補回 " + mr.photos + " 張照片、" + mr.pdfs + " 個 PDF"); return false }
+        await modal("不需要合併", "本機的日誌和提醒都不比這份備份舊，沒有需要更新的。", [{ label: "好", value: 1 }]); return false
+      }
       await savePreNow()   // 合併前先存一份
       await s.set("edits", mE)
       if (per.some(x => x.mp.remDiff)) { await saveRems(mR); await markFired(per.flatMap(x => x.mp.remChanged), now) }   // 備份裏已經過去的提醒時間，不要合併完馬上又響
-      say("已合併日誌（" + bodies.length + " 年）：" + sum(x => x.mp.days) + " 天、" + sum(x => x.mp.remCount) + " 則提醒（合併前已自動備份）")
+      const mr = nMedia ? await restoreMedia(mn) : null
+      say("已合併日誌（" + bodies.length + " 年）：" + sum(x => x.mp.days) + " 天、" + sum(x => x.mp.remCount) + " 則提醒" + mediaTail(mr) + "（合併前已自動備份）")
       return true
     }
     await savePreNow()   // 還原前先存一份
     await s.set("edits", fE)
     if (remTouch) { await saveRems(fR); await markFired(fR, now) }   // 備份裏已經過去的提醒時間，不要還原完馬上又響
-    say("已還原日誌（" + bodies.length + " 年）：" + tgtDays + " 天" + (remTouch ? "、" + sum(x => x.fp.remTarget) + " 則提醒" : "") + "（還原前已自動備份）")
+    const mr = nMedia ? await restoreMedia(mn) : null
+    say("已還原日誌（" + bodies.length + " 年）：" + tgtDays + " 天" + (remTouch ? "、" + sum(x => x.fp.remTarget) + " 則提醒" : "") + mediaTail(mr) + "（還原前已自動備份）")
     return true
   }
 
