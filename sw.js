@@ -6,7 +6,7 @@ const FILES = ["./", "index.html", "host-pwa.js", "diary_template.html", "manife
    The two pdf.js files are OPTIONAL and added one by one with errors swallowed; do not merge them into FILES. addAll fails the whole install if any single file is missing, which would freeze the diary on the old version with no offline cache. */
 const OPTIONAL = ["pdf.min.mjs", "pdf.worker.min.mjs"]
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).then(() => Promise.all(OPTIONAL.map(f => c.add(f).catch(() => {}))))).then(() => self.skipWaiting())) })
-self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())) })
+self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith("diary-pwa-") && k !== CACHE).map(k => caches.delete(k))   /* 只清日誌自己的舊快取：同一個 github.io 網站下還有 UKHKbus、LondonBus，不能刪它們的 */)).then(() => self.clients.claim())) })
 self.addEventListener("fetch", e => {
   const r = e.request
   if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return
