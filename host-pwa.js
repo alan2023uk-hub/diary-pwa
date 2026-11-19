@@ -5,7 +5,8 @@
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
    目前支援：同步（修改存進宿主）、打開連結、一鍵備份與還原（日誌、提醒、照片、PDF，全部年份合成一個檔、不用選年份；日誌的格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整份改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以用「⋯」選單的「匯入資料檔」把 Scriptable 版的 weather.json 補進來（可以和日誌資料檔、備份檔一起選，程式依內容自己分；只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
    自動備份（存在這部裝置）：到期（距上次自動備份超過設定的天數、而且之後有修改——任何一年的日誌或提醒）時，打開日誌後悄悄把全部年份的完整備份合成一份，存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。「還原」視窗一次還原備份裏的所有年份（不用選年份）。間隔在「⋯」選單的「自動備份」那一行切換（點一下輪流切換）。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「備份」把備份檔存進 iCloud（自動備份只含日誌文字和提醒，不含照片、PDF）。
-   注意：照片和 PDF 存在這部裝置的瀏覽器裏；按「備份」存出的備份檔（.json）一次含日誌文字、提醒、照片、PDF，「還原…」選一份備份就全部放回去（照片、PDF 只補沒有的，不會刪現有的；日誌文字才分合併和完全還原）。以前分開的「照片備份」「PDF 備份」入口已經從面板拿掉。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。 */
+   注意：照片和 PDF 存在這部裝置的瀏覽器裏；按「備份」存出的備份檔（.json）一次含日誌文字、提醒、照片、PDF，「還原…」選一份備份就全部放回去（照片、PDF 只補沒有的，不會刪現有的；日誌文字才分合併和完全還原）。以前分開的「照片備份」「PDF 備份」入口已經從面板拿掉。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。
+   存入母版（iOS）：「備份」存好之後會問一次「存入母版？」，按「要」切到 Scriptable，帶著剛存的備份檔名；母版只還原那一個檔、只做完全還原、先彈確認視窗（見 offerMasterRestore、日誌.js 的 restorePwaBackup）。選單「備份」那一行會顯示「上次手動備份：N 天前」（bk:lastManual、window.BKLAST）。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -145,7 +146,7 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_PDFBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + (opts.bklast ? ";window.BKLAST=" + esc(opts.bklast) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_PDFBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
       '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};window.HOST_PICK_PDF=function(){PwaHost.prePickPdf()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.installPdf();PwaHost.loadCardPdfs();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
     return html.replace("</head>", () => head + "<style>" + PDF_CSS + "</style>" + inject + "</head>")
   }
@@ -433,8 +434,22 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     if (!go) return false
     if (!seen) await s.set("hint:backup", 1)
     const how = await deliverFile(r.name, json)
+    if (how === "shared" || how === "downloaded") {   // 編者按 / Editor's note：記下「上次手動備份」的時間（選單「備份」那一行的「上次手動備份：N 天前」用；只記有存出去的，取消、失敗不算）。English: remember when the last manual backup was made (menu row shows it); cancelled / failed ones do not count.
+      const tb = Date.now()
+      try { await s.set("bk:lastManual", tb) } catch (e) {}
+      try { root.BKLAST = { t: tb } } catch (e) {}
+    }
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份（" + r.years + " 年、" + r.days + " 天日誌" + (withMedia ? "、" + ph.length + " 張照片、" + pf.length + " 個 PDF" : "") + "）" + (how === "downloaded" ? "：已下載 " + r.name : ""))
+    if (how === "shared" && isIOS()) await offerMasterRestore(r.name)   // 編者按 / Editor's note：存好之後問一次「存入母版？」（見下面 offerMasterRestore）。只有 iOS 才有 Scriptable、而且只有走分享選單存出去才問（「下載」會存到別的地方，母版找不到）。English: after the file is saved, ask once whether to send it to the master (iOS only, share-sheet saves only; a plain download lands elsewhere).
     return how === "shared" || how === "downloaded"
+  }
+  // 編者按 / Editor's note：和照片備份後的 offerMasterImport 同一套做法：只問一次、按「要」才切到 Scriptable（iOS 沒辦法在背景偷偷叫起母版）；不要改成自動切過去。
+  //   網址帶的是剛存的「檔名」，母版只還原這一個檔（找不到就說找不到，不會改還原別的檔）；而且只做「完全還原」、一定先在母版彈確認視窗（列出新增、改回、刪除幾天），母版那邊按「完全還原」才真的還原。
+  //   English: same pattern as offerMasterImport (ask once, switch to Scriptable only on yes; never jump automatically). The URL carries the exact file name; the master restores only that file, full restore only, behind its own confirm window.
+  async function offerMasterRestore(name) {
+    const ok = await modal("存入母版？", "要不要現在把剛存的備份還原到 Scriptable 母版？\n\n按「要」畫面會切到 Scriptable，母版會先彈出確認視窗（顯示會新增、改回、刪除幾天），你在那裡按「完全還原」才會真的還原；完全還原是以這份備份為準。\n\n（備份要存在 iCloud Drive › Scriptable › diary_backups，母版才找得到。）", [{ label: "要", kind: "pri", value: true }, { label: "不用", value: false }])
+    if (!ok) return
+    try { root.location.href = "scriptable:///run?scriptName=" + encodeURIComponent("日誌") + "&pwarestore=" + encodeURIComponent(name) } catch (e) {}
   }
   // ---------- 自動備份（存在這部裝置）----------
   // 編者按 / Editor's note：網頁版的「自動備份」＝悄悄把全部年份合成一份完整備份，存在這部裝置裏（IndexedDB）：不彈提示、不叫使用者存檔；數量不設上限，要刪由使用者在「還原」視窗的「整理備份…」自己勾選。（以前是每一年各存一份；現在改成全年份一份，以前存下的逐年備份不動、不再新增，還原視窗不再列出，只留在「整理備份…」裏可以刪掉。）
@@ -2516,9 +2531,11 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     try { const wst = await readWeather(); wx = weatherForPage(wst); cfg = { fcDays: W.fcDays, hotC: W.hotC } } catch (e) {}   // 天氣讀不到也照樣打開日誌
     let bk
     try { bk = await bkCfgForPage() } catch (e) {}   // 讀不到也照樣打開日誌（頁面就不顯示「自動備份」那一行）
+    let bkl
+    try { bkl = { t: Number(await s.get("bk:lastManual")) || 0 } } catch (e) {}   // 上次手動備份的時間（0＝沒有記錄）；讀不到就不顯示那一行
     let tab = ""
     try { if (new root.URLSearchParams(root.location.search).get("tab") === "rem") tab = "rem" } catch (e) {}   // 點通知進來（網址帶 ?tab=rem）：直接打開提醒清單
-    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg, rems: await readRems(), tab, bkcfg: bk })
+    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg, rems: await readRems(), tab, bkcfg: bk, bklast: bkl })
     root.document.open(); root.document.write(html); root.document.close()
     holidaysUpdate()   // 不等它：頁面先用內建的假期表打開，讀到新的再換上去
   }
