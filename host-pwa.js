@@ -7,7 +7,7 @@
    自動備份功能已刪除（使用者的決定：日誌靠照片、PDF 和少量文字，一份「全年份備份」連照片、PDF 一起存最切合需要，只備份文字的自動備份不實際）：不再自動存、選單沒有「自動備份」那一行。以前自動存在這部裝置的備份仍留在原處，「還原」視窗還列得出來、可以還原，「整理備份…」可以勾選刪掉；刪光之後這兩個入口自己消失。「還原前」自動留下的備份（固定 5 份）是另一回事，照舊。
    注意：照片和 PDF 存在這部裝置的瀏覽器裏；按「備份」存出的備份檔（.json）一次含日誌文字、提醒、照片、PDF，「還原…」選一份備份就全部放回去（照片、PDF 只補沒有的，不會刪現有的；日誌文字才分合併和完全還原）。以前分開的「照片備份」「PDF 備份」入口已經從面板拿掉。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。
    存入母版（iOS）：「備份」存好之後會問一次「存入母版？」，按「要」切到 Scriptable，帶著剛存的備份檔名；母版只還原那一個檔、只做完全還原、先彈確認視窗（見 offerMasterRestore、日誌.js 的 restorePwaBackup）。選單「備份」那一行會顯示「上次手動備份：N 天前」（bk:lastManual、window.BKLAST）。
-   備份提醒（網頁版專用）：選單的「備份提醒」那一行選週期（每 3 天／每週／每兩週／每月／關閉，預設每週）；從上次手動備份起算，到期後打開（或回到）日誌時彈出視窗，問要不要現在備份（現在備份／明天再提醒／略過這次）。見下面「備份提醒」一節。 */
+   備份提醒（網頁版專用）：選單的「備份提醒」那一行用滾輪選週期（每 3 天／每週／每兩週／每月／關閉，預設每週）；從上次手動備份起算，到期後打開（或回到）日誌時彈出視窗，問要不要立即備份（立即備份／稍後再說）。見下面「備份提醒」一節。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -334,7 +334,11 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     ".hu-list{margin:0 0 .5rem;border:1px solid rgba(128,128,128,.35);border-radius:10px;max-height:50vh;overflow:auto}" +
     ".hu-row{display:flex;align-items:center;gap:.75rem;padding:.7rem .8rem;border-bottom:1px solid rgba(128,128,128,.25);cursor:pointer}.hu-row:last-child{border-bottom:0}.hu-row input{flex:none;width:1.3rem;height:1.3rem;margin:0}.hu-row small{display:block;color:#888;font-size:.8rem;line-height:1.3}" +
     ".hu-btn[disabled]{opacity:.4}" +
-    "@media (prefers-color-scheme:dark){.hu-box{background:#222;color:#eee}.hu-box p{color:#aaa}.hu-btn{border-color:#7fb0e0;color:#7fb0e0}.hu-btn.pri{background:#7fb0e0;color:#111}.hu-btn.dng{border-color:#ff8a80;color:#ff8a80}}"
+    ".hu-wheel-wrap{position:relative;height:132px;margin:0 0 1rem;border-radius:10px;background:rgba(128,128,128,.08)}" +
+    ".hu-wheel{height:100%;margin:0;padding:44px 0;box-sizing:border-box;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}.hu-wheel::-webkit-scrollbar{display:none}" +
+    ".hu-wheel div{height:44px;line-height:44px;text-align:center;scroll-snap-align:center;font-size:1.05rem;color:#999}.hu-wheel div.sel{color:#222;font-weight:600}" +
+    ".hu-wheel-hl{position:absolute;left:0;right:0;top:44px;height:44px;pointer-events:none;border-top:1px solid rgba(47,93,138,.35);border-bottom:1px solid rgba(47,93,138,.35)}" +
+    "@media (prefers-color-scheme:dark){.hu-box{background:#222;color:#eee}.hu-box p{color:#aaa}.hu-btn{border-color:#7fb0e0;color:#7fb0e0}.hu-btn.pri{background:#7fb0e0;color:#111}.hu-btn.dng{border-color:#ff8a80;color:#ff8a80}.hu-wheel-wrap{background:rgba(255,255,255,.07)}.hu-wheel div{color:#888}.hu-wheel div.sel{color:#eee}.hu-wheel-hl{border-color:rgba(127,176,224,.45)}}"
   // 按鈕：{ label, kind, value }＝按了就回傳 value；或 { label, kind, onclick(done) }＝按了當場執行（選檔案、分享都要在按下的當下呼叫）
   function modal(title, message, buttons) {
     return new Promise(res => {
@@ -349,6 +353,29 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
         b.appendChild(x)
       }
       o.appendChild(b); d.body.appendChild(o)
+    })
+  }
+  const WHEEL_ITEM_H = 44   // 滾輪每一列的高度，要和上面 CSS 的 .hu-wheel-hl／.hu-wheel div 一致
+  function wheelPick(title, items, selIdx) {   // 滾輪選一個：items＝[{label}]，selIdx＝一開始對準哪一個；按「確定」回傳選到的 index，按「取消」回傳 null
+    return new Promise(res => {
+      const d = root.document
+      if (!d.getElementById("hu-css")) { const st = d.createElement("style"); st.id = "hu-css"; st.textContent = CSS; d.head.appendChild(st) }
+      const o = d.createElement("div"), b = d.createElement("div"), h = d.createElement("h3")
+      o.className = "hu-ov"; b.className = "hu-box"; b.setAttribute("role", "dialog"); h.textContent = title; b.appendChild(h)
+      const wrap = d.createElement("div"), hl = d.createElement("div"), wh = d.createElement("div")
+      wrap.className = "hu-wheel-wrap"; hl.className = "hu-wheel-hl"; wh.className = "hu-wheel"
+      items.forEach(it => { const row = d.createElement("div"); row.textContent = it.label; wh.appendChild(row) })
+      wrap.append(wh, hl); b.appendChild(wrap)
+      const done = v => { o.remove(); res(v) }
+      const idxNow = () => Math.min(items.length - 1, Math.max(0, Math.round(wh.scrollTop / WHEEL_ITEM_H)))
+      const mark = () => { const i = idxNow();[...wh.children].forEach((c, j) => c.classList.toggle("sel", j === i)) }
+      wh.addEventListener("scroll", () => { root.clearTimeout(wh._t); wh._t = root.setTimeout(mark, 50) })
+      const ok = d.createElement("button"); ok.type = "button"; ok.className = "hu-btn pri"; ok.textContent = "確定"; ok.onclick = () => done(idxNow())
+      const no = d.createElement("button"); no.type = "button"; no.className = "hu-btn"; no.textContent = "取消"; no.onclick = () => done(null)
+      b.append(ok, no)
+      o.appendChild(b); d.body.appendChild(o)
+      wh.scrollTop = Math.min(items.length - 1, Math.max(0, selIdx)) * WHEEL_ITEM_H
+      mark()
     })
   }
   function pickFile(done) {   // 在按鈕被按下的當下呼叫
@@ -457,20 +484,20 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
   // 編者按 / Editor's note：使用者的設計：選單有一顆專責的「備份提醒」按鈕，週期可選；到期時彈出視窗，由使用者確認要不要「立即啟動備份流程」。
   //   · 週期從「上次手動備份」起算（bk:lastManual；只有真的存出去的備份才算，取消、失敗不算）。從沒備份過＝已到期。設定存在 bkrem:cfg（{ v: 1, days }，0＝關閉，預設 7）。
   //   · 到期的判斷只看週期，不看「有沒有新修改」：只加了照片或 PDF 也算有改動，只看文字修改會漏掉。
-  //   · 彈窗的三個選項：「現在備份」＝走和選單「備份」同一條流程（doBackup：準備檔案→確認視窗→存檔），不另做一套；「明天再提醒」＝24 小時內不再問；「略過這次」＝從今天起重新計算一個週期。三種都存在 bkrem:state（{ skip, snooze }）。「現在備份」之後沒有存成（按了「不用了」或失敗）也當作「明天再提醒」，免得一回到日誌又問。
+  //   · 2026-11-21 改版：選週期（doBkremPick）改成滾輪（wheelPick，像 iPhone 時間選擇器，上下滑動挑一個，按「確定」才算數），不再跳出一整排直排按鈕。到期彈窗（bkremCheck）文字大幅精簡、拿掉「略過這次」，只剩「立即備份」「稍後再說」兩個選項；bkrem:state 只剩 { snooze }，不再有 skip。「稍後再說」＝24 小時內不再問，但到期時間本身不會往後延，所以之後還是會天天問，直到真的備份一次為止。「立即備份」＝走和選單「備份」同一條流程（doBackup：準備檔案→確認視窗→存檔），不另做一套；之後沒有存成（按了「不用了」或失敗）也當作「稍後再說」，免得一回到日誌又問。
   //   · 什麼時候問：載入後 5 秒、之後每次回到日誌（距上次檢查超過 1 小時）。正在打字、選單或別的視窗開著時不彈，每分鐘再試（最多 30 次）。完全沒有日誌內容時不提醒。
   //   · 這一頁只是提醒；不要在這裡偷偷備份（使用者已決定刪除自動備份，備份檔含照片和 PDF，一定要使用者自己存到想放的位置）。Scriptable 母版沒有這個功能（母版沒有注入 BKREM，模板會隱藏那一行）。
-  //   English: a dedicated "備份提醒" menu row with a selectable cycle; when due, a window asks whether to start the backup now. Reminder only: it never backs up by itself (automatic backup was removed on request). Cycle counts from the last manual backup that was actually saved; due check ignores "any changes?" on purpose (photo/PDF-only changes would be missed). Choices: back up now (same doBackup flow) / remind tomorrow (24 h) / skip this one (restart the cycle from today). Not shown while typing or while another window is open; retried every minute (max 30). Web version only.
+  //   English: a dedicated "備份提醒" menu row with a selectable cycle; when due, a window asks whether to start the backup now. Reminder only: it never backs up by itself (automatic backup was removed on request). Cycle counts from the last manual backup that was actually saved; due check ignores "any changes?" on purpose (photo/PDF-only changes would be missed). 2026-11-21 revision: the cycle picker (doBkremPick) is now a wheel (wheelPick — like an iOS time picker, swipe to pick, "確定" confirms) instead of a stack of buttons; the due popup (bkremCheck) text is much shorter and the "skip this one" choice is gone, leaving just "立即備份" (back up now, same doBackup flow) and "稍後再說" (ask again in 24 h — the due time itself doesn't move, so it keeps asking daily until an actual backup happens); bkrem:state is now just { snooze }. Not shown while typing or while another window is open; retried every minute (max 30). Web version only.
   const BKREM_DEFAULT = 7, BKREM_RETRY_MS = 60000, BKREM_RETRY_MAX = 30
   const BKREM_OPTS = [[3, "每 3 天"], [7, "每週"], [14, "每兩週"], [30, "每月"], [0, "關閉"]]
   const okRemDays = n => Number.isInteger(n) && n >= 0 && n <= 365
   const bkremName = n => (BKREM_OPTS.find(x => x[0] === n) || [n, "每 " + n + " 天"])[1]
   const dayStartMs = ms => { const t = new Date(ms); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime() }
-  async function bkremRead() {   // 設定＋上次手動備份＋略過／稍後的時間
+  async function bkremRead() {   // 設定＋上次手動備份＋稍後的時間
     const s = getStore(), c = await s.get("bkrem:cfg"), st = await s.get("bkrem:state") || {}
-    return { days: c && okRemDays(c.days) ? c.days : BKREM_DEFAULT, skip: Number(st.skip) || 0, snooze: Number(st.snooze) || 0, last: Number(await s.get("bk:lastManual")) || 0 }
+    return { days: c && okRemDays(c.days) ? c.days : BKREM_DEFAULT, snooze: Number(st.snooze) || 0, last: Number(await s.get("bk:lastManual")) || 0 }
   }
-  const bkremDueAt = x => Math.max(x.last, x.skip) + x.days * 864e5   // 只在 days > 0 時有意義
+  const bkremDueAt = x => x.last + x.days * 864e5   // 只在 days > 0 時有意義
   function bkremText(x, now) {   // 選單那一行的小字
     if (x.days <= 0) return "已關閉"
     const due = bkremDueAt(x)
@@ -504,10 +531,9 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       if (!makeBackupBodyAll(await s.get("rows") || [], await s.get("edits") || [], now, false, await readRems())) return false   // 完全沒有日誌內容：沒有東西可備份
       if (bkremBlocked()) { if (bkremTries++ < BKREM_RETRY_MAX) root.setTimeout(() => bkremCheck().catch(() => {}), BKREM_RETRY_MS); return false }
       bkremTries = 0
-      const got = await modal("該備份了", bkremAgo(x.last) + "（提醒週期：" + bkremName(x.days) + "）。\n\n要現在開始備份嗎？備份會把全部日誌、照片、PDF 合成一個檔，由你存到想放的位置。\n\n「略過這次」會從今天起重新計算，" + x.days + " 天後再提醒。",
-        [{ label: "現在備份", kind: "pri", value: "now" }, { label: "明天再提醒", value: "later" }, { label: "略過這次", value: "skip" }])
-      if (got === "skip") { await bkremSetState({ skip: Date.now(), snooze: 0 }); say("已略過，" + x.days + " 天後再提醒") }
-      else if (got === "now") {
+      const got = await modal("該備份了", bkremAgo(x.last) + "。要立即啟動備份流程嗎？",
+        [{ label: "立即備份", kind: "pri", value: "now" }, { label: "稍後再說", value: "later" }])
+      if (got === "now") {
         await handle("scriptable:///run?scriptName=" + encodeURIComponent("日誌") + "&backup=1")   // 排進同一條隊列（和選單的「備份」一模一樣）
         if ((Number(await s.get("bk:lastManual")) || 0) <= x.last) { await bkremSetState({ snooze: Date.now() + 864e5 }); say("這次沒有存成備份，明天再提醒") }
       } else { await bkremSetState({ snooze: Date.now() + 864e5 }); say("好，明天再提醒") }
@@ -515,12 +541,12 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       return true
     } catch (e) { return false } finally { bkremBusy = false }
   }
-  async function doBkremPick() {   // 選單「備份提醒」那一行：選週期
+  async function doBkremPick() {   // 選單「備份提醒」那一行：滾輪選週期
     const x = await bkremRead()
-    const buttons = BKREM_OPTS.map(([d, n]) => ({ label: (d === x.days ? "✓ " : "") + n, kind: d === x.days ? "pri" : undefined, value: d }))
-    buttons.push({ label: "取消", value: null })
-    const got = await modal("備份提醒", "到了日子，打開日誌時會問你要不要現在備份（只提醒，不會自己備份）。週期從上次手動備份起算。\n\n現在：" + bkremName(x.days) + "。選一個週期：", buttons)
-    if (got === null || got === undefined) return
+    const idx = BKREM_OPTS.findIndex(o => o[0] === x.days)
+    const i = await wheelPick("備份提醒週期", BKREM_OPTS.map(o => ({ label: o[1] })), idx < 0 ? 1 : idx)
+    if (i === null || i === undefined) return
+    const got = BKREM_OPTS[i][0]
     const s = getStore()
     await s.set("bkrem:cfg", { v: 1, days: got })
     await bkremSetState({ snooze: 0 })
