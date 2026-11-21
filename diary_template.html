@@ -383,6 +383,20 @@ button.ib[title="短橫線 -"],button.ib[title="圓點 •"],button.ib[title="�
 button.ib.pri[title="儲存"]{background:var(--c-edit);color:var(--on)}
 #pn .ib2.pri:has(svg),#ac .ib2.pri:has(svg){background:var(--c-edit);border-color:var(--c-edit);color:var(--on)}
 #pn button.ib2[title="取消"],#pn button.ib2[title="關閉"],#ac button.ib2[title="關閉"]{color:var(--c-edit);border-color:var(--c-edit)}
+/* 頂欄圖標各自獨立顏色（6 色不重複）：提醒＝粉紅（沿用 --c-rem）、搜尋＝藍、當年今日＝橙、日曆＝綠、回到今天＝紫、⋯＝金黃（沿用 --c-nav）。--b-* 日夜各一套；搜尋列、「當年今日」橫條的圖標跟著同一顏色 */
+/* English: top-bar icons each get a unique color (6 distinct); the matching icons in the search row and the on-this-day strip follow. */
+:root{--b-sb:#1f5bd8;--b-ly:#bf4e08;--b-nd:#12803a;--b-gt:#6d28d9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--b-sb:#60a5fa;--b-ly:#fb923c;--b-nd:#4ade80;--b-gt:#a78bfa}}
+:root[data-theme="dark"]{--b-sb:#60a5fa;--b-ly:#fb923c;--b-nd:#4ade80;--b-gt:#a78bfa}
+:root[data-theme="light"] header{--b-sb:#2563eb;--b-ly:#ea580c;--b-nd:#16a34a;--b-gt:#7c3aed}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) header{--b-sb:#2563eb;--b-ly:#ea580c;--b-nd:#16a34a;--b-gt:#7c3aed}}
+header .bar #sb.ib{color:var(--b-sb)}
+header .bar #ly.ib{color:var(--b-ly)}
+header .bar #nd.ib{color:var(--b-nd)}
+header .bar #gt.ib{color:var(--b-gt)}
+header #si{color:var(--b-sb)}
+#lyb .lyt{color:var(--b-ly)}
+#lyb button.ib[title="回到今天"]{color:var(--b-gt)}
 /* 垃圾桶（紅）、連不上 iCloud（琥珀，同「待同步」）；垃圾桶面板裏的「還原」用還原的藍色 */
 #dl{color:var(--bad);border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--pd-bg))}
 #off{color:var(--warn);border-color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--pd-bg))}
