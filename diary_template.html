@@ -336,9 +336,9 @@ header .pd-in{max-width:none;margin:0;gap:4px}
 </style><style id="icc">
 /* ===== 圖標按鈕分組顏色：只改「帶圖標」的按鈕，純文字按鈕不變；瀏覽／顯示設定類（搜尋、日曆、回到今天、⋯、日夜、文字大小、粗細）維持原本的深藏青 ===== */
 /* English: per-group colors for icon buttons only. Browse/display tools keep the navy accent; text-only buttons are untouched. */
-:root{--c-photo:#157035;--c-wx:#a84408;--c-hol:#6d28d9;--c-rem:#b81b72;--c-bk:#1f5bd8;--c-pdf:#0c6d8a}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee}}
-:root[data-theme="dark"]{--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee}
+:root{--c-photo:#157035;--c-wx:#a84408;--c-hol:#6d28d9;--c-rem:#b81b72;--c-bk:#1f5bd8;--c-pdf:#0c6d8a;--c-nav:#806000;--c-edit:#507200}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee;--c-nav:#facc15;--c-edit:#a3e635}}
+:root[data-theme="dark"]{--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee;--c-nav:#facc15;--c-edit:#a3e635}
 /* 頂欄：提醒清單（洋紅） */
 header .bar #vb3.ib{color:var(--c-rem)}
 /* 卡片編輯列：加入照片（綠）、加入 PDF（青）、設／改／取消提醒（洋紅）——這些按鈕沒有 id，用 title 認 */
@@ -353,11 +353,28 @@ button.ib[title="設提醒"],button.ib[title="修改提醒"],button.ib[title="�
 .menu #vb4{--ic:var(--c-hol)}
 .menu :is(#bkr,#remx){--ic:var(--c-rem)}
 .menu :is(#bkb,#rsb,#dix){--ic:var(--c-bk)}
-.menu :is(#phx,#wxs,#vb4,#bkr,#remx,#bkb,#rsb,#dix) svg{color:var(--ic);stroke:var(--ic)}
+.menu :is(#th,#fz,#fw){--ic:var(--c-nav)}
+.menu :is(#phx,#wxs,#vb4,#bkr,#remx,#bkb,#rsb,#dix,#th,#fz,#fw) svg{color:var(--ic);stroke:var(--ic)}
 /* 相片放大畫面（黑底，日夜都一樣）：搬移、刪除照片按鈕用綠色圖標；刪除鈕平時和搬移鈕同樣是淺色底，按第一下（再按一次）才變紅 */
 #ov button.ib2{color:#4ade80}
 #ov button.ib2.dng{background:rgba(255,255,255,.16);color:#4ade80;border-color:rgba(255,255,255,.3)}
 #ov button.ib2.dng.arm{background:rgba(190,50,50,.92);color:#fff;border-color:transparent}
+/* ---- 第二批：剩下沒顏色的圖標按鈕 ---- */
+/* 瀏覽／顯示類（金黃）：頂欄 搜尋、當年今日、日曆、回到今天、⋯；搜尋列；「當年今日」橫條；增加卡片面板的上／下個月、上／下一年；⋯ 選單的 顯示模式、文字大小、粗細 */
+header .bar :is(#sb,#ly,#nd,#gt).ib,header .bar #pdb.ib,header.open .bar #pdb.ib{color:var(--c-nav)}
+header #si{color:var(--c-nav)}
+#sx.ib{color:var(--c-nav)}
+#lyb .lyt,#lyb button.ib[title="回到今天"]{color:var(--c-nav)}
+#ac .nav .ib2{color:var(--c-nav)}
+/* 編輯／確認類（青檸）：卡片編輯列的 短橫線／圓點／編號、儲存（實心）、取消；各視窗的 確定（實心）、取消、關閉 */
+button.ib[title="短橫線 -"],button.ib[title="圓點 •"],button.ib[title="編號 1."],button.ib[title="取消"],#lyb button.ib[title="關閉"]{color:var(--c-edit)}
+button.ib.pri[title="儲存"]{background:var(--c-edit);color:var(--on)}
+#pn .ib2.pri:has(svg),#ac .ib2.pri:has(svg){background:var(--c-edit);border-color:var(--c-edit);color:var(--on)}
+#pn button.ib2[title="取消"],#pn button.ib2[title="關閉"],#ac button.ib2[title="關閉"]{color:var(--c-edit);border-color:var(--c-edit)}
+/* 垃圾桶（紅）、連不上 iCloud（琥珀，同「待同步」）；垃圾桶面板裏的「還原」用還原的藍色 */
+#dl{color:var(--bad);border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--pd-bg))}
+#off{color:var(--warn);border-color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--pd-bg))}
+#pn button.ib2[title="全部還原"],#pn button.ib2[title="還原這一天"]{color:var(--c-bk)}
 </style></head><body>
 <header>
  <div class="bar">
