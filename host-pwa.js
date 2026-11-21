@@ -2974,9 +2974,12 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       const d = root.document, menu = d && d.querySelector && d.querySelector("#pd .menu")
       if (!menu || d.getElementById("dix")) return
       const b = d.createElement("button")
-      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("data-lb", "匯入資料檔"); b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子、匯入天氣檔，或匯入行程 CSV（CSV 會加到對應日子的卡片上方）"); b.title = "補進缺的年份或日子、匯入天氣檔、匯入行程 CSV"
+      // 編者按 / Editor's note：標籤不用 data-lb／::after（那只能印一行字），改用模板已經有的 .bkc（<b>主標籤</b><small>小字</small>）排版，和「備份」「備份提醒」兩行同一套，才能在主標籤下面加一行不加粗的小字「json, csv」。
+      // English: label uses the template's existing .bkc pattern (<b>main label</b><small>hint</small>) — same as the 備份 / 備份提醒 rows — instead of data-lb/::after (which can only show one line), so a second, non-bold "json, csv" line fits under the main label.
+      b.className = "mi"; b.id = "dix"; b.type = "button"; b.setAttribute("aria-label", "匯入資料檔：補進缺的年份或日子、匯入天氣檔，或匯入行程 CSV（CSV 會加到對應日子的卡片上方）；可選 json、csv 檔"); b.title = "補進缺的年份或日子、匯入天氣檔、匯入行程 CSV（json、csv）"
       const ref = menu.querySelector("svg")   // 借用選單裏現有圖示的外框（class、大小），只換圖案；找不到（模板改過）就沒有圖示
       if (ref) { const ic = ref.cloneNode(false); ic.innerHTML = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></g>'; b.appendChild(ic) }
+      const lb = d.createElement("span"); lb.className = "bkc"; lb.innerHTML = "<b>匯入資料檔</b><small>json, csv</small>"; b.appendChild(lb)
       b.onclick = () => { startDataImport(); if (typeof root.pdClose === "function") root.pdClose() }   // 先打開檔案選單（要在按下的當下），再收起選單
       menu.appendChild(b)
     } catch (e) {}
