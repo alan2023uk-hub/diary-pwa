@@ -333,6 +333,31 @@ header .pd-in{max-width:none;margin:0;gap:4px}
 #ac .how b{display:inline;font-size:15px;margin:0 6px 0 0}
 #ac .go{width:100%;height:54px;justify-content:center}
 #ac .go:disabled{opacity:.35}
+</style><style id="icc">
+/* ===== 圖標按鈕分組顏色：只改「帶圖標」的按鈕，純文字按鈕不變；瀏覽／顯示設定類（搜尋、日曆、回到今天、⋯、日夜、文字大小、粗細）維持原本的深藏青 ===== */
+/* English: per-group colors for icon buttons only. Browse/display tools keep the navy accent; text-only buttons are untouched. */
+:root{--c-photo:#157035;--c-wx:#a84408;--c-hol:#6d28d9;--c-rem:#b81b72;--c-bk:#1f5bd8;--c-pdf:#0c6d8a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee}}
+:root[data-theme="dark"]{--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee}
+/* 頂欄：提醒清單（洋紅） */
+header .bar #vb3.ib{color:var(--c-rem)}
+/* 卡片編輯列：加入照片（綠）、加入 PDF（青）、設／改／取消提醒（洋紅）——這些按鈕沒有 id，用 title 認 */
+button.ib[title="加入照片"]{color:var(--c-photo)}
+button.ib[title="加入 PDF"]{color:var(--c-pdf)}
+button.ib[title="設提醒"],button.ib[title="修改提醒"],button.ib[title="取消提醒"]{color:var(--c-rem)}
+/* 卡片上、提醒清單裏的「完成／取消完成」小圓鈕（洋紅） */
+.lnk{color:var(--c-rem);border-color:var(--c-rem)}
+/* 「⋯」選單：只換圖示顏色，文字維持原色。--ic 是各項的顏色；匯入資料檔的圖示是自己畫的（線條用 currentColor），所以 color 和 stroke 都設 */
+.menu #phx{--ic:var(--c-photo)}
+.menu #wxs{--ic:var(--c-wx)}
+.menu #vb4{--ic:var(--c-hol)}
+.menu :is(#bkr,#remx){--ic:var(--c-rem)}
+.menu :is(#bkb,#rsb,#dix){--ic:var(--c-bk)}
+.menu :is(#phx,#wxs,#vb4,#bkr,#remx,#bkb,#rsb,#dix) svg{color:var(--ic);stroke:var(--ic)}
+/* 相片放大畫面（黑底，日夜都一樣）：搬移、刪除照片按鈕用綠色圖標；刪除鈕平時和搬移鈕同樣是淺色底，按第一下（再按一次）才變紅 */
+#ov button.ib2{color:#4ade80}
+#ov button.ib2.dng{background:rgba(255,255,255,.16);color:#4ade80;border-color:rgba(255,255,255,.3)}
+#ov button.ib2.dng.arm{background:rgba(190,50,50,.92);color:#fff;border-color:transparent}
 </style></head><body>
 <header>
  <div class="bar">

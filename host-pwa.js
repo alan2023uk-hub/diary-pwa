@@ -121,6 +121,8 @@
     ".pdfvm{flex:none;display:flex;align-items:center;gap:2px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:#2a2a2c;color:#fff}.pdfmt{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:52px;height:48px;font:inherit;color:#fff;background:none;border:0;border-radius:10px;cursor:pointer}" +
     ".pdfmt b{font-size:18px;font-weight:600;line-height:1.1}.pdfmt i{font-style:normal;font-size:11px;opacity:.75}.pdfmt.on{background:rgba(64,156,255,.3)}.pdfmt[disabled]{opacity:.3}.pdfmt.pri{color:#409cff;margin-left:auto}" +
     ".pdfcs{flex:none;display:flex;gap:8px;padding:0 8px;align-items:center}.pdfcd{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.35);padding:0;cursor:pointer}.pdfcd.on{border-color:#fff;box-shadow:0 0 0 2px #409cff}" +
+    // 編者按 / Editor's note：PDF 閱讀列上帶圖標的四顆（分享、填寫、標記、搜尋）改青色；「完成」「▲▼」等文字／符號按鈕維持原樣。English: the four icon buttons in the PDF reader top bar (share, fill, mark, find) turn cyan; text/glyph buttons keep their old look.
+    ".pdfvb button.pdfi{color:#22d3ee}.pdfvb button.pdfi.on{background:rgba(34,211,238,.22)}" +
     ".pdfta{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:8px;border:1px solid rgba(128,128,128,.5);border-radius:8px;margin:0 0 .6rem;background:transparent;color:inherit}.pdfsg{display:block;width:100%;height:auto;box-sizing:border-box;touch-action:none;background:#fff;border:1px solid rgba(128,128,128,.5);border-radius:10px;margin:0 0 .5rem}"
 
   // ---------- 提示文字：母版寫的是「同步到 iCloud」，網頁版的資料其實只存在這部裝置的瀏覽器裏，不會到 iCloud ----------
