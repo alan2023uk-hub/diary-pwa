@@ -336,9 +336,12 @@ header .pd-in{max-width:none;margin:0;gap:4px}
 </style><style id="icc">
 /* ===== 圖標按鈕分組顏色：只改「帶圖標」的按鈕，純文字按鈕不變；瀏覽／顯示設定類（搜尋、日曆、回到今天、⋯、日夜、文字大小、粗細）維持原本的深藏青 ===== */
 /* English: per-group colors for icon buttons only. Browse/display tools keep the navy accent; text-only buttons are untouched. */
-:root{--c-photo:#157035;--c-wx:#a84408;--c-hol:#6d28d9;--c-rem:#b81b72;--c-bk:#1f5bd8;--c-pdf:#0c6d8a;--c-nav:#806000;--c-edit:#507200}
+:root{--c-photo:#12803a;--c-wx:#bf4e08;--c-hol:#6d28d9;--c-rem:#c21a78;--c-bk:#1f5bd8;--c-pdf:#0a7391;--c-nav:#916800;--c-edit:#5a8000}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee;--c-nav:#facc15;--c-edit:#a3e635}}
 :root[data-theme="dark"]{--c-photo:#4ade80;--c-wx:#fb923c;--c-hol:#a78bfa;--c-rem:#f472b6;--c-bk:#5b8cff;--c-pdf:#22d3ee;--c-nav:#facc15;--c-edit:#a3e635}
+/* 白天模式的頂欄和「⋯」選單底色近白，顏色可以更鮮豔；卡片、視窗是米色底，維持上面較深的一套。夜間模式不受影響 */
+:root[data-theme="light"] header{--c-photo:#16a34a;--c-wx:#ea580c;--c-hol:#7c3aed;--c-rem:#db2777;--c-bk:#2563eb;--c-pdf:#0891b2;--c-nav:#bf7f00;--c-edit:#6a9c00}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) header{--c-photo:#16a34a;--c-wx:#ea580c;--c-hol:#7c3aed;--c-rem:#db2777;--c-bk:#2563eb;--c-pdf:#0891b2;--c-nav:#bf7f00;--c-edit:#6a9c00}}
 /* 頂欄：提醒清單（洋紅） */
 header .bar #vb3.ib{color:var(--c-rem)}
 /* 卡片編輯列：加入照片（綠）、加入 PDF（青）、設／改／取消提醒（洋紅）——這些按鈕沒有 id，用 title 認 */
