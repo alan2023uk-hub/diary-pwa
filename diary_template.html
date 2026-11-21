@@ -350,13 +350,22 @@ button.ib[title="加入 PDF"]{color:var(--c-pdf)}
 button.ib[title="設提醒"],button.ib[title="修改提醒"],button.ib[title="取消提醒"]{color:var(--c-rem)}
 /* 卡片上、提醒清單裏的「完成／取消完成」小圓鈕（洋紅） */
 .lnk{color:var(--c-rem);border-color:var(--c-rem)}
-/* 「⋯」選單：只換圖示顏色，文字維持原色。--ic 是各項的顏色；匯入資料檔的圖示是自己畫的（線條用 currentColor），所以 color 和 stroke 都設 */
-.menu #phx{--ic:var(--c-photo)}
-.menu #wxs{--ic:var(--c-wx)}
-.menu #vb4{--ic:var(--c-hol)}
-.menu :is(#bkr,#remx){--ic:var(--c-rem)}
-.menu :is(#bkb,#rsb,#dix){--ic:var(--c-bk)}
-.menu :is(#th,#fz,#fw){--ic:var(--c-nav)}
+/* 「⋯」選單：只換圖示顏色，文字維持原色。每個項目一個獨立顏色（11 色不重複）：--m-* 是菜單專用色，日夜各一套；--ic 指向各項的顏色。匯入資料檔的圖示是自己畫的（線條用 currentColor），所以 color 和 stroke 都設 */
+/* English: every menu item gets its own unique color (11 distinct hues) via menu-only --m-* vars, one set for light and one for dark. */
+:root,:root[data-theme="light"] header{--m-hol:#9333ea;--m-wx:#ea580c;--m-th:#bf7f00;--m-fz:#65a30d;--m-fw:#4f46e5;--m-bkb:#2563eb;--m-rsb:#0891b2;--m-bkr:#dc2626;--m-phx:#16a34a;--m-rem:#db2777;--m-dix:#0d9488}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--m-hol:#c084fc;--m-wx:#fb923c;--m-th:#facc15;--m-fz:#a3e635;--m-fw:#818cf8;--m-bkb:#60a5fa;--m-rsb:#22d3ee;--m-bkr:#f87171;--m-phx:#4ade80;--m-rem:#f472b6;--m-dix:#2dd4bf}}
+:root[data-theme="dark"]{--m-hol:#c084fc;--m-wx:#fb923c;--m-th:#facc15;--m-fz:#a3e635;--m-fw:#818cf8;--m-bkb:#60a5fa;--m-rsb:#22d3ee;--m-bkr:#f87171;--m-phx:#4ade80;--m-rem:#f472b6;--m-dix:#2dd4bf}
+.menu #vb4{--ic:var(--m-hol)}
+.menu #wxs{--ic:var(--m-wx)}
+.menu #th{--ic:var(--m-th)}
+.menu #fz{--ic:var(--m-fz)}
+.menu #fw{--ic:var(--m-fw)}
+.menu #bkb{--ic:var(--m-bkb)}
+.menu #rsb{--ic:var(--m-rsb)}
+.menu #bkr{--ic:var(--m-bkr)}
+.menu #phx{--ic:var(--m-phx)}
+.menu #remx{--ic:var(--m-rem)}
+.menu #dix{--ic:var(--m-dix)}
 .menu :is(#phx,#wxs,#vb4,#bkr,#remx,#bkb,#rsb,#dix,#th,#fz,#fw) svg{color:var(--ic);stroke:var(--ic)}
 /* 相片放大畫面（黑底，日夜都一樣）：搬移、刪除照片按鈕用綠色圖標；刪除鈕平時和搬移鈕同樣是淺色底，按第一下（再按一次）才變紅 */
 #ov button.ib2{color:#4ade80}
