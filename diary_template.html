@@ -253,17 +253,18 @@ header .tools #palb.ib{width:auto;margin:0;padding:0;--c:var(--k1)}
 #pn .pnh.big{font-size:19px;margin:6px 0 14px;color:var(--text)}
 #pn .qs.cf{gap:12px}
 #pn .qs.cf .ib2{flex:1;height:54px;justify-content:center}
-/* 備份、還原、自動備份：各佔「⋯」選單的一行（和其他選單項目同高同字級）；自動備份那一行是兩行字（名字＋上次時間）所以高度自動；右邊是目前間隔的按鈕樣子（有底色） */
+/* 備份、還原：各佔「⋯」選單的一行（和其他選單項目同高同字級）；網頁版的「備份」那一行是兩行字（名字＋上次手動備份）所以高度自動 */
 .menu .mi[hidden]{display:none}
 .menu .mi:disabled{opacity:.35}
-.menu #bka::after{content:none}
-.menu #bka{height:auto;min-height:48px;padding-top:6px;padding-bottom:6px}
-.menu #bkb.two::after{content:none}   /* 網頁版：「備份」那一行多一行小字「上次手動備份：N 天前」（和自動備份那一行同樣做法；Scriptable 宿主沒有 BKLAST，維持原本的單行） */
+.menu #bkb.two::after{content:none}   /* 網頁版：「備份」那一行多一行小字「上次手動備份：N 天前」（Scriptable 宿主沒有 BKLAST，維持原本的單行） */
 .menu #bkb.two{height:auto;min-height:48px;padding-top:6px;padding-bottom:6px}
+/* 備份提醒：兩行字（名字＋下次提醒）＋右邊目前週期的按鈕樣子（有底色；開著＝深色底，關閉＝淺色底），點整行開「選週期」視窗。只有網頁版宿主會注入 BKREM，其他宿主沒有就隱藏 */
+.menu #bkr::after{content:none}
+.menu #bkr{height:auto;min-height:48px;padding-top:6px;padding-bottom:6px}
+.menu #bkr .ib2{flex:none;margin-left:auto;min-width:76px;height:36px;padding:0 14px;font-size:14px;border-radius:10px;pointer-events:none}
 .menu .bkc{display:flex;flex-direction:column;gap:2px;min-width:0}
 .menu .bkc b{font-size:16px;font-weight:600}
 .menu .bkc small{font-size:12.5px;font-weight:400;color:var(--sub);line-height:1.3}
-.menu #bka .ib2{flex:none;margin-left:auto;min-width:76px;height:36px;padding:0 14px;font-size:14px;border-radius:10px;pointer-events:none}   /* 目前的間隔：有底色的按鈕樣子，表示點一下可以切換；開著時深色底，關閉時淺色底 */
 /* 垃圾桶：每一天一列（日期＋第一行預覽＋還原／永久刪除），上面是「全部還原」「清空垃圾桶」 */
 #pn .tb{display:flex;gap:10px;margin:6px 0 4px}#pn .tb .ib2{flex:1;min-width:0}
 #pn .tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
@@ -355,7 +356,7 @@ header .pd-in{max-width:none;margin:0;gap:4px}
    <button class="mi" id="fw" data-lb="粗細" type="button" aria-label="切換字體粗細" title="切換字體粗細"></button>
    <button class="mi" id="bkb" data-lb="備份" type="button" aria-label="備份" title="備份"></button>
    <button class="mi" id="rsb" data-lb="還原…" type="button" aria-label="還原" title="還原"></button>
-   <button class="mi" id="bka" type="button" hidden><span class="bkc"><b>自動備份</b><small></small></span><span class="ib2"></span></button>
+   <button class="mi" id="bkr" type="button" hidden><span class="bkc"><b>備份提醒</b><small></small></span><span class="ib2"></span></button>
   </div>
   <div class="pills"><div id="bk" hidden></div><button id="off" type="button" hidden></button><button id="dl" type="button" hidden></button></div>
  </div></div>
@@ -913,21 +914,19 @@ function backupAllYears(n){if(!n){toast('沒有日誌可備份');return}toast(wi
 function restoreAllYears(){toast(window.LIVE_RS?'開啟備份清單…':'開啟備份清單…畫面會短暫離開再回來');scriptRun('restore','1')}   /* 文字還原：從備份清單選一份，備份裏有的每一年都會還原，不分年份 */
 function allTotals(){const ys=new Set();let days=0;for(const x of DATA)if(!x[3]&&String(x[2]).trim()!==''){days++;ys.add(x[0].slice(0,4))}return{days,years:ys.size}}   /* 全部年份的日誌天數、有內容的年數（文字備份用） */
 /* 一鍵備份／還原，不分年份：「備份」把全部年份的日誌（網頁版還有照片、PDF）合成一個檔；「還原」由腳本列出備份清單，選一份就全部放回去，並在還原前自動備份目前內容。 */
-/* 備份、還原、自動備份：各佔「⋯」選單的一行。點「備份」「還原…」直接執行（確認與說明在按下去之後的提示視窗：備份顯示內容與大小，還原說明怎麼選備份）；「自動備份」點一下輪流切換間隔。 */
-const BK_MODES=[[7,'每週'],[3,'每 3 天'],[30,'每月'],[0,'關閉']];
+/* 備份、還原：各佔「⋯」選單的一行。點「備份」「還原…」直接執行（確認與說明在按下去之後的提示視窗：備份顯示內容與大小，還原說明怎麼選備份）。（自動備份已刪除。網頁版另有「備份提醒」那一行：只提醒、不自己備份，點一下選週期。） */
 function bkAgo(l){if(!l||!l.t)return'上次手動備份：沒有記錄';const a=new Date(l.t),n=new Date(),d=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(a.getFullYear(),a.getMonth(),a.getDate()))/864e5);return'上次手動備份：'+(d<=0?'今天':d===1?'昨天':d+' 天前')}   /* 只有網頁版宿主會注入 BKLAST＝{t:上次手動備份的毫秒時間，0＝沒有記錄}；用日曆天數算「今天／昨天／N 天前」 */
-function bkRefresh(){   /* 每次打開選單時重算：沒有日誌就不能備份；自動備份那一行只有 Scriptable 宿主和網頁版宿主會注入 BKCFG，其他宿主沒有，就不顯示。右邊的有底色按鈕＝目前的間隔（開著＝深色底，關閉＝淺色底），點整行輪流切換 */
- const b=document.getElementById('bkb'),a=document.getElementById('bka');
+const BKR_NAMES={3:'每 3 天',7:'每週',14:'每兩週',30:'每月',0:'關閉'};
+function bkRefresh(){   /* 每次打開選單時重算：沒有日誌就不能備份 */
+ const b=document.getElementById('bkb'),r=document.getElementById('bkr');
  b.disabled=!allTotals().days;
  const bl=window.BKLAST;if(bl){let s=b.querySelector('.bkc');if(!s){s=document.createElement('span');s.className='bkc';s.innerHTML='<b>備份</b><small></small>';b.appendChild(s);b.classList.add('two')}s.querySelector('small').textContent=bkAgo(bl)}   /* 網頁版：「備份」那一行顯示上次手動備份是多久以前（不彈提示，只是一行字） */
- const c=window.BKCFG;a.hidden=!c;if(!c)return;
- const m=BK_MODES.find(x=>x[0]===c.days),nm=m?m[1]:'每 '+c.days+' 天',pill=a.querySelector('.ib2');
- pill.textContent=nm;pill.classList.toggle('pri',c.days>0);
- a.querySelector('small').textContent=c.days===0?'已關閉':(c.last?'上次 '+c.last:'尚未自動備份');
- a.setAttribute('aria-label','自動備份：'+nm+'（點一下切換）')}
+ const c=window.BKREM;r.hidden=!c;   /* 備份提醒那一行：只有網頁版宿主會注入 BKREM＝{days:週期天數（0＝關閉）, text:小字} */
+ if(c){const nm=BKR_NAMES[c.days]||('每 '+c.days+' 天'),pill=r.querySelector('.ib2');pill.textContent=nm;pill.classList.toggle('pri',c.days>0);r.querySelector('small').textContent=c.text||'';r.setAttribute('aria-label','備份提醒：'+nm+'（點一下選週期）')}
+}
 document.getElementById('bkb').onclick=()=>{pdClose();backupAllYears(allTotals().days)};
 document.getElementById('rsb').onclick=()=>{pdClose();restoreAllYears()};
-document.getElementById('bka').onclick=()=>{const c=window.BKCFG;if(!c)return;const i=BK_MODES.findIndex(x=>x[0]===c.days);c.days=BK_MODES[(i+1)%BK_MODES.length][0];bkRefresh();if(!window.LIVE_BK)toast('儲存中…畫面會短暫離開再回來');hostSend({bkcfg:JSON.stringify({days:c.days})},{go:lastDate||'',pend:'skip'})};
+document.getElementById('bkr').onclick=()=>{pdClose();hostSend({bkrem:'pick'},{go:lastDate||'',pend:'skip'})};   /* 選備份提醒的週期：視窗由宿主彈出 */
 document.getElementById('wxs').onclick=()=>{pdClose();wxDialog()};
 /* 天氣設定：預報天數（0–16）、酷熱溫度（25–50°C）；按確定後交給「日誌」腳本存進 weather.json 並重查預報 */
 function wxDialog(){
@@ -1185,7 +1184,7 @@ const rc=document.createElement('span');rc.className='chip';rc.textContent='提�
 
 /* ===== UI v2：頂部圖標列、拉下菜單、搜尋、手勢 ===== */
 const HD=document.querySelector('header'),pdb=document.getElementById('pdb'),sbtn=document.getElementById('sb'),scrim=document.getElementById('scrim');
-[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkb','download'],['rsb','undo'],['bka','history']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
+[['pdb','more'],['si','search'],['sb','search'],['ly','history'],['nd','calendar'],['gt','calendarCheck'],['sx','x'],['vb3','bell'],['vb4','flag'],['wxs','sun'],['fz','fontSize'],['fw','fontBold'],['bkb','download'],['rsb','undo'],['bkr','history']].forEach(([id,n])=>{document.getElementById(id).insertAdjacentHTML('afterbegin',ico(n))});
 function pdOpen(){try{bannerUpdate()}catch(e){}try{bkRefresh()}catch(e){}HD.classList.remove('hide');HD.classList.add('open');document.body.classList.add('pdo');pdb.setAttribute('aria-expanded','true')}
 function pdClose(){HD.classList.remove('open');document.body.classList.remove('pdo');pdb.setAttribute('aria-expanded','false')}
 function pdToggle(){HD.classList.contains('open')?pdClose():pdOpen()}

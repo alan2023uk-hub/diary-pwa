@@ -4,9 +4,10 @@
      · 組頁：把模板、日誌資料、修改組成頁面，寫進目前的視窗
      · 訊息：頁面的 hostSend 不再導向網址，改由 window.HOST_DELIVER 直接交給 PwaHost.handle
    目前支援：同步（修改存進宿主）、打開連結、一鍵備份與還原（日誌、提醒、照片、PDF，全部年份合成一個檔、不用選年份；日誌的格式和 Scriptable 版相同，兩邊的備份檔可以互相還原；還原可選「合併」——每一天比修改時間，新的留下，只在一邊有的日子都保留——或「完全還原」——整份改成備份的樣子）、卡片照片（加入、顯示、刪除、換日期）。天氣（每張卡片標題欄的「地名 溫度 有雨／下雪 大風 酷熱」、未來預報、日誌頁選單裏的「天氣」設定，規則和 Scriptable 版相同；見下面「天氣」一節）。天氣歷史可以用「⋯」選單的「匯入資料檔」把 Scriptable 版的 weather.json 補進來（可以和日誌資料檔、備份檔一起選，程式依內容自己分；只收已經發生的日子，不覆蓋這裡已定案的）。日誌頁「⋯」選單的「匯入照片」可以先選照片、再選日子（iOS 的網頁沒辦法出現在分享選單裏，所以用這個代替「分享 → Run Script」）。日誌頁「⋯」選單的「匯入資料檔」可以把缺的年份或日子補進來（只加目前沒有的日子，已有的一律不動；見下面 planDataAdd）。提醒（設定、完成、取消、到期通知、備份與還原；規則和 Scriptable 版相同，見下面「提醒」一節）。整年照片頁還沒開放（會在頁面上提示）。
-   自動備份（存在這部裝置）：到期（距上次自動備份超過設定的天數、而且之後有修改——任何一年的日誌或提醒）時，打開日誌後悄悄把全部年份的完整備份合成一份，存在這部裝置的瀏覽器裏，不彈提示、不要使用者存檔；數量不限，要刪在「還原」視窗的「整理備份…」自己勾選。「還原」視窗一次還原備份裏的所有年份（不用選年份）。間隔在「⋯」選單的「自動備份」那一行切換（點一下輪流切換）。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機：要防那個，用「備份」把備份檔存進 iCloud（自動備份只含日誌文字和提醒，不含照片、PDF）。
+   自動備份功能已刪除（使用者的決定：日誌靠照片、PDF 和少量文字，一份「全年份備份」連照片、PDF 一起存最切合需要，只備份文字的自動備份不實際）：不再自動存、選單沒有「自動備份」那一行。以前自動存在這部裝置的備份仍留在原處，「還原」視窗還列得出來、可以還原，「整理備份…」可以勾選刪掉；刪光之後這兩個入口自己消失。「還原前」自動留下的備份（固定 5 份）是另一回事，照舊。
    注意：照片和 PDF 存在這部裝置的瀏覽器裏；按「備份」存出的備份檔（.json）一次含日誌文字、提醒、照片、PDF，「還原…」選一份備份就全部放回去（照片、PDF 只補沒有的，不會刪現有的；日誌文字才分合併和完全還原）。以前分開的「照片備份」「PDF 備份」入口已經從面板拿掉。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。
-   存入母版（iOS）：「備份」存好之後會問一次「存入母版？」，按「要」切到 Scriptable，帶著剛存的備份檔名；母版只還原那一個檔、只做完全還原、先彈確認視窗（見 offerMasterRestore、日誌.js 的 restorePwaBackup）。選單「備份」那一行會顯示「上次手動備份：N 天前」（bk:lastManual、window.BKLAST）。 */
+   存入母版（iOS）：「備份」存好之後會問一次「存入母版？」，按「要」切到 Scriptable，帶著剛存的備份檔名；母版只還原那一個檔、只做完全還原、先彈確認視窗（見 offerMasterRestore、日誌.js 的 restorePwaBackup）。選單「備份」那一行會顯示「上次手動備份：N 天前」（bk:lastManual、window.BKLAST）。
+   備份提醒（網頁版專用）：選單的「備份提醒」那一行選週期（每 3 天／每週／每兩週／每月／關閉，預設每週）；從上次手動備份起算，到期後打開（或回到）日誌時彈出視窗，問要不要現在備份（現在備份／明天再提醒／略過這次）。見下面「備份提醒」一節。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -146,8 +147,8 @@
     const html = tpl.replace("__DATA__", () => JSON.stringify(sortRows(rows)).replace(/<\//g, "<\\/"))
     const head = '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">' +
       '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="日誌">'
-    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bkcfg ? ";window.BKCFG=" + esc(opts.bkcfg) : "") + (opts.bklast ? ";window.BKLAST=" + esc(opts.bklast) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_PDFBK=true;window.PWA_AUTOCP=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
-      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};window.HOST_PICK_PDF=function(){PwaHost.prePickPdf()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.installPdf();PwaHost.loadCardPdfs();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startAutoBackup()})</script>'
+    const inject = "<script>window.ICLOUD_EDITS=" + esc(edits) + ";window.UNDATED=0;window.PHOTOS_LOADED=false;window.OFFLINE=0;window.LIVE=true;window.LIVE_PH=true;window.LIVE_BK=true;window.LIVE_RS=true;window.LIVE_ACT=true;window.ICLOUD_REMINDERS=" + esc(opts.rems || []) + ";window.GOTAB=" + esc(opts.tab || "") + ";window.WEATHER=" + esc(opts.weather || {}) + ";window.WXCFG=" + esc(opts.wxcfg || { fcDays: W.fcDays, hotC: W.hotC }) + (opts.bklast ? ";window.BKLAST=" + esc(opts.bklast) : "") + (opts.bkrem ? ";window.BKREM=" + esc(opts.bkrem) : "") + ";window.SYNC_NAME='本機';window.HOST_NO_LIMIT=true;window.PWA_PHOTOBK=true;window.PWA_PDFBK=true;window.GOTO=" + esc(opts.go || "") + "</script>" +
+      '<script src="host-pwa.js"></script><script>window.HOST_DELIVER=function(u){PwaHost.handle(u)};window.HOST_PICK_PHOTOS=function(){PwaHost.prePickPhotos()};window.HOST_PICK_PDF=function(){PwaHost.prePickPdf()};document.addEventListener("DOMContentLoaded",function(){PwaHost.installPhotoImport();PwaHost.loadCardPhotos();PwaHost.installPdf();PwaHost.loadCardPdfs();PwaHost.startWeather();PwaHost.installRemMenu();PwaHost.installDataImport();PwaHost.startReminders();PwaHost.startBackupReminder()})</script>'
     return html.replace("</head>", () => head + "<style>" + PDF_CSS + "</style>" + inject + "</head>")
   }
 
@@ -157,7 +158,7 @@
   // 兩邊的備份檔互通（都是日誌的備份，兩邊都認得）；檔名和類型（kind）仍然不同，只是用來分辨是哪一邊備份的：
   //   網頁版的備份：pwa_yymmdd_hhmm_all.json（建立日期時間；例：pwa_261109_1901_all.json；全部年份一個檔），kind＝"diary-pwa-backup-all"，裏面每一年一份 kind＝"diary-pwa-backup"
   //   Scriptable 的備份：bk_yymmdd_hhmm_all.json，kind＝"diary-backup-all"，裏面每一年一份 kind＝"diary-backup"（放在 iCloud 的 diary_backups 資料夾）
-  //   自動備份加 _auto、還原前的備份加 _pre（放在 _all 之前，例：pwa_261109_1901_pre_all.json）
+  //   還原前的備份加 _pre（放在 _all 之前，例：pwa_261109_1901_pre_all.json）。（以前還有自動備份的 _auto，功能已刪除，不再產生；舊檔名仍認得）
   //   天數和提醒數不再寫進檔名（檔名太長，檔案App顯示不完整）；Scriptable 的還原選單會讀檔案內容補上
   //   （以前逐年的備份檔 pwa_yymmdd_hhmm[_y25].json、pwa_2026_1109_1901_120d3r.json、diary-pwa_backup_…、backup_… 不能再「還原」，但「匯入資料檔」還認得，可以把缺的日子補回來；網頁版靠檔案內容的 kind 判斷，不看檔名）
   //   網頁版備份出來的照片：日期_時間碼_序號.jpg（時間碼＝原檔名裡的 13 位毫秒數轉成 8 位 36 進位，還原時換回來；舊的 diary-pwa_… 前綴照樣認得）
@@ -182,26 +183,26 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const pe = edits.find(e => !e.del && e.date === preKey(year))
     return { raw, rawPre, pre: pe ? (pe.text || "") : rawPre, days: new Map([...by].filter(([d, t]) => (t || "").trim() !== "")) }
   }
-  function makeBackupBody(year, rows, edits, now, isPre, rems, photoNames, isAuto) {   // photoNames＝這一年的照片檔名清單（只有手動備份才附上；還原時用來檢查照片齊不齊）
+  function makeBackupBody(year, rows, edits, now, isPre, rems, photoNames) {   // photoNames＝這一年的照片檔名清單（只有手動備份才附上；還原時用來檢查照片齊不齊）
     const { days, pre } = effectiveDays(year, rows, edits)
     const tOf = new Map((edits || []).map(e => [e.date, Number(e.t) || 0]))   // 每一天最後修改的時間（沒有修改紀錄＝0＝原稿沒改過）
     const rl = [...yearRems(year, rems).values()].sort((a, b) => a.date < b.date ? -1 : 1).map(r => ({ id: r.date, date: r.date, due: r.due, repeat: r.repeat || 0, done: !!r.done, t: r.t || 0, txt: r.txt || "" }))
     const remGone = (rems || []).filter(r => validRem(r) && r.del && r.date.startsWith(year + "-")).map(r => ({ date: r.date, t: r.t || 0 }))   // 取消的提醒：合併時讓另一邊也取消
     const gone = (edits || []).filter(e => e && typeof e.date === "string" && e.date.startsWith(year + "-") && !isPreKey(e.date) && !days.has(e.date)).map(e => ({ date: e.date, t: Number(e.t) || 0 }))   // 已刪除（或清空）的日子
-    const made = new Date(now), name = "pwa_" + stampOf(made) + (isPre ? "_pre" : "") + (isAuto ? "_auto" : "") + (made.getFullYear() === year ? "" : "_y" + String(year).slice(2)) + ".json"   // 例：pwa_261109_1901.json；日誌年份和建立年份不同才加 _y25
+    const made = new Date(now), name = "pwa_" + stampOf(made) + (isPre ? "_pre" : "") + (made.getFullYear() === year ? "" : "_y" + String(year).slice(2)) + ".json"   // 例：pwa_261109_1901.json；日誌年份和建立年份不同才加 _y25
     const body = { v: 2, kind: BK_KIND, app: "pwa", year, created: now, pre, preT: tOf.get(preKey(year)) || 0, days: [...days].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, text]) => ({ date, text, t: tOf.get(date) || 0 })), gone, reminders: rl, remGone }
     if (Array.isArray(photoNames)) body.photos = photoNames
     return { name, body, days: days.size, rems: rl.length }
   }
-  // 全年份備份：全部年份合成一份（手動備份、自動備份、還原前的備份共用）。手動和自動備份只收有內容的年份；「還原前」的備份每一年都收（要退回去時，連現在沒內容的年份也要退回）。回傳 null＝沒有任何可備份的年份
-  function makeBackupBodyAll(rows, edits, now, isPre, rems, isAuto) {
+  // 全年份備份：全部年份合成一份（手動備份、還原前的備份共用）。手動備份只收有內容的年份；「還原前」的備份每一年都收（要退回去時，連現在沒內容的年份也要退回）。回傳 null＝沒有任何可備份的年份
+  function makeBackupBodyAll(rows, edits, now, isPre, rems) {
     const years = new Set((rows || []).map(r => +String(r[0]).slice(0, 4)).filter(y => y > 1999))
     for (const e of edits || []) { const m = /^(\d{4})-/.exec(e && e.date || ""); if (m) years.add(+m[1]) }
     const items = []
-    for (const y of [...years].sort()) { const r = makeBackupBody(y, rows, edits, now, isPre, rems, undefined, isAuto); if (isPre || r.days > 0) items.push(r) }
+    for (const y of [...years].sort()) { const r = makeBackupBody(y, rows, edits, now, isPre, rems, undefined); if (isPre || r.days > 0) items.push(r) }
     if (!items.length) return null
     const yrs = items.map(x => ({ year: x.body.year, days: x.days, rems: x.rems }))
-    return { name: "pwa_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + (isAuto ? "_auto" : "") + "_all.json", body: { v: 3, kind: ALL_KIND, app: "pwa", created: now, years: items.map(x => x.body) }, yrs, years: yrs.length, days: items.reduce((a, x) => a + x.days, 0), rems: items.reduce((a, x) => a + x.rems, 0) }
+    return { name: "pwa_" + stampOf(new Date(now)) + (isPre ? "_pre" : "") + "_all.json", body: { v: 3, kind: ALL_KIND, app: "pwa", created: now, years: items.map(x => x.body) }, yrs, years: yrs.length, days: items.reduce((a, x) => a + x.days, 0), rems: items.reduce((a, x) => a + x.rems, 0) }
   }
   function planRestore(year, rows, edits, b, now, rems) {   // 算出還原要做的修改（還沒寫入）；和 Scriptable 版 restoreYear 同一套算法（日誌＋提醒）
     if (!b || !okKind(b.kind) || !Array.isArray(b.days)) return { ok: false, error: "這不是日誌的備份檔" }
@@ -382,8 +383,8 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
   // ---------- 一鍵備份／還原：日誌文字、照片、PDF 合成一個檔（不分年份）----------
   // 編者按 / Editor's note：手動備份只有一個動作：把全部年份的日誌文字、提醒、照片、PDF 合成一個 .json（pwa_…_all.json），只存一次。照片和 PDF 是原檔轉成 base64 放在同一個檔案裏（photos、pdfs 兩個欄位）；沒有這兩個欄位的舊備份照樣能還原。
   //   還原時照片和 PDF 只補沒有的，不會刪現有的（合併、完全還原都一樣）；日誌文字才分合併和完全還原。不再有「已備份記錄」（photobk:done、pdfbk:done 不再用來判斷），每次都是完整一份。
-  //   自動備份和還原前的備份（存在這部裝置）只收日誌文字，不收照片和 PDF（照片和 PDF 很佔空間，而且備份和原資料在同一個瀏覽器裏防不了什麼）。
-  //   English: manual backup is now one action: all years of text + reminders + photos + PDFs in one .json (pwa_…_all.json), saved once. Photos/PDFs are base64 originals in the same file (fields photos, pdfs); older backups without these fields still restore. Restore only adds missing photos/PDFs (never deletes), for both merge and full restore; only the text has merge vs full. The per-item "already backed up" records are no longer used. Auto and pre-restore copies (stored on this device) stay text-only.
+  //   還原前的備份（存在這部裝置）只收日誌文字，不收照片和 PDF（照片和 PDF 很佔空間，而且備份和原資料在同一個瀏覽器裏防不了什麼）。
+  //   English: manual backup is now one action: all years of text + reminders + photos + PDFs in one .json (pwa_…_all.json), saved once. Photos/PDFs are base64 originals in the same file (fields photos, pdfs); older backups without these fields still restore. Restore only adds missing photos/PDFs (never deletes), for both merge and full restore; only the text has merge vs full. The per-item "already backed up" records are no longer used. Pre-restore copies (stored on this device) stay text-only (the auto-backup feature has been removed).
   const b64Of = blob => new Promise((res, rej) => { const fr = new root.FileReader(); fr.onload = () => { const t = String(fr.result); res(t.slice(t.indexOf(",") + 1)) }; fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob) })
   const fileOfB64 = (d, name, type) => { const bin = root.atob(d), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new root.File([u], name, { type }) }
   const MEDIA_MAX = 60 * 1048576   // 照片和 PDF 合起來超過這個大小（原檔）就不放進同一個檔案（手機記憶體有限）
@@ -407,7 +408,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
   const mediaTail = r => r && (r.photos || r.pdfs) ? "；補回 " + r.photos + " 張照片、" + r.pdfs + " 個 PDF" : ""
   async function doBackup() {   // 手動備份：日誌文字＋提醒＋照片＋PDF，全部年份合成一個檔
     const s = getStore()
-    const r = makeBackupBodyAll(await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems(), false)
+    const r = makeBackupBodyAll(await s.get("rows") || [], await s.get("edits") || [], Date.now(), false, await readRems())
     if (!r) { say("沒有日誌可備份"); return false }
     say("準備備份…", 3000)
     const ph = await photoFilesOf(null), pf = await pdfFilesOf(null), bytes = [...ph, ...pf].reduce((a, f) => a + f.size, 0)
@@ -438,6 +439,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       const tb = Date.now()
       try { await s.set("bk:lastManual", tb) } catch (e) {}
       try { root.BKLAST = { t: tb } } catch (e) {}
+      bkremPublish().catch(() => {})   // 「備份提醒」那一行的「下次提醒」重算
     }
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份（" + r.years + " 年、" + r.days + " 天日誌" + (withMedia ? "、" + ph.length + " 張照片、" + pf.length + " 個 PDF" : "") + "）" + (how === "downloaded" ? "：已下載 " + r.name : ""))
     if (how === "shared" && isIOS()) await offerMasterRestore(r.name)   // 編者按 / Editor's note：存好之後問一次「存入母版？」（見下面 offerMasterRestore）。只有 iOS 才有 Scriptable、而且只有走分享選單存出去才問（「下載」會存到別的地方，母版找不到）。English: after the file is saved, ask once whether to send it to the master (iOS only, share-sheet saves only; a plain download lands elsewhere).
@@ -451,19 +453,95 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     if (!ok) return
     try { root.location.href = "scriptable:///run?scriptName=" + encodeURIComponent("日誌") + "&pwarestore=" + encodeURIComponent(name) } catch (e) {}
   }
-  // ---------- 自動備份（存在這部裝置）----------
-  // 編者按 / Editor's note：網頁版的「自動備份」＝悄悄把全部年份合成一份完整備份，存在這部裝置裏（IndexedDB）：不彈提示、不叫使用者存檔；數量不設上限，要刪由使用者在「還原」視窗的「整理備份…」自己勾選。（以前是每一年各存一份；現在改成全年份一份，以前存下的逐年備份不動、不再新增，還原視窗不再列出，只留在「整理備份…」裏可以刪掉。）
-  //   不要改回「提示使用者儲存」，也不要加張數上限或自動刪舊的（使用者明確要求不限、自己刪）。它防的是改錯、還原錯，防不了瀏覽器資料被清掉或換手機——那要靠「備份」按鈕存進 iCloud 的檔案；（使用者要求選單的「自動備份」那一行不寫「存在這部裝置」，只顯示「上次 …」。）
-  //   English: the web version's "auto backup" silently keeps full per-year copies on this device (IndexedDB): no prompts, no cap, nothing auto-pruned; the user deletes copies by hand via "整理備份…" in the restore window. Do not go back to prompt-to-save and do not add a cap or auto-delete (explicitly requested).
-  //   It guards against bad edits/restores, NOT against cleared browser data or a lost device; only the manual 備份 file saved to iCloud does that, (the user asked that the menu's 自動備份 row no longer say "存在這部裝置"; it only shows 上次 …).
+  // ---------- 備份提醒（網頁版專用；只提醒，不會自己備份）----------
+  // 編者按 / Editor's note：使用者的設計：選單有一顆專責的「備份提醒」按鈕，週期可選；到期時彈出視窗，由使用者確認要不要「立即啟動備份流程」。
+  //   · 週期從「上次手動備份」起算（bk:lastManual；只有真的存出去的備份才算，取消、失敗不算）。從沒備份過＝已到期。設定存在 bkrem:cfg（{ v: 1, days }，0＝關閉，預設 7）。
+  //   · 到期的判斷只看週期，不看「有沒有新修改」：只加了照片或 PDF 也算有改動，只看文字修改會漏掉。
+  //   · 彈窗的三個選項：「現在備份」＝走和選單「備份」同一條流程（doBackup：準備檔案→確認視窗→存檔），不另做一套；「明天再提醒」＝24 小時內不再問；「略過這次」＝從今天起重新計算一個週期。三種都存在 bkrem:state（{ skip, snooze }）。「現在備份」之後沒有存成（按了「不用了」或失敗）也當作「明天再提醒」，免得一回到日誌又問。
+  //   · 什麼時候問：載入後 5 秒、之後每次回到日誌（距上次檢查超過 1 小時）。正在打字、選單或別的視窗開著時不彈，每分鐘再試（最多 30 次）。完全沒有日誌內容時不提醒。
+  //   · 這一頁只是提醒；不要在這裡偷偷備份（使用者已決定刪除自動備份，備份檔含照片和 PDF，一定要使用者自己存到想放的位置）。Scriptable 母版沒有這個功能（母版沒有注入 BKREM，模板會隱藏那一行）。
+  //   English: a dedicated "備份提醒" menu row with a selectable cycle; when due, a window asks whether to start the backup now. Reminder only: it never backs up by itself (automatic backup was removed on request). Cycle counts from the last manual backup that was actually saved; due check ignores "any changes?" on purpose (photo/PDF-only changes would be missed). Choices: back up now (same doBackup flow) / remind tomorrow (24 h) / skip this one (restart the cycle from today). Not shown while typing or while another window is open; retried every minute (max 30). Web version only.
+  const BKREM_DEFAULT = 7, BKREM_RETRY_MS = 60000, BKREM_RETRY_MAX = 30
+  const BKREM_OPTS = [[3, "每 3 天"], [7, "每週"], [14, "每兩週"], [30, "每月"], [0, "關閉"]]
+  const okRemDays = n => Number.isInteger(n) && n >= 0 && n <= 365
+  const bkremName = n => (BKREM_OPTS.find(x => x[0] === n) || [n, "每 " + n + " 天"])[1]
+  const dayStartMs = ms => { const t = new Date(ms); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime() }
+  async function bkremRead() {   // 設定＋上次手動備份＋略過／稍後的時間
+    const s = getStore(), c = await s.get("bkrem:cfg"), st = await s.get("bkrem:state") || {}
+    return { days: c && okRemDays(c.days) ? c.days : BKREM_DEFAULT, skip: Number(st.skip) || 0, snooze: Number(st.snooze) || 0, last: Number(await s.get("bk:lastManual")) || 0 }
+  }
+  const bkremDueAt = x => Math.max(x.last, x.skip) + x.days * 864e5   // 只在 days > 0 時有意義
+  function bkremText(x, now) {   // 選單那一行的小字
+    if (x.days <= 0) return "已關閉"
+    const due = bkremDueAt(x)
+    if (due <= now) return now < x.snooze ? "明天再提醒" : "已到期，打開日誌時提醒"
+    const d = Math.round((dayStartMs(due) - dayStartMs(now)) / 864e5)
+    return d <= 0 ? "下次提醒：今天" : d === 1 ? "下次提醒：明天" : "下次提醒：" + d + " 天後"
+  }
+  async function bkremPublish() {   // 把目前的設定和說明放進頁面（window.BKREM），選單下次打開時就是新的
+    try { const x = await bkremRead(); root.BKREM = { days: x.days, text: bkremText(x, Date.now()) } } catch (e) {}
+  }
+  async function bkremSetState(patch) { const s = getStore(); await s.set("bkrem:state", Object.assign({}, await s.get("bkrem:state") || {}, patch)) }
+  function bkremAgo(ms) {   // 和選單「備份」那一行同樣的說法
+    if (!ms) return "還沒有手動備份的記錄"
+    const d = Math.round((dayStartMs(Date.now()) - dayStartMs(ms)) / 864e5)
+    return "上次手動備份：" + (d <= 0 ? "今天" : d === 1 ? "昨天" : d + " 天前")
+  }
+  function bkremBlocked() {   // 正在打字、選單或別的視窗開著：不彈（免得蓋住使用者正在做的事）
+    const d = root.document, a = d.activeElement
+    if (a && (a.tagName === "TEXTAREA" || a.tagName === "INPUT" || a.isContentEditable)) return true
+    if (d.querySelector(".hu-ov, #pn")) return true
+    return !!(d.body && d.body.classList && d.body.classList.contains("pdo"))
+  }
+  let bkremBusy = false, bkremTries = 0
+  async function bkremCheck() {   // 回傳 true＝這次彈出過提醒視窗
+    if (bkremBusy) return false
+    bkremBusy = true
+    try {
+      const now = Date.now(), x = await bkremRead()
+      if (x.days <= 0 || now < bkremDueAt(x) || now < x.snooze) return false
+      const s = getStore()
+      if (!makeBackupBodyAll(await s.get("rows") || [], await s.get("edits") || [], now, false, await readRems())) return false   // 完全沒有日誌內容：沒有東西可備份
+      if (bkremBlocked()) { if (bkremTries++ < BKREM_RETRY_MAX) root.setTimeout(() => bkremCheck().catch(() => {}), BKREM_RETRY_MS); return false }
+      bkremTries = 0
+      const got = await modal("該備份了", bkremAgo(x.last) + "（提醒週期：" + bkremName(x.days) + "）。\n\n要現在開始備份嗎？備份會把全部日誌、照片、PDF 合成一個檔，由你存到想放的位置。\n\n「略過這次」會從今天起重新計算，" + x.days + " 天後再提醒。",
+        [{ label: "現在備份", kind: "pri", value: "now" }, { label: "明天再提醒", value: "later" }, { label: "略過這次", value: "skip" }])
+      if (got === "skip") { await bkremSetState({ skip: Date.now(), snooze: 0 }); say("已略過，" + x.days + " 天後再提醒") }
+      else if (got === "now") {
+        await handle("scriptable:///run?scriptName=" + encodeURIComponent("日誌") + "&backup=1")   // 排進同一條隊列（和選單的「備份」一模一樣）
+        if ((Number(await s.get("bk:lastManual")) || 0) <= x.last) { await bkremSetState({ snooze: Date.now() + 864e5 }); say("這次沒有存成備份，明天再提醒") }
+      } else { await bkremSetState({ snooze: Date.now() + 864e5 }); say("好，明天再提醒") }
+      await bkremPublish()
+      return true
+    } catch (e) { return false } finally { bkremBusy = false }
+  }
+  async function doBkremPick() {   // 選單「備份提醒」那一行：選週期
+    const x = await bkremRead()
+    const buttons = BKREM_OPTS.map(([d, n]) => ({ label: (d === x.days ? "✓ " : "") + n, kind: d === x.days ? "pri" : undefined, value: d }))
+    buttons.push({ label: "取消", value: null })
+    const got = await modal("備份提醒", "到了日子，打開日誌時會問你要不要現在備份（只提醒，不會自己備份）。週期從上次手動備份起算。\n\n現在：" + bkremName(x.days) + "。選一個週期：", buttons)
+    if (got === null || got === undefined) return
+    const s = getStore()
+    await s.set("bkrem:cfg", { v: 1, days: got })
+    await bkremSetState({ snooze: 0 })
+    await bkremPublish()
+    say("備份提醒：" + bkremName(got))
+    if (got > 0) bkremCheck().catch(() => {})   // 改成較短的週期、而且已經到期：不用等下次打開，現在就問
+  }
+  function startBackupReminder() {   // 頁面載入後呼叫：稍等一下檢查一次；之後每次回到日誌（距上次檢查超過 1 小時）再檢查
+    const d = root.document
+    let lastCheck = 0
+    const go = () => { if (d.visibilityState && d.visibilityState !== "visible") return; lastCheck = Date.now(); bkremCheck().catch(() => {}) }
+    root.setTimeout(go, 5000)
+    if (d.addEventListener) d.addEventListener("visibilitychange", () => { if (d.visibilityState === "visible" && Date.now() - lastCheck > 3600e3) root.setTimeout(go, 1500) })
+  }
+  // ---------- 以前的自動備份（自動備份功能已刪除，這裏只剩「還原」和「整理」）----------
+  // 編者按 / Editor's note：自動備份功能已刪除（使用者的決定：日誌靠照片、PDF 和少量文字，「備份」存出的全年份一個檔連照片、PDF 一起備份最切合需要，只含文字的自動備份不實際）。不要加回「自動存」「選單的自動備份那一行」。
+  //   以前自動存在這部裝置（IndexedDB）的備份不動：還原視窗仍然列出、可以還原，「整理備份…」可以勾選刪掉（數量不設上限、不自動刪，由使用者自己刪）；全部刪光之後這兩個入口自己消失。
+  //   English: the auto-backup feature has been removed on request (the diary is photos/PDFs plus a little text, and the one-file all-years manual backup already covers that). Do not re-add automatic saving or the menu row. Copies it saved earlier stay on this device: still listed and restorable in the restore window, and deletable via "整理備份…"; when none are left both entries disappear.
   // 儲存方式：每一份獨立一個鍵（autocp:<id>，內容＝{ created, body }），另有一份清單（autocp:index，新到舊），列清單、算空間不用把整份備份讀出來。
     //   全年份備份：id＝all-建立時間（毫秒），清單項目 { id, all: true, created, yrs: [{ year, days, rems }], days, rems, bytes }（days、rems＝全部年份的合計）；以前逐年的備份：id＝年份-建立時間，清單項目 { id, year, created, days, rems, bytes }。
-  // 什麼時候存：設定的間隔（autobk:cfg，天數，0＝關閉）過了、而且上次自動備份之後有修改（任何一年的日誌或提醒），或還沒有任何全年份自動備份 → 存一份。「上次」以清單裏最新一份全年份備份為準（刪掉了就不算），所以刪光之後下次檢查會再存一份；以前逐年的備份不算。
-  // 以前的「提示式」自動備份（autobk:last、autobk:snooze、autobackup 資料夾的檔案）不再使用；舊的記錄留在原處不動，Scriptable 版的還原選單仍然認得那些舊檔案。
-  const AUTO_BK_DAYS = 7
-  const okBkDays = n => Number.isInteger(n) && n >= 0 && n <= 365
-  const bkDaysLabel = n => n === 0 ? "關閉" : n === 7 ? "每週" : n === 30 ? "每月" : "每 " + n + " 天"
-  async function readBkDays() { const v = await getStore().get("autobk:cfg"); return v && okBkDays(v.days) ? v.days : AUTO_BK_DAYS }
+  // 更早以前的「提示式」自動備份（autobk:last、autobk:snooze、autobackup 資料夾的檔案）也不再使用；舊的記錄留在原處不動，Scriptable 版的還原選單仍然認得那些舊檔案。設定用的 autobk:cfg 也不再讀寫，留在原處無害。
   const AC_INDEX = "autocp:index", acKey = id => "autocp:" + id
   let acChain = Promise.resolve()   // 清單的讀改寫排成一條隊：自動存和整理刪除同時進行時，不會互相蓋掉
   function acTask(fn) { const p = acChain.then(fn); acChain = p.then(() => {}, () => {}); return p }
@@ -479,51 +557,6 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       for (const id of gone) { try { await s.del(acKey(id)) } catch (e) {} }
       return idx
     })
-  }
-  async function bkCfgForPage() {   // 給頁面「自動備份」那一行：間隔天數＋上次存的時間（日/月 時:分，沒有就空字串）
-    const last = (await readAcIndex()).reduce((a, x) => Math.max(a, x.created), 0)
-    return { days: await readBkDays(), last: last ? fmtTime(last) : "" }
-  }
-  async function doBkCfg(raw) {   // 頁面「自動備份」那顆按鈕切換了間隔
-    let days
-    try { days = JSON.parse(raw).days } catch (e) { return }
-    if (!okBkDays(days)) return
-    await getStore().set("autobk:cfg", { v: 1, days })
-    say("自動備份：" + bkDaysLabel(days))
-    if (days > 0) autoBackupCheck().catch(() => {})   // 剛開啟（或改短）：不用等下次打開，現在就看有沒有該存的
-  }
-  async function autoBackupItems(now) {   // 現在該存的全年份備份（沒開啟、還不到期、或沒有任何內容，回傳空陣列；最多一份）
-    const days = await readBkDays()
-    if (days <= 0) return []
-    const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || [], rems = await readRems(), idx = await readAcIndex()
-    const lastMs = idx.filter(x => x.all).reduce((a, x) => Math.max(a, x.created), 0)   // 只看全年份備份（以前逐年的不算）
-    if (lastMs && now - lastMs < days * 864e5) return []
-    if (lastMs && ![...edits, ...rems].some(r => r && (Number(r.t) || 0) > lastMs)) return []   // 上次存完之後沒有修改
-    const r = makeBackupBodyAll(rows, edits, now, false, rems, true)   // 沒有任何年份有內容就是 null
-    return r ? [{ name: r.name, body: r.body, text: JSON.stringify(r.body), yrs: r.yrs, days: r.days, rems: r.rems }] : []
-  }
-  let autoBusy = false
-  async function autoBackupCheck() {   // 回傳 true＝這次有存新的（悄悄存，沒有任何提示；存失敗才提醒，而且一天最多一次）
-    if (autoBusy) return false
-    autoBusy = true
-    try {
-      const now = Date.now(), items = await autoBackupItems(now)
-      if (!items.length) return false
-      await acTask(async () => {
-        const s = getStore(), idx = await readAcIndex()
-        for (const it of items) {
-          const id = "all-" + now
-          await s.set(acKey(id), { created: now, body: it.body })
-          idx.push({ id, all: true, created: now, yrs: it.yrs, days: it.days, rems: it.rems, bytes: it.text.length })
-          await s.set(AC_INDEX, idx)   // 每存好一份就更新清單：中途出錯，已存好的也都在清單裏
-        }
-      })
-      try { if (root.BKCFG) root.BKCFG.last = fmtTime(now) } catch (e) {}   // 頁面「自動備份」那一行的「上次」換成現在
-      return true
-    } catch (e) {
-      try { await wxHintOnce("hint:acfail", "自動備份沒有存成功（可能是這部裝置的儲存空間滿了）：請到「⋯」→「備份與還原」→「還原…」→「整理備份…」刪掉不要的備份，或用「備份」按鈕存成檔案") } catch (e2) {}
-      return false
-    } finally { autoBusy = false }
   }
   const fmtMB = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + " KB" : (n / 1048576).toFixed(1) + " MB"
   const acLabelAll = x => fmtShort(x.created) + " · " + x.yrs.length + "年 · " + x.days + "天 · " + x.rems + "提醒"   // 全年份還原視窗按鈕上用的
@@ -571,13 +604,6 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       render()
     })
   }
-  function startAutoBackup() {   // 頁面載入後呼叫：稍等一下檢查一次；之後每次回到日誌（隔了六小時以上）再檢查
-    const d = root.document
-    let lastCheck = 0
-    const go = () => { if (d.visibilityState && d.visibilityState !== "visible") return; lastCheck = Date.now(); autoBackupCheck().catch(() => {}) }
-    root.setTimeout(go, 4000)
-    if (d.addEventListener) d.addEventListener("visibilitychange", () => { if (d.visibilityState === "visible" && Date.now() - lastCheck > 6 * 3600e3) root.setTimeout(go, 1500) })
-  }
   // ---------- 還原：選一份備份（全部年份），對裏面的每一年各做一次「合併」或「完全還原」；一次確認、一次還原前備份 ----------
   // 合併＝planMerge；完全還原＝planRestore。備份裏沒有的年份完全不動。回傳 true＝有改動（呼叫端要把最新的修改推回頁面）
   // 編者按 / Editor's note：還原視窗只做「還原」：選備份檔、自動備份、還原前自動留下的備份，加上「整理備份…」。不要把「還原照片」「匯入天氣」放回來（照片在選單「照片」那排、天氣和資料檔在「匯入資料檔」），
@@ -587,14 +613,14 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const s = getStore(), presAll = await s.get("preall") || [], ACA_SHOW = 5
     let pick
     for (;;) {
-      const all = await readAcIndex(), acs = all.filter(x => x.all)   // 以前逐年的自動備份不列（只留在「整理備份…」）
+      const all = await readAcIndex(), acs = all.filter(x => x.all)   // 以前自動存的備份（功能已刪除，只剩舊的）：以前逐年的不列（只留在「整理備份…」）
       const buttons = [{ label: "從檔案…", kind: "pri", onclick: pickFile }]
       acs.slice(0, ACA_SHOW).forEach(x => buttons.push({ label: "自動 " + acLabelAll(x), value: { auto: x.id } }))
       if (acs.length > ACA_SHOW) buttons.push({ label: "更多自動備份（共 " + acs.length + " 份）…", value: "more" })
       presAll.forEach((x, i) => buttons.push({ label: "還原前 " + fmtShort(x.created) + " · " + (Array.isArray(x.body.years) ? x.body.years.length : 0) + "年", value: { pre: i } }))
       if (all.length) buttons.push({ label: "整理備份…", value: "manage" })
       buttons.push({ label: "取消", value: null })
-      const got = await modal("還原日誌", "選一份備份。備份裏有的每一年都會還原，沒有的年份不會動；備份檔裏的照片和 PDF 會補回沒有的。" + (acs.length || presAll.length ? "" : "\n還沒有自動備份（開啟自動備份後會自動做一份），可以從檔案選。"), buttons)
+      const got = await modal("還原日誌", "選一份備份。備份裏有的每一年都會還原，沒有的年份不會動；備份檔裏的照片和 PDF 會補回沒有的。", buttons)
       if (got === "manage") { await manageAutoCopies(); continue }   // 整理完回到這個視窗（清單已經更新）
       if (got === "more") {
         const m = await modal("選一份自動備份", "自動備份，新到舊", [...acs.map(x => ({ label: acLabelAll(x), value: { auto: x.id } })), { label: "返回", value: null }])
@@ -2458,8 +2484,8 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     if (p.delphoto) return "delphoto"
     if (p.movephoto) return "movephoto"
     if (p.wxcfg !== undefined) return "wxcfg"
-    if (p.bkcfg !== undefined) return "bkcfg"
     if (p.remsave !== undefined) return "remsave"
+    if (p.bkrem !== undefined) return "bkrem"
     for (const k of Object.keys(UNSUPPORTED)) if (p[k] !== undefined) return k
     return "sync"
   }
@@ -2500,7 +2526,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     else if (act === "delphoto") await doDelPhoto(p.delphoto)
     else if (act === "movephoto") await doMovePhoto(p.movephoto, p.to)
     else if (act === "remsave") await doRemSave(p.remsave)
-    else if (act === "bkcfg") await doBkCfg(p.bkcfg)
+    else if (act === "bkrem") await doBkremPick()
     else if (act === "wxcfg") doWxCfg(p.wxcfg)   // 不等它做完：定位和查天氣可能要幾秒，結果做完會自己推回頁面
     else if (act !== "sync") say("「" + UNSUPPORTED[act] + "」在 PWA 版還沒開放")
     if (restored) { await pushCloud(); await pushRems(); remCheckSoon() }
@@ -2529,13 +2555,13 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const s = getStore(), rows = await s.get("rows") || [], edits = await s.get("edits") || []
     let wx = {}, cfg
     try { const wst = await readWeather(); wx = weatherForPage(wst); cfg = { fcDays: W.fcDays, hotC: W.hotC } } catch (e) {}   // 天氣讀不到也照樣打開日誌
-    let bk
-    try { bk = await bkCfgForPage() } catch (e) {}   // 讀不到也照樣打開日誌（頁面就不顯示「自動備份」那一行）
+    let bkr
+    try { const x = await bkremRead(); bkr = { days: x.days, text: bkremText(x, Date.now()) } } catch (e) {}   // 讀不到也照樣打開日誌（頁面就不顯示「備份提醒」那一行）
     let bkl
     try { bkl = { t: Number(await s.get("bk:lastManual")) || 0 } } catch (e) {}   // 上次手動備份的時間（0＝沒有記錄）；讀不到就不顯示那一行
     let tab = ""
     try { if (new root.URLSearchParams(root.location.search).get("tab") === "rem") tab = "rem" } catch (e) {}   // 點通知進來（網址帶 ?tab=rem）：直接打開提醒清單
-    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg, rems: await readRems(), tab, bkcfg: bk, bklast: bkl })
+    const html = assemble(await r.text(), rows, edits, { weather: wx, wxcfg: cfg, rems: await readRems(), tab, bklast: bkl, bkrem: bkr })
     root.document.open(); root.document.write(html); root.document.close()
     holidaysUpdate()   // 不等它：頁面先用內建的假期表打開，讀到新的再換上去
   }
@@ -2958,7 +2984,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     } catch (e) { el.innerHTML = '<h1>生活日誌</h1><p class="err">打不開：' + String(e && e.message || e) + "</p>" }
   }
 
-  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startAutoBackup, autoBackupCheck, autoBackupItems, readAcIndex, deleteAutoCopies, bkCfgForPage, doBkCfg, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore, parseCsv, parseDT, htmlToText, csvTravelRows, travelLines, insertAbove, findBlocks, readMark, stripMark, markStr, fnv20, buildCsvPlan, planCsvAdd, commitCsvAdd, importCsvFiles, csvSummary, isCsvFile,
+  const api = { pdfTools: { annSvg, annBox, annHit, annMove, buildPdf, pageText, findIn }, boot, launch, handle, startReminders, syncPush, installRemMenu, remCheck, doRemSave, readRems, saveRems, cleanRem, mergeRems, yearRems, dueOccurrence, remText, prePickPhotos, loadCardPhotos, prePickPdf, loadCardPdfs, installPdf, pdfHtml, addPdfFiles, readPdf, startWeather, startBackupReminder, bkremCheck, bkremRead, bkremText, doBkremPick, readAcIndex, deleteAutoCopies, installPhotoImport, startPhotoImport, askDate, addPhotoFiles, weatherForPage, importWeatherData, importWxFiles, isWxFile, wxRecord, applyWxCfg, readWeather, weatherUpdate, okName, dateOf, assemble, parse, mergeEdits, mergeRows, sortRows, readPushState, pushStatusText, pushRetry, importFiles, hasLocalData, isIOS, planDataAdd, commitDataAdd, startDataImport, installDataImport, validRow, effectiveDays, makeBackupBody, planRestore, parseCsv, parseDT, htmlToText, csvTravelRows, travelLines, insertAbove, findBlocks, readMark, stripMark, markStr, fnv20, buildCsvPlan, planCsvAdd, commitCsvAdd, importCsvFiles, csvSummary, isCsvFile,
     get store() { return getStore() }, get W() { return W }, useStore(s) { store = s }, memStore }
   root.PwaHost = api
   if (typeof module !== "undefined" && module.exports) module.exports = api
