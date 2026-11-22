@@ -359,6 +359,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     })
   }
   const WHEEL_ITEM_H = 44   // 滾輪每一列的高度，要和上面 CSS 的 .hu-wheel-hl／.hu-wheel div 一致
+  const WHEEL_LOOP_ROWS = 400   // 循環欄（loop:true）至少排這麼多列：同一組選項重複排列，停下時悄悄跳回正中間那一組，看起來就是首尾相接、一直轉得下去
   function wheelPick(title, items, selIdx) {   // 滾輪選一個：items＝[{label}]，selIdx＝一開始對準哪一個；按「確定」回傳選到的 index，按「取消」回傳 null
     return new Promise(res => {
       const d = root.document
@@ -381,7 +382,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       mark()
     })
   }
-  function wheelPickCols(title, cols, sel, opts) {   // 多欄滾輪（像 iPhone 的時間選擇器，每一欄各自滾動）：cols＝[{ items:[{label}], flex }]，sel＝每一欄一開始對準第幾個；按「確定」回傳每一欄選到的 index 陣列，按「取消」回傳 null；opts.onMove(index 陣列, 各欄元素) 在滾動停下時呼叫
+  function wheelPickCols(title, cols, sel, opts) {   // 多欄滾輪（像 iPhone 的時間選擇器，每一欄各自滾動）：cols＝[{ items:[{label}], flex }]，sel＝每一欄一開始對準第幾個；按「確定」回傳每一欄選到的 index 陣列，按「取消」回傳 null；opts.onMove(index 陣列, 各欄元素) 在滾動停下時呼叫；cols 裏 loop:true 的那一欄首尾相接（23 之後接 00、59 之後接 00），可以一直往同一個方向轉
     return new Promise(res => {
       const d = root.document
       if (!d.getElementById("hu-css")) { const st = d.createElement("style"); st.id = "hu-css"; st.textContent = CSS; d.head.appendChild(st) }
@@ -390,20 +391,27 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       const wrap = d.createElement("div"), hl = d.createElement("div")
       wrap.className = "hu-wheel-wrap cols"; hl.className = "hu-wheel-hl"
       const whs = cols.map(c => {
-        const wh = d.createElement("div"); wh.className = "hu-wheel"; wh.style.flex = String(c.flex || 1)
-        c.items.forEach(it => { const row = d.createElement("div"); row.textContent = it.label; wh.appendChild(row) })
+        const wh = d.createElement("div"), n = c.items.length; wh.className = "hu-wheel"; wh.style.flex = String(c.flex || 1)
+        wh._n = n; wh._copies = 1
+        if (c.loop && n > 1) { const k = Math.ceil(WHEEL_LOOP_ROWS / n); wh._copies = Math.max(3, k % 2 ? k : k + 1) }   // 奇數組，才有「正中間」那一組
+        for (let k = 0; k < wh._copies; k++) c.items.forEach(it => { const row = d.createElement("div"); row.textContent = it.label; wh.appendChild(row) })
         return wh
       })
       wrap.append(...whs, hl); b.appendChild(wrap)
       const done = v => { o.remove(); res(v) }
-      const idxsNow = () => whs.map((wh, i) => Math.min(cols[i].items.length - 1, Math.max(0, Math.round(wh.scrollTop / WHEEL_ITEM_H))))
-      const mark = () => { const ix = idxsNow(); whs.forEach((wh, i) => [...wh.children].forEach((c, j) => c.classList.toggle("sel", j === ix[i]))); if (opts && opts.onMove) opts.onMove(ix, whs) }
-      whs.forEach(wh => wh.addEventListener("scroll", () => { root.clearTimeout(wh._t); wh._t = root.setTimeout(mark, 50) }))
+      const idxOf = wh => { const r = Math.round(wh.scrollTop / WHEEL_ITEM_H), n = wh._n; return wh._copies > 1 ? ((r % n) + n) % n : Math.min(n - 1, Math.max(0, r)) }   // 循環欄：捲到第幾列都換算回 0…n-1
+      const idxsNow = () => whs.map(idxOf)
+      const mark = () => { const ix = idxsNow(); whs.forEach((wh, i) => [...wh.children].forEach((c, j) => c.classList.toggle("sel", j % wh._n === ix[i]))); if (opts && opts.onMove) opts.onMove(ix, whs) }
+      const recenter = wh => { const n = wh._n, mid = (wh._copies - 1) / 2; if (Math.floor(Math.round(wh.scrollTop / WHEEL_ITEM_H) / n) !== mid) wh.scrollTop = (mid * n + idxOf(wh)) * WHEEL_ITEM_H }   // 每一組內容一模一樣，跳回中間那一組看不出差別，但上下又有足夠的空間繼續轉
+      whs.forEach(wh => wh.addEventListener("scroll", () => {
+        root.clearTimeout(wh._t); wh._t = root.setTimeout(mark, 50)
+        if (wh._copies > 1) { root.clearTimeout(wh._r); wh._r = root.setTimeout(() => recenter(wh), 160) }   // 等慣性滑動完全停下才跳，免得打斷滑動
+      }))
       const ok = d.createElement("button"); ok.type = "button"; ok.className = "hu-btn pri"; ok.textContent = "確定"; ok.onclick = () => done(idxsNow())
       const no = d.createElement("button"); no.type = "button"; no.className = "hu-btn"; no.textContent = "取消"; no.onclick = () => done(null)
       b.append(ok, no)
       o.appendChild(b); d.body.appendChild(o)
-      whs.forEach((wh, i) => { wh.scrollTop = Math.min(cols[i].items.length - 1, Math.max(0, sel[i] || 0)) * WHEEL_ITEM_H })
+      whs.forEach((wh, i) => { const n = wh._n, k = Math.min(n - 1, Math.max(0, sel[i] || 0)); wh.scrollTop = (wh._copies > 1 ? (wh._copies - 1) / 2 * n + k : k) * WHEEL_ITEM_H })
       mark()
     })
   }
@@ -517,6 +525,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
   //   · 什麼時候問：載入後 5 秒、之後每次回到日誌（距上次檢查超過 1 小時）。正在打字、選單或別的視窗開著時不彈，每分鐘再試（最多 30 次）。完全沒有日誌內容時不提醒。
   //   · 這一頁只是提醒；不要在這裡偷偷備份（使用者已決定刪除自動備份，備份檔含照片和 PDF，一定要使用者自己存到想放的位置）。Scriptable 母版沒有這個功能（母版沒有注入 BKREM，模板會隱藏那一行）。
   //   · 2026-11-22 加上提醒時間：選週期的視窗改成三欄滾輪（週期｜幾時｜幾分，分鐘 1 分鐘一格，選「關閉」時時間兩欄變淡），設定存在 bkrem:cfg（{ v: 2, days, min }，min＝一天裏的第幾分鐘，預設 1200＝20:00；舊的 v: 1 設定沒有 min，讀到就用預設 20:00）。到期時刻＝上次手動備份那一天 ＋ 週期天數，當天的設定時間（用日曆天數算，不再是「滿 N×24 小時」）；從沒備份過＝已到期。「稍後再說」＝明天的設定時間再問。日誌一直開著、過了到期時刻時也會自己彈出（bkremArm 設定時器；頁面在背景時只記下「錯過了」，回到日誌就檢查）。
+  //   · 2026-11-22 提醒時間的「幾時」「幾分」兩欄改成循環滾輪（wheelPickCols 的 loop:true）：23 時接 00 時、59 分接 00 分，可以一直往同一個方向轉；週期那一欄不循環。做法：循環欄把同一組選項重複排成約 400 列，滾動停下 160 毫秒後悄悄跳回正中間那一組（內容一樣，看不出來），選到的是第幾個一律取除以 n 的餘數。
   //   · 2026-11-22 日誌關閉也提醒（推播）：備份提醒的叫醒時間（bkremPushOcc：到期那一刻起每天設定的時間，共 BKREM_PUSH_DAYS＝3 次，已經到期的從下一個設定時間起算，「稍後再說」之前的不算）放進和每天提醒同一份「完整清單」（syncPushOnce），借用 BK_PUSH_DATE（1999-01-01，日誌沒有這一天；register 只收 YYYY-MM-DD，所以不能用別的名字）。伺服器（register、send-due、push_sync）完全沒改：到點發 { date: "1999-01-01" }，sw.js 認得這一天就顯示「該備份了」，點通知打開日誌（不是提醒清單），日誌已開著就直接彈出備份視窗。備份存好、改週期或時間、回應彈窗（bkremPublish(true)）都會重送清單：舊的叫醒時間被取代＝取消，並收掉通知中心裡的舊通知。萬一伺服器拒收含備份提醒的清單，會改送不含它的（每天提醒不受影響），原因記在 pushsync.bkerr，「提醒通知」視窗會顯示。
   //   English: a dedicated "備份提醒" menu row with a selectable cycle; when due, a window asks whether to start the backup now. Reminder only: it never backs up by itself (automatic backup was removed on request). Cycle counts from the last manual backup that was actually saved; due check ignores "any changes?" on purpose (photo/PDF-only changes would be missed). 2026-11-21 revision: the cycle picker (doBkremPick) is now a wheel (wheelPick — like an iOS time picker, swipe to pick, "確定" confirms) instead of a stack of buttons; the due popup (bkremCheck) text is much shorter and the "skip this one" choice is gone, leaving just "立即備份" (back up now, same doBackup flow) and "稍後再說" (ask again in 24 h — the due time itself doesn't move, so it keeps asking daily until an actual backup happens); bkrem:state is now just { snooze }. Not shown while typing or while another window is open; retried every minute (max 30). Web version only. 2026-11-22 revision: a time of day was added — the picker is now a 3-column wheel (cycle | hour | minute, 1-minute steps; time columns dim when "off"), stored as bkrem:cfg { v: 2, days, min } (min = minute of the day, default 1200 = 20:00; old v: 1 configs without min fall back to 20:00). Due moment = the day of the last manual backup + cycle days, at the chosen time (calendar days, not N×24 h); never backed up = due. "稍後再說" now means ask again tomorrow at the chosen time. If the diary stays open past the due moment the popup also appears by itself (bkremArm timer; while the page is hidden it only records "missed" and the check runs when the page returns). 2026-11-22 push: the backup reminder now also wakes a closed diary via the existing server push. Its due moments (bkremPushOcc: from the due moment on, the chosen time on BKREM_PUSH_DAYS = 3 consecutive days; if already due, from the next chosen time; nothing before a "later" snooze) go into the same full list as the per-day reminders (syncPushOnce) under the reserved date BK_PUSH_DATE = 1999-01-01 (register only accepts YYYY-MM-DD). The server (register, send-due, push_sync) is unchanged; sw.js recognises that date and shows "該備份了", a tap opens the diary (not the reminder list) or, if already open, shows the backup popup right away. Saving a backup, changing cycle/time or answering the popup (bkremPublish(true)) re-sends the list, which replaces (= cancels) the old wake-up times and clears the old notification. If the server rejects a list with the backup item, it re-sends without it (per-day reminders unaffected) and records the cause in pushsync.bkerr, shown in the 提醒通知 window.
   const BKREM_DEFAULT = 7, BKREM_DEFAULT_MIN = 1200, BKREM_RETRY_MS = 60000, BKREM_RETRY_MAX = 30   // BKREM_DEFAULT_MIN：預設提醒時間，一天裏的第幾分鐘（1200＝20:00）
@@ -613,7 +622,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const hours = Array.from({ length: 24 }, (_, h) => ({ label: String(h).padStart(2, "0") + " 時" }))
     const mins = Array.from({ length: 60 }, (_, m) => ({ label: String(m).padStart(2, "0") + " 分" }))
     const r = await wheelPickCols("備份提醒週期與時間",
-      [{ items: BKREM_OPTS.map(o => ({ label: o[1] })), flex: 1.5 }, { items: hours }, { items: mins }],
+      [{ items: BKREM_OPTS.map(o => ({ label: o[1] })), flex: 1.5 }, { items: hours, loop: true }, { items: mins, loop: true }],
       [idx < 0 ? Math.max(0, BKREM_OPTS.findIndex(o => o[0] === BKREM_DEFAULT)) : idx, Math.floor(x.min / 60), x.min % 60],
       { onMove: (ix, whs) => { const off = BKREM_OPTS[ix[0]][0] === 0; whs[1].style.opacity = whs[2].style.opacity = off ? ".3" : "" } })   // 選「關閉」時時間兩欄變淡
     if (!r) return
