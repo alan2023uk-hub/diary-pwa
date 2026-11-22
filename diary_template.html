@@ -984,13 +984,13 @@ function allTotals(){const ys=new Set();let days=0;for(const x of DATA)if(!x[3]&
 /* 一鍵備份／還原，不分年份：「備份」把全部年份的日誌（網頁版還有照片、PDF）合成一個檔；「還原」由腳本列出備份清單，選一份就全部放回去，並在還原前自動備份目前內容。 */
 /* 備份、還原：各佔「⋯」選單的一行。點「備份」「還原…」直接執行（確認與說明在按下去之後的提示視窗：備份顯示內容與大小，還原說明怎麼選備份）。（自動備份已刪除。網頁版另有「備份提醒」那一行：只提醒、不自己備份，點一下選週期。） */
 function bkAgo(l){if(!l||!l.t)return'上次手動備份：沒有記錄';const a=new Date(l.t),n=new Date(),d=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(a.getFullYear(),a.getMonth(),a.getDate()))/864e5);return'上次手動備份：'+(d<=0?'今天':d===1?'昨天':d+' 天前')}   /* 只有網頁版宿主會注入 BKLAST＝{t:上次手動備份的毫秒時間，0＝沒有記錄}；用日曆天數算「今天／昨天／N 天前」 */
-const BKR_NAMES={3:'每 3 天',7:'每週',14:'每兩週',30:'每月',0:'關閉'};
+const BKR_NAMES={1:'每天',3:'每 3 天',7:'每週',14:'每兩週',30:'每月',0:'關閉'};
 function bkRefresh(){   /* 每次打開選單時重算：沒有日誌就不能備份 */
  const b=document.getElementById('bkb'),r=document.getElementById('bkr');
  b.disabled=!allTotals().days;
  const bl=window.BKLAST;if(bl){let s=b.querySelector('.bkc');if(!s){s=document.createElement('span');s.className='bkc';s.innerHTML='<b>備份</b><small></small>';b.appendChild(s);b.classList.add('two')}s.querySelector('small').textContent=bkAgo(bl)}   /* 網頁版：「備份」那一行顯示上次手動備份是多久以前（不彈提示，只是一行字） */
  const c=window.BKREM;r.hidden=!c;   /* 備份提醒那一行：只有網頁版宿主會注入 BKREM＝{days:週期天數（0＝關閉）, text:小字} */
- if(c){const nm=BKR_NAMES[c.days]||('每 '+c.days+' 天'),pill=r.querySelector('.ib2');pill.textContent=nm;pill.classList.toggle('pri',c.days>0);r.querySelector('small').textContent=c.text||'';r.setAttribute('aria-label','備份提醒：'+nm+'（點一下選週期）')}
+ if(c){const nm=BKR_NAMES[c.days]||('每 '+c.days+' 天'),pill=r.querySelector('.ib2');pill.textContent=nm;pill.classList.toggle('pri',c.days>0);r.querySelector('small').textContent=c.text||'';r.setAttribute('aria-label','備份提醒：'+nm+'（點一下選週期和時間）')}
 }
 document.getElementById('bkb').onclick=()=>{pdClose();backupAllYears(allTotals().days)};
 document.getElementById('rsb').onclick=()=>{pdClose();restoreAllYears()};

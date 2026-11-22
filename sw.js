@@ -15,10 +15,11 @@ self.addEventListener("fetch", e => {
 /* 點提醒通知：日誌已經開著（含背景）就叫到前面，並請它切到「提醒清單」（訊息由 host-pwa.js 接收）；沒開著就打開日誌，網址帶 ?tab=rem 直接進提醒清單。 */
 self.addEventListener("notificationclick", e => {
   e.notification.close()
+  const bk = !!(e.notification.data && e.notification.data.tab === "backup")   /* 「該備份了」：不進提醒清單；日誌已開著就請它馬上彈出備份視窗（訊息由 host-pwa.js 接收），沒開著就打開日誌（約 5 秒後自己檢查、彈出） */
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
     const c = list.find(x => x.url.startsWith(self.registration.scope))
-    if (c) { c.postMessage({ type: "diary-open-rem" }); return c.focus() }
-    return self.clients.openWindow(new URL("./?tab=rem", self.registration.scope).href)
+    if (c) { c.postMessage({ type: bk ? "diary-bkrem" : "diary-open-rem" }); return c.focus() }
+    return self.clients.openWindow(new URL(bk ? "./" : "./?tab=rem", self.registration.scope).href)
   }))
 })
 /* 推播：日誌關閉時由伺服器叫醒。伺服器只送「哪一天」；通知文字在這裏從本機的 IndexedDB 讀出（和 host-pwa.js 的 remCheck / remText 同一套規則），日誌內容不經過伺服器。
@@ -37,8 +38,32 @@ function remText(date, fb, rows, edits) {   // 通知內文：這一天現在的
   if (raw && lines.length > 1 && new RegExp("^\\s*" + parseInt(date.slice(8)) + "\\s*[.．]").test(lines[0])) lines.shift()
   return lines.map(l => l.trim()).join(" ").slice(0, 200)
 }
+/* 備份提醒的推播：伺服器只認「日期＋時間」，所以借用日誌沒有的 1999-01-01（和 host-pwa.js 的 BK_PUSH_DATE 一樣）。到點時先在本機再核對一次還要不要提醒（備份、關閉都在本機的 IndexedDB），
+   不需要了也照樣顯示一則簡單的通知（iOS 規定每個推播都必須顯示通知）。 */
+const BK_DATE = "1999-01-01"
+const bkAt = (ms, plus, min) => { const t = new Date(ms); return new Date(t.getFullYear(), t.getMonth(), t.getDate() + plus, Math.floor(min / 60), min % 60).getTime() }
+function bkAgo(ms) {
+  if (!ms) return "還沒有手動備份的記錄"
+  const a = new Date(ms), n = new Date(), d = Math.round((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5)
+  return "上次手動備份：" + (d <= 0 ? "今天" : d === 1 ? "昨天" : d + " 天前")
+}
+async function bkNote() {
+  let title = "該備份了", body = "打開日誌，按「立即備份」。"
+  try {
+    const db = await kvOpen()
+    const cfg = (await kvGet(db, "bkrem:cfg")) || {}, last = Number(await kvGet(db, "bk:lastManual")) || 0
+    db.close()
+    const days = Number.isInteger(cfg.days) && cfg.days >= 0 && cfg.days <= 365 ? cfg.days : 7
+    const min = Number.isInteger(cfg.min) && cfg.min >= 0 && cfg.min < 1440 ? cfg.min : 1200
+    const due = last ? bkAt(last, days, min) : 0
+    if (days <= 0 || Date.now() < due - 120000) { title = "備份提醒"; body = "這則提醒已經不需要了（已經備份過，或提醒已關閉）。" }
+    else body = bkAgo(last) + "。打開日誌，按「立即備份」。"
+  } catch (e) {}
+  await self.registration.showNotification(title, { body, tag: "diarybkrem", icon: "icon-180.png", data: { tab: "backup" } })
+}
 async function pushNote(data) {
   const date = data && typeof data.date === "string" ? data.date : ""
+  if (date === BK_DATE) return bkNote()
   let title = "日誌提醒", body = ""
   try {
     const db = await kvOpen()

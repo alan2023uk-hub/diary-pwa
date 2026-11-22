@@ -7,7 +7,7 @@
    自動備份功能已刪除（使用者的決定：日誌靠照片、PDF 和少量文字，一份「全年份備份」連照片、PDF 一起存最切合需要，只備份文字的自動備份不實際）：不再自動存、選單沒有「自動備份」那一行。以前自動存在這部裝置的備份仍留在原處，「還原」視窗還列得出來、可以還原，「整理備份…」可以勾選刪掉；刪光之後這兩個入口自己消失。「還原前」自動留下的備份（固定 5 份）是另一回事，照舊。
    注意：照片和 PDF 存在這部裝置的瀏覽器裏；按「備份」存出的備份檔（.json）一次含日誌文字、提醒、照片、PDF，「還原…」選一份備份就全部放回去（照片、PDF 只補沒有的，不會刪現有的；日誌文字才分合併和完全還原）。以前分開的「照片備份」「PDF 備份」入口已經從面板拿掉。按卡片上的「加入照片」會直接打開相簿選單（宿主組頁時在按鈕處理函式裏插一行；模板改過、找不到那一行時，會退回先顯示對話框）。
    存入母版（iOS）：「備份」存好之後會問一次「存入母版？」，按「要」切到 Scriptable，帶著剛存的備份檔名；母版只還原那一個檔、只做完全還原、先彈確認視窗（見 offerMasterRestore、日誌.js 的 restorePwaBackup）。選單「備份」那一行會顯示「上次手動備份：N 天前」（bk:lastManual、window.BKLAST）。
-   備份提醒（網頁版專用）：選單的「備份提醒」那一行用滾輪選週期（每 3 天／每週／每兩週／每月／關閉，預設每週）和提醒時間（幾點幾分，預設 20:00，5 分鐘一格）；從上次手動備份起算，到期後打開（或回到）日誌時彈出視窗，問要不要立即備份（立即備份／稍後再說）。見下面「備份提醒」一節。 */
+   備份提醒（網頁版專用）：選單的「備份提醒」那一行用滾輪選週期（每 3 天／每週／每兩週／每月／關閉，預設每週）和提醒時間（幾點幾分，預設 20:00，5 分鐘一格；選單另有「每天」）；日誌關閉時也會由伺服器推播叫醒（需已允許通知，見「備份提醒」一節的 2026-11-22 推播說明）；從上次手動備份起算，到期後打開（或回到）日誌時彈出視窗，問要不要立即備份（立即備份／稍後再說）。見下面「備份提醒」一節。 */
 (function (root) {
   "use strict"
   const DATERE = /^\d{4}-\d{2}-\d{2}$/
@@ -495,7 +495,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       const tb = Date.now()
       try { await s.set("bk:lastManual", tb) } catch (e) {}
       try { root.BKLAST = { t: tb } } catch (e) {}
-      bkremPublish().catch(() => {})   // 「備份提醒」那一行的「下次提醒」重算
+      bkremPublish(true).catch(() => {})   // 「備份提醒」那一行的「下次提醒」重算；伺服器的叫醒時間也跟著更新（備份好了，舊的取消）
     }
     say(how === "cancelled" ? "已取消備份" : how === "failed" ? "備份失敗，請再試一次" : "已備份（" + r.years + " 年、" + r.days + " 天日誌" + (withMedia ? "、" + ph.length + " 張照片、" + pf.length + " 個 PDF" : "") + "）" + (how === "downloaded" ? "：已下載 " + r.name : ""))
     if (how === "shared" && isIOS()) await offerMasterRestore(r.name)   // 編者按 / Editor's note：存好之後問一次「存入母版？」（見下面 offerMasterRestore）。只有 iOS 才有 Scriptable、而且只有走分享選單存出去才問（「下載」會存到別的地方，母版找不到）。English: after the file is saved, ask once whether to send it to the master (iOS only, share-sheet saves only; a plain download lands elsewhere).
@@ -517,9 +517,10 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
   //   · 什麼時候問：載入後 5 秒、之後每次回到日誌（距上次檢查超過 1 小時）。正在打字、選單或別的視窗開著時不彈，每分鐘再試（最多 30 次）。完全沒有日誌內容時不提醒。
   //   · 這一頁只是提醒；不要在這裡偷偷備份（使用者已決定刪除自動備份，備份檔含照片和 PDF，一定要使用者自己存到想放的位置）。Scriptable 母版沒有這個功能（母版沒有注入 BKREM，模板會隱藏那一行）。
   //   · 2026-11-22 加上提醒時間：選週期的視窗改成三欄滾輪（週期｜幾時｜幾分，分鐘 5 分鐘一格，選「關閉」時時間兩欄變淡），設定存在 bkrem:cfg（{ v: 2, days, min }，min＝一天裏的第幾分鐘，預設 1200＝20:00；舊的 v: 1 設定沒有 min，讀到就用預設 20:00）。到期時刻＝上次手動備份那一天 ＋ 週期天數，當天的設定時間（用日曆天數算，不再是「滿 N×24 小時」）；從沒備份過＝已到期。「稍後再說」＝明天的設定時間再問。日誌一直開著、過了到期時刻時也會自己彈出（bkremArm 設定時器；頁面在背景時只記下「錯過了」，回到日誌就檢查）。
-  //   English: a dedicated "備份提醒" menu row with a selectable cycle; when due, a window asks whether to start the backup now. Reminder only: it never backs up by itself (automatic backup was removed on request). Cycle counts from the last manual backup that was actually saved; due check ignores "any changes?" on purpose (photo/PDF-only changes would be missed). 2026-11-21 revision: the cycle picker (doBkremPick) is now a wheel (wheelPick — like an iOS time picker, swipe to pick, "確定" confirms) instead of a stack of buttons; the due popup (bkremCheck) text is much shorter and the "skip this one" choice is gone, leaving just "立即備份" (back up now, same doBackup flow) and "稍後再說" (ask again in 24 h — the due time itself doesn't move, so it keeps asking daily until an actual backup happens); bkrem:state is now just { snooze }. Not shown while typing or while another window is open; retried every minute (max 30). Web version only. 2026-11-22 revision: a time of day was added — the picker is now a 3-column wheel (cycle | hour | minute, 5-minute steps; time columns dim when "off"), stored as bkrem:cfg { v: 2, days, min } (min = minute of the day, default 1200 = 20:00; old v: 1 configs without min fall back to 20:00). Due moment = the day of the last manual backup + cycle days, at the chosen time (calendar days, not N×24 h); never backed up = due. "稍後再說" now means ask again tomorrow at the chosen time. If the diary stays open past the due moment the popup also appears by itself (bkremArm timer; while the page is hidden it only records "missed" and the check runs when the page returns).
+  //   · 2026-11-22 日誌關閉也提醒（推播）：備份提醒的叫醒時間（bkremPushOcc：到期那一刻起每天設定的時間，共 BKREM_PUSH_DAYS＝3 次，已經到期的從下一個設定時間起算，「稍後再說」之前的不算）放進和每天提醒同一份「完整清單」（syncPushOnce），借用 BK_PUSH_DATE（1999-01-01，日誌沒有這一天；register 只收 YYYY-MM-DD，所以不能用別的名字）。伺服器（register、send-due、push_sync）完全沒改：到點發 { date: "1999-01-01" }，sw.js 認得這一天就顯示「該備份了」，點通知打開日誌（不是提醒清單），日誌已開著就直接彈出備份視窗。備份存好、改週期或時間、回應彈窗（bkremPublish(true)）都會重送清單：舊的叫醒時間被取代＝取消，並收掉通知中心裡的舊通知。萬一伺服器拒收含備份提醒的清單，會改送不含它的（每天提醒不受影響），原因記在 pushsync.bkerr，「提醒通知」視窗會顯示。
+  //   English: a dedicated "備份提醒" menu row with a selectable cycle; when due, a window asks whether to start the backup now. Reminder only: it never backs up by itself (automatic backup was removed on request). Cycle counts from the last manual backup that was actually saved; due check ignores "any changes?" on purpose (photo/PDF-only changes would be missed). 2026-11-21 revision: the cycle picker (doBkremPick) is now a wheel (wheelPick — like an iOS time picker, swipe to pick, "確定" confirms) instead of a stack of buttons; the due popup (bkremCheck) text is much shorter and the "skip this one" choice is gone, leaving just "立即備份" (back up now, same doBackup flow) and "稍後再說" (ask again in 24 h — the due time itself doesn't move, so it keeps asking daily until an actual backup happens); bkrem:state is now just { snooze }. Not shown while typing or while another window is open; retried every minute (max 30). Web version only. 2026-11-22 revision: a time of day was added — the picker is now a 3-column wheel (cycle | hour | minute, 5-minute steps; time columns dim when "off"), stored as bkrem:cfg { v: 2, days, min } (min = minute of the day, default 1200 = 20:00; old v: 1 configs without min fall back to 20:00). Due moment = the day of the last manual backup + cycle days, at the chosen time (calendar days, not N×24 h); never backed up = due. "稍後再說" now means ask again tomorrow at the chosen time. If the diary stays open past the due moment the popup also appears by itself (bkremArm timer; while the page is hidden it only records "missed" and the check runs when the page returns). 2026-11-22 push: the backup reminder now also wakes a closed diary via the existing server push. Its due moments (bkremPushOcc: from the due moment on, the chosen time on BKREM_PUSH_DAYS = 3 consecutive days; if already due, from the next chosen time; nothing before a "later" snooze) go into the same full list as the per-day reminders (syncPushOnce) under the reserved date BK_PUSH_DATE = 1999-01-01 (register only accepts YYYY-MM-DD). The server (register, send-due, push_sync) is unchanged; sw.js recognises that date and shows "該備份了", a tap opens the diary (not the reminder list) or, if already open, shows the backup popup right away. Saving a backup, changing cycle/time or answering the popup (bkremPublish(true)) re-sends the list, which replaces (= cancels) the old wake-up times and clears the old notification. If the server rejects a list with the backup item, it re-sends without it (per-day reminders unaffected) and records the cause in pushsync.bkerr, shown in the 提醒通知 window.
   const BKREM_DEFAULT = 7, BKREM_DEFAULT_MIN = 1200, BKREM_RETRY_MS = 60000, BKREM_RETRY_MAX = 30   // BKREM_DEFAULT_MIN：預設提醒時間，一天裏的第幾分鐘（1200＝20:00）
-  const BKREM_OPTS = [[3, "每 3 天"], [7, "每週"], [14, "每兩週"], [30, "每月"], [0, "關閉"]]
+  const BKREM_OPTS = [[1, "每天"], [3, "每 3 天"], [7, "每週"], [14, "每兩週"], [30, "每月"], [0, "關閉"]]
   const okRemDays = n => Number.isInteger(n) && n >= 0 && n <= 365
   const okRemMin = n => Number.isInteger(n) && n >= 0 && n < 1440
   const bkremHM = min => String(Math.floor(min / 60)).padStart(2, "0") + ":" + String(min % 60).padStart(2, "0")
@@ -538,8 +539,26 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const d = Math.round((dayStartMs(due) - dayStartMs(now)) / 864e5), t = " " + bkremHM(x.min)
     return d <= 0 ? "下次提醒：今天" + t : d === 1 ? "下次提醒：明天" + t : "下次提醒：" + d + " 天後" + t
   }
-  async function bkremPublish() {   // 把目前的設定和說明放進頁面（window.BKREM），選單下次打開時就是新的；順便重排「到點彈出」的定時器
+  const BK_PUSH_DATE = "1999-01-01", BKREM_PUSH_DAYS = 3   // BK_PUSH_DATE：伺服器只認「日期＋時間」，備份提醒借用這個日誌沒有的日子（sw.js 也用同一個）；BKREM_PUSH_DAYS：到期後日誌一直沒打開時，最多連續叫醒幾天
+  function bkremPushOcc(x, now) {   // 要請伺服器叫醒的時間（毫秒）：到期那一刻起，每天設定的時間，共 BKREM_PUSH_DAYS 次；已經到期的，從下一個設定時間起算；「稍後再說」之前的不算
+    if (x.days <= 0) return []
+    const due = bkremDueAt(x)
+    let base = due
+    if (due <= now) { const t0 = bkremAtDay(now, 0, x.min); base = t0 > now ? t0 : bkremAtDay(now, 1, x.min) }
+    base = Math.max(base, x.snooze)
+    const out = []
+    for (let k = 0; k < BKREM_PUSH_DAYS; k++) { const t = bkremAtDay(base, k, x.min); if (t > now && t >= x.snooze) out.push(t) }
+    return out
+  }
+  async function bkremClearNote() {   // 備份好了、改了設定或回應過彈窗：把還留在通知中心的「該備份了」收掉
+    try {
+      const sw = root.navigator && root.navigator.serviceWorker, reg = sw && sw.getRegistration ? await sw.getRegistration() : null
+      if (reg && reg.getNotifications) (await reg.getNotifications({ tag: "diarybkrem" })).forEach(n => n.close())
+    } catch (e) {}
+  }
+  async function bkremPublish(chg) {   // 把目前的設定和說明放進頁面（window.BKREM），選單下次打開時就是新的；順便重排「到點彈出」的定時器
     try { const x = await bkremRead(); root.BKREM = { days: x.days, text: bkremText(x, Date.now()) }; bkremArm(x) } catch (e) {}
+    if (chg) { pushSoon(); bkremClearNote() }   // chg＝備份提醒的設定、備份時間或「稍後」有變：請伺服器的叫醒時間跟著更新（取消舊的、排新的）
   }
   let bkremTimer = 0, bkremMissed = false   // bkremMissed：到點時頁面在背景，回到日誌時要檢查一次
   function bkremArm(x) {   // 日誌一直開著、過了到期時刻（或「稍後再說」的時刻）也要自己彈出；已經過了的不排（打開、回到日誌時本來就會檢查）
@@ -584,7 +603,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
         await handle("scriptable:///run?scriptName=" + encodeURIComponent("日誌") + "&backup=1")   // 排進同一條隊列（和選單的「備份」一模一樣）
         if ((Number(await s.get("bk:lastManual")) || 0) <= x.last) { await bkremSetState({ snooze: bkremAtDay(Date.now(), 1, x.min) }); say("這次沒有存成備份，明天再提醒") }
       } else { await bkremSetState({ snooze: bkremAtDay(Date.now(), 1, x.min) }); say("好，明天再提醒") }
-      await bkremPublish()
+      await bkremPublish(true)
       return true
     } catch (e) { return false } finally { bkremBusy = false }
   }
@@ -595,14 +614,14 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const mins = Array.from({ length: 12 }, (_, m) => ({ label: String(m * 5).padStart(2, "0") + " 分" }))
     const r = await wheelPickCols("備份提醒週期與時間",
       [{ items: BKREM_OPTS.map(o => ({ label: o[1] })), flex: 1.5 }, { items: hours }, { items: mins }],
-      [idx < 0 ? 1 : idx, Math.floor(x.min / 60), Math.round((x.min % 60) / 5) % 12],
+      [idx < 0 ? Math.max(0, BKREM_OPTS.findIndex(o => o[0] === BKREM_DEFAULT)) : idx, Math.floor(x.min / 60), Math.round((x.min % 60) / 5) % 12],
       { onMove: (ix, whs) => { const off = BKREM_OPTS[ix[0]][0] === 0; whs[1].style.opacity = whs[2].style.opacity = off ? ".3" : "" } })   // 選「關閉」時時間兩欄變淡
     if (!r) return
     const got = BKREM_OPTS[r[0]][0], min = r[1] * 60 + r[2] * 5
     const s = getStore()
     await s.set("bkrem:cfg", { v: 2, days: got, min })
     await bkremSetState({ snooze: 0 })
-    await bkremPublish()
+    await bkremPublish(true)
     say("備份提醒：" + bkremName(got) + (got > 0 ? "，" + bkremHM(min) : ""))
     if (got > 0) bkremCheck().catch(() => {})   // 改成較短的週期（或較早的時間）、而且已經到期：不用等下次打開，現在就問
   }
@@ -612,6 +631,12 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const go = () => { if (d.visibilityState && d.visibilityState !== "visible") return; lastCheck = Date.now(); bkremCheck().catch(() => {}) }
     root.setTimeout(go, 5000)
     bkremPublish().catch(() => {})   // 排「到點彈出」的定時器
+    const sw = root.navigator && root.navigator.serviceWorker   // 點「該備份了」的系統通知（sw.js 的 notificationclick）：日誌已經開著時，馬上檢查並彈出備份視窗；沒開著時，打開日誌後約 5 秒會自己檢查
+    if (sw && sw.addEventListener) {
+      if (root.__bkremOnMsg) sw.removeEventListener("message", root.__bkremOnMsg)   // 監聽掛在 serviceWorker 上，組頁不會清掉，所以先拿掉舊的
+      root.__bkremOnMsg = ev => { if (ev && ev.data && ev.data.type === "diary-bkrem") { bkremTries = 0; bkremCheck().catch(() => {}) } }
+      sw.addEventListener("message", root.__bkremOnMsg)
+    }
     if (d.addEventListener) d.addEventListener("visibilitychange", () => { if (d.visibilityState === "visible" && (bkremMissed || Date.now() - lastCheck > 3600e3)) { bkremMissed = false; root.setTimeout(go, 1500) } })
   }
   // ---------- 以前的自動備份（自動備份功能已刪除，這裏只剩「還原」和「整理」）----------
@@ -2464,10 +2489,20 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
       for (let k = 0; k < remDays(r); k++) { const t = occTime(r, k); if (t > now) occ.push(t) }   // 只送還沒到的；已經過去的不再補
       if (occ.length) items.push({ date: r.date, occ })
     }
+    let hasBk = false
+    try {   // 備份提醒也放進同一份清單（借用 BK_PUSH_DATE 這一天）；這一段出任何錯都不影響每天提醒的同步
+      const bs = getStore(), bx = await bkremRead(), bo = bkremPushOcc(bx, now)
+      if (bo.length && makeBackupBodyAll(await bs.get("rows") || [], await bs.get("edits") || [], now, false, await readRems())) { items.push({ date: BK_PUSH_DATE, occ: bo }); hasBk = true }   // 完全沒有日誌內容：沒有東西可備份，不叫醒
+    } catch (e) {}
     const ac = root.AbortController ? new root.AbortController() : null, timer = ac ? root.setTimeout(() => ac.abort(), PUSH_TIMEOUT_MS) : 0
+    const post = list => fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), items: list }), signal: ac ? ac.signal : undefined })
     try {
-      const res = await fetch(PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), items }), signal: ac ? ac.signal : undefined })
-      if (res.ok) { await patchPushState({ last: Date.now(), tried: Date.now(), err: "", dirty: rev !== pushRev }); return true }   // 送的途中又有變動：dirty 留著，下一輪再送
+      let res = await post(items), bkerr = ""
+      if (!res.ok && hasBk) {   // 伺服器不收含備份提醒的清單：改送不含它的（每天提醒照常同步），並記下原因，在「提醒通知」視窗看得到
+        const first = res.status, res2 = await post(items.filter(i => i.date !== BK_PUSH_DATE))
+        if (res2.ok) { res = res2; bkerr = "伺服器回應 " + first }
+      }
+      if (res.ok) { await patchPushState({ last: Date.now(), tried: Date.now(), err: "", bkerr, dirty: rev !== pushRev }); return true }   // 送的途中又有變動：dirty 留著，下一輪再送
       await patchPushState({ tried: Date.now(), err: "伺服器回應 " + res.status, dirty: true }); return false
     } catch (e) {
       await patchPushState({ tried: Date.now(), err: ac && ac.signal.aborted ? "連線逾時" : "沒有網路，或連不上伺服器", dirty: true }); return false
@@ -2497,6 +2532,7 @@ const ALL_KIND = "diary-pwa-backup-all", isAllKind = k => k === ALL_KIND || k ==
     const lines = [st.last ? "上次成功寄給伺服器：" + when(st.last) : "還沒有成功寄給伺服器過。"]
     if (st.dirty) lines.push("有變動還沒寄出去，有網路時會自動補寄" + (st.err ? "（上次失敗：" + st.err + "）" : "") + "。")
     else if (st.last) lines.push("提醒時間已經同步到伺服器。")
+    if (st.bkerr) lines.push("備份提醒沒有同步到伺服器（" + st.bkerr + "），日誌關閉時不會叫醒；其他提醒不受影響。")
     return lines.join("\n")
   }
   async function doRemSave(raw) {   // 提醒（設定、完成、取消）：存好，再把最新的提醒清單推回頁面
